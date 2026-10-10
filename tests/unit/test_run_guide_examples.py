@@ -7,6 +7,7 @@ Dependencies: pytest and httpx. No credentials, login or external service use.
 from __future__ import annotations
 
 import importlib.util
+import time
 from pathlib import Path
 from typing import Any
 
@@ -137,21 +138,44 @@ def test_mcp_example_unwraps_result_and_preserves_non_ready_decision(reason: str
     assert port.calls[-1][1]["view"] == "full"
 
 
-def test_mcp_example_timeout_retains_run_id_without_restart_or_cancel(monkeypatch: Any) -> None:
-    module = example("mcp_run_review")
-    clock = iter([0.0, 2.0])
-    monkeypatch.setattr(module.time, "monotonic", lambda: next(clock))
+def test_mcp_example_timeout_retains_run_id_without_restart_or_cancel() -> None:
     port = McpPort(ongoing=True)
     with pytest.raises(ZenturePollingTimeoutError) as exc:
-        module.review_selected_text(
+        example("mcp_run_review").review_selected_text(
             McpClient(port),
             task="Review.",
             text="Selected text.",
             saved_key="review_123",
-            timeout=1.0,
+            timeout=0.2,
         )
     assert exc.value.operation_id == RUN_ID
-    assert [name for name, _ in port.calls] == ["run"]
+    names = [name for name, _ in port.calls]
+    assert names[0] == "run"
+    assert names.count("run") == 1
+    assert "cancel_run" not in names
+
+
+class SlowFullReadPort(McpPort):
+    """Completes the summary at once; the full read finishes after the caller budget."""
+
+    def call_tool(self, name: str, arguments: Any) -> object:
+        if name == "get_run" and arguments.get("view") == "full":
+            time.sleep(0.3)
+        return super().call_tool(name, arguments)
+
+
+def test_mcp_example_rejects_full_read_that_finishes_after_the_budget() -> None:
+    port = SlowFullReadPort()
+    with pytest.raises(ZenturePollingTimeoutError) as exc:
+        example("mcp_run_review").review_selected_text(
+            McpClient(port),
+            task="Review.",
+            text="Selected text.",
+            saved_key="review_123",
+            timeout=0.2,
+        )
+    assert exc.value.operation_id == RUN_ID
+    assert [name for name, _ in port.calls] == ["run", "get_run", "get_run"]
 
 
 def test_mcp_example_uncertain_start_propagates_original_key_without_retry() -> None:
