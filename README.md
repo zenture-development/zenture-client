@@ -2,7 +2,10 @@
 
 # The official zenture Python client
 
-Official Python client for the zenture REST API and hosted MCP endpoint.
+Hand a task and one selected answer to zenture and get back a reasoned
+acceptance decision with findings, evidence and limitations, over REST or the
+hosted MCP endpoint.
+
 The default installation includes REST, hosted MCP, and native authentication;
 no extra is required. API tokens stay bound to REST, and account OAuth stays
 bound to MCP. The server retains authorization, Run execution, billing, and
@@ -13,45 +16,26 @@ CI tasks, and controlled notebook environments. zenture API tokens are
 server-side credentials. Do not put them in browsers, mobile apps, frontend
 bundles, public notebooks, logs, analytics, traces, or customer-visible errors.
 
-## Start here for agents
+## What a zenture Run is
 
-Choose the interface, build a valid payload and interpret the result with the
-[Run guide](docs/run-guide.md). It covers REST and MCP side by side, field
-semantics, response shapes, pagination, uploads, feedback and recovery.
-For other REST resources use the [API reference](docs/api-reference.md).
-For MCP connection behavior use the [MCP guide](docs/mcp-client.md).
+A **Run** evaluates one explicitly selected answer against the task it was
+meant to solve. You send the original `task` (including the criteria that
+matter) and the selected `artifact` (inline text). zenture works asynchronously
+and reports:
 
-A Run evaluates selected content; `client.runs.run()` starts it without polling.
-Save an explicit idempotency key before dispatch. A technically `completed` Run
-can still require revision; inspect `acceptance_decision` and result limitations.
+- a technical `status` (for example `queued`, `running`, `completed`);
+- an `acceptance_decision`: `ready`, `revise`, `human_review` or
+  `insufficient_evidence`;
+- findings, evidence summaries, limitations and what was actually checked
+  (coverage), in `safe_result_content`;
+- a `billing_summary` with the final Credits once settled.
+
+A `completed` Run is only technically finished; it can still say `revise`.
+Starting a Run may use Credits from your zenture balance. Waiting and reading
+do not start new work. Runs are identified by a `run_...` ID, which differs from
+the operation IDs of the classic API resources below.
 Current Run execution supports inline text. File registration is available, but
 Run preparation currently rejects `zenture_ref` inputs.
-
-## Source migration
-
-This is a hard source cutover: install `zenture` and import `ZentureClient` or
-`AsyncZentureClient` from `zenture`. Replace the former `Zenture` and
-`AsyncZenture` class names in application code; no legacy aliases are provided.
-The repository is `zenture95/zenture-client`. API-token access and the existing
-caller-provided bearer MCP adapter retain their behavior. OAuth discovery,
-login, refresh and credential storage are implemented by this client for the
-hosted MCP endpoint (see [MCP and native login](#mcp-and-native-login)); API
-tokens stay a separate credential.
-Previously published artifacts remain the return path if the source migration
-cannot yet be applied; do not install both distributions into one environment.
-Candidate artifact checks do not establish public PyPI availability.
-See the [migration guide](./docs/migration.md) for uninstall-first upgrade
-commands, source changes, the exact published return baseline, and verification
-limits.
-
-## Package Names
-
-- Distribution: `zenture`
-- Import package: `zenture`
-- Sync client: `ZentureClient`
-- Async client: `AsyncZentureClient`
-- Supported Python: CPython 3.11, 3.12, 3.13, and 3.14 (Python 3.14 is declared; the CI matrix covers it but has not yet run; there is no upper version cap)
-- Command line: `zenture`
 
 ## Installation
 
@@ -59,27 +43,106 @@ limits.
 pip install zenture
 ```
 
-`zenture` is not published to PyPI yet, so `pip install zenture` will only work
-after the first public release. Until then install from a checkout of this
-repository (or from a wheel the repository owner gives you):
+Supported Python: CPython 3.11, 3.12, 3.13, and 3.14 (Python 3.14 is declared; the CI matrix covers it but has not yet run; there is no upper version cap).
+The installation includes the `zenture` command and the `zenture.auth` and
+`zenture.mcp` modules; no extra is needed. `zenture --version` prints the
+installed version without logging in or touching the network.
 
-```bash
-git clone https://github.com/zenture95/zenture-client.git
-cd zenture-client
-python -m pip install .
+## Quickstart: your first Run
+
+Create an API token at `https://ai.zenture.app/profile?tab=api-tokens`, keep it
+outside source code (`ZENTURE_API_KEY`, see [Authentication](#authentication)),
+and save an idempotency key for the Run **before** you start it.
+
+```python
+from zenture import ZentureClient
+
+with ZentureClient.from_env() as client:
+    run = client.runs.run(  # prepares and starts; does not wait
+        task="Check that the answer names exactly two colours.",
+        artifact={"type": "text", "value": "Blue and green."},
+        idempotency_key="review-case-123",  # your saved identity of this one review
+    )
+    client.runs.wait(run.run_id, timeout=120.0)  # finite polling, returns a summary
+    result = client.runs.get(run.run_id, view="full")
+
+    print(result.status, result.acceptance_decision)
+    content = result.safe_result_content
+    if content is not None and content.status == "available":
+        print(content.content.summary)
 ```
 
-The installation includes the `zenture` command and the `zenture.auth` and
-`zenture.mcp` modules; no extra is needed.
+The same Run through MCP uses your zenture account instead of an API token.
+Log in once from a terminal (`zenture auth login`), then:
 
-Run `zenture --version` to print the installed package version and exit without
-logging in or accessing the credential store or network.
+```python
+from zenture.mcp import McpClient
+
+with McpClient.connect() as client:  # stored authorization; never starts a login
+    client.require_product_tools()
+    run = client.run(  # starts the Run; does not wait
+        task="Check that the answer names exactly two colours.",
+        artifact={"type": "text", "value": "Blue and green."},
+        idempotency_key="review_case_123",  # save before dispatch
+    )
+    client.wait_run(run.run_id, timeout=120.0)
+    result = client.get_run(run.run_id, view="full").run
+
+    print(result.status, result.acceptance_decision)
+```
+
+A local wait timeout raises `ZenturePollingTimeoutError`; it neither cancels the
+Run nor loses it. Keep the `run_id` and read it later. Complete, tested versions
+that also keep the budget over the final read:
+[`examples/run_review.py`](./examples/run_review.py) (REST) and
+[`examples/mcp_run_review.py`](./examples/mcp_run_review.py) (MCP).
+
+### Anatomy of a Run result
+
+| Field | Meaning |
+|---|---|
+| `run_id`, `profile`, `generation` | Identity and the requested profile (`standard` by default; `fast` or `detailed` only with explicit intent) |
+| `status` | Nonterminal: `created`, `queued`, `running`, `waiting_for_dependency`, `partially_complete`, `cancel_requested`. Terminal: `completed`, `failed`, `cancelled`, `expired`, `budget_exhausted` |
+| `acceptance_decision` | `ready`, `revise`, `human_review`, `insufficient_evidence`; absent is not `ready` |
+| `safe_result_content` | `status="available"` carries `content`: `summary`, `findings`, `evidence_summaries`, `limitations`, `decision` (with `reason_code`, `next_action`) and `coverage`. `status="unavailable"` carries a `reason_code` instead |
+| `capability_coverage`, `limitations` | What could and could not be checked; do not assume all requested checks ran |
+| `billing_summary` | `pending`, `settled`, `released` or `unavailable`; final Credits when known. Unavailable is not zero |
+| `deadline_at`, `queue`, `next_action`, `reason_code` | Timing and service guidance |
+| `cancellation_requested` | A cancel was requested; the actual `status` remains authoritative |
+
+`ready` is scoped to the evaluated requirements and evidence, not a universal
+correctness guarantee. Details: [Run guide](./docs/run-guide.md#interpret-the-returned-run).
+
+### Core Run operations
+
+| Operation | REST (`client.runs`) | MCP (`McpClient` / `AsyncMcpClient`) |
+|---|---|---|
+| Preview without starting | `prepare(...)` | included in `run(...)` |
+| Start | `run(...)`, or `create(...)` from a prepared proposal | `run(...)` |
+| Follow-up to an earlier Run | `predecessor_run_id=` on `run`/`create` | raw tool only; the Python wrapper has no such parameter yet |
+| Wait (finite) | `wait(run_id, timeout=...)` | `wait_run(run_id, timeout)` |
+| Read | `get(run_id, view="summary" or "full")` | `get_run(run_id, view=...)`, result in `.run` |
+| List your Runs | `list(status=..., decision=..., limit=..., cursor=...)` | `list_runs(...)` |
+| Progress events | `list_events`, `iter_events` | `get_run(..., include_event_replay=True)`, `replay_events` |
+| Cancel | `cancel(run_id, idempotency_key=...)` | `cancel_run(run_id)` |
+| Record what you did with it | `record_outcome(run_id, outcome=..., idempotency_key=...)` | `record_run_outcome(run_id, outcome=...)` |
+
+Outcomes are `used`, `edited`, `rejected`, `escalated` and `not_sure`; recording
+one preserves the original decision. Mutating calls need a caller-owned
+`idempotency_key`: reuse the same key and the identical request to recover from
+an uncertain outcome, and use a new key only for a deliberately new evaluation.
+See [idempotency](./docs/idempotency.md) and
+[MCP Run idempotency](./docs/mcp-client.md#run-idempotency). Every field,
+bound and method is in the [Run guide](./docs/run-guide.md).
 
 ## Authentication
 
-Create API tokens in the existing zenture webapp with an existing account:
-`https://ai.zenture.app/profile?tab=api-tokens`. The SDK does not provide an
-API-token management surface.
+Two separate credentials; they never mix.
+
+| Channel | Credential | How |
+|---|---|---|
+| REST (`ZentureClient`, `AsyncZentureClient`) | zenture API token | Create it with an existing account at `https://ai.zenture.app/profile?tab=api-tokens`; read from `ZENTURE_API_KEY` |
+| Hosted MCP (`zenture.mcp`) | Your zenture account | `zenture auth login` (browser) or `zenture auth login --device` (headless) |
 
 Keep the token outside Python source code:
 
@@ -97,7 +160,21 @@ set +a
 The SDK intentionally does not parse `.env` files. Load environment variables
 through your runtime, deployment platform, secrets manager, or preferred local
 loader. Public SDK usage targets the production API origin:
-`https://api.zenture.app`.
+`https://api.zenture.app`. The SDK has no API-token management surface.
+Full details, including MCP login, secure storage and refresh safety:
+[authentication](./docs/authentication.md).
+
+## Documentation
+
+- [Run guide](./docs/run-guide.md): payloads, methods, results, feedback, recovery (start here).
+- [MCP client](./docs/mcp-client.md) and [authentication](./docs/authentication.md).
+- [Errors](./docs/errors.md), [idempotency](./docs/idempotency.md), [rate limits](./docs/rate-limits.md), [pagination](./docs/pagination.md).
+- [Migration](./docs/migration.md) from the former `zenture-sdk` package: a hard
+  source cutover to `ZentureClient` / `AsyncZentureClient`, no legacy aliases;
+  do not install both distributions into one environment.
+- Classic API: [API reference](./docs/api-reference.md), [SDK call reference](./docs/sdk-call-reference.md), [response shapes](./docs/response-shapes.md).
+- Public API documentation: `https://www.zenture.app/developers`. The committed
+  OpenAPI artifact is the SDK's local contract source of truth.
 
 ## MCP and native login
 
@@ -214,55 +291,19 @@ Import these from `zenture.auth`. Messages carry a fixed code, never a credentia
 Details: [`docs/authentication.md`](./docs/authentication.md) and
 [`docs/mcp-client.md`](./docs/mcp-client.md).
 
-## Local Scratch Workspace
+## Classic API resources (secondary)
 
-For ad-hoc local experiments, create a `scratch/` directory in the repository
-root:
+The sections below document the other REST resources: models, chat, input
+wizard (prompt optimization), evaluations, account reads and operation polling.
+They are independent of Runs and return Async Operations (`operation_id`)
+rather than Runs; `.run(...)` on these resources polls to a terminal status.
+Package names: distribution `zenture`, import package `zenture`, clients
+`ZentureClient` and `AsyncZentureClient`, command line `zenture`. Full call
+and response references: [`docs/sdk-call-reference.md`](./docs/sdk-call-reference.md),
+[`docs/response-shapes.md`](./docs/response-shapes.md) and
+[`docs/api-reference.md`](./docs/api-reference.md).
 
-```bash
-mkdir -p scratch
-```
-
-Use it for temporary request payloads, response captures, throwaway scripts,
-and local notes while testing the SDK. The directory is ignored by Git and
-must not contain real API tokens, production data, customer data, or other
-secrets.
-
-Reproducible tests belong in `tests/`; reusable examples belong in `examples/`.
-
-## API Documentation
-
-The public API documentation lives at
-`https://www.zenture.app/developers`. Treat the committed OpenAPI
-artifact in this repository as the SDK's local contract source of truth and use
-the public documentation as the human-facing API reference.
-
-For copy-paste SDK usage, routes, and example response structures for every
-public call, see [`docs/sdk-call-reference.md`](./docs/sdk-call-reference.md).
-For raw JSON response bodies and SDK model mapping, see
-[`docs/response-shapes.md`](./docs/response-shapes.md).
-The MCP peer clients are documented in
-[`docs/mcp-client.md`](./docs/mcp-client.md) and native login in
-[`docs/authentication.md`](./docs/authentication.md).
-
-## Agent And Interface Governance
-
-**Repository role:** This repository implements the server-side Python REST
-API client, hosted MCP peers, and explicit native authentication, all included
-in the default installation. Its committed OpenAPI artifact is
-the SDK-local contract mirror, not the authority for Backend product behavior
-or gateway routes.
-
-**Canonical authorities:** Follow [`AGENTS.md`](./AGENTS.md) for SDK changes.
-The public gateway OpenAPI owns REST shapes; Backend owns Run status, billing,
-auth, and tenant behavior. The workspace
-`governance/interface-registry/registry.yml` records interface ownership,
-consumers, lifecycle, and compatibility without replacing those authorities.
-For cross-repository interface changes, run
-`governance/interface-registry/logic/scripts/check_interface_registry.py` with
-`--mode strict-workspace` from the workspace root.
-
-## Sync Quickstart
+### Sync Quickstart
 
 ```python
 from zenture import ZentureClient
@@ -275,7 +316,7 @@ with ZentureClient.from_env() as client:
         print(model.id, model.display_name)
 ```
 
-## Async Quickstart
+### Async Quickstart
 
 ```python
 import asyncio
@@ -298,7 +339,7 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-## Models
+### Models
 
 ```python
 from zenture import ZentureClient
@@ -310,7 +351,7 @@ with ZentureClient.from_env() as client:
     print(multi_models.models[0].id)
 ```
 
-## Chat
+### Chat
 
 Single-model chat:
 
@@ -400,7 +441,7 @@ with ZentureClient.from_env() as client:
     print(turn.user_message, turn.model_answer, turn.model_response_id)
 ```
 
-## Input Wizard
+### Input Wizard
 
 ```python
 from zenture import ZentureClient
@@ -416,7 +457,7 @@ with ZentureClient.from_env() as client:
         print(result.result.optimized_prompt)
 ```
 
-## Evaluations
+### Evaluations
 
 There are two evaluation flows. Keep them separate:
 
@@ -507,7 +548,7 @@ with ZentureClient.from_env() as client:
 Use `external_id` only as optional caller-side correlation. Use
 `idempotency_key` as the required retry-safety key for each mutating request.
 
-## End-to-End Chat Evaluation
+### End-to-End Chat Evaluation
 
 For a complete local smoke flow, use:
 
@@ -526,7 +567,7 @@ the matching public chat turn as `result.chat_turn`, and
 detail as `result.evaluation`. These flags are explicit so normal operation
 polling does not perform extra read requests.
 
-## Account Reads
+### Account Reads
 
 Read wallet, usage, and route limits without creating billable work:
 
@@ -544,7 +585,7 @@ with ZentureClient.from_env() as client:
     print(limits.operation_statuses)
 ```
 
-## Operation Polling
+### Operation Polling
 
 Low-level create methods return an operation immediately. Use
 `client.operations.wait(...)` when you want to poll explicitly.
@@ -582,7 +623,7 @@ the last status and observed deadline as safe metadata. Run event streaming
 remains an optional lower-latency path; `runs.wait(...)` is the bounded polling
 fallback when a stream is unavailable.
 
-## Pagination
+### Pagination
 
 List-style read helpers support `limit` and `cursor`. The default page size is
 `limit=50`, the maximum is `100`, and cursors are opaque strings. Responses
@@ -605,7 +646,7 @@ Available iterators:
 - `client.chat.iter_messages(chat_id, limit=50, cursor=None)`
 - `client.evaluations.iter(limit=50, cursor=None)`
 
-## Idempotency
+### Idempotency
 
 Mutating routes require `Idempotency-Key`. Use stable caller-owned keys that do
 not contain prompts, answers, API tokens, customer PII, or request bodies.
@@ -631,7 +672,7 @@ Example keys:
 - `idempotency_key("support-ticket-123-answer-a", "evaluate", "v1")`
 - `idempotency_key("response_abc123", "evaluate", "v1")`
 
-## Errors
+### Errors
 
 ```python
 from zenture import ZentureClient
@@ -664,7 +705,7 @@ with ZentureClient.from_env() as client:
 SDK exceptions redact sensitive content. Request and response bodies are not
 included in exception strings.
 
-## Timeout, Retry, Polling, and Rate Limits
+### Timeout, Retry, Polling, and Rate Limits
 
 - SDK-owned HTTP clients use explicit timeouts: connect `5s`,
   read/write/pool `30s`.
@@ -681,14 +722,14 @@ included in exception strings.
 - `Retry-After` is honored before deterministic exponential backoff.
 - Mutating requests are retried only when an `Idempotency-Key` is present.
 
-## Base URL Policy
+### Base URL Policy
 
 - Default production API origin: `https://api.zenture.app`
 - Never derive `base_url` from user input.
 - URL credentials, paths, query strings, fragments, and arbitrary HTTPS origins
   are rejected.
 
-## Public V1 Scope
+### Public V1 Scope
 
 - No browser, mobile, or frontend bundle usage.
 - No API-token management surface.

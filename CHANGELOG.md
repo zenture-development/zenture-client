@@ -8,6 +8,8 @@ state.
 
 ## 1.0.1 - 2026-10-10
 
+- Documentation leads with Runs; the classic API resources are documented as secondary.
+
 - MCP peers keep authorization failures (`AuthorizationRequired`,
   `PermissionDenied`, including inside an `ExceptionGroup`) classified and
   do not retry them in `wait_run` or discovery; only unknown transport failures
