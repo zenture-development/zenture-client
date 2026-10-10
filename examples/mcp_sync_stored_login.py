@@ -24,7 +24,11 @@ def main() -> None:
     except AuthUnavailable:
         print("Authorization could not be checked right now. Try again later.")
     except SecureStoreUnavailable:
-        print("No protected credential store here. Use `zenture auth login --session-only`.")
+        print(
+            "No protected credential store here. Start an in-process session with "
+            "login(session_only=True) and pass it to McpClient.connect(session=...); "
+            "see examples/mcp_device_login.py."
+        )
 
 
 if __name__ == "__main__":

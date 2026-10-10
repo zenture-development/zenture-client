@@ -126,8 +126,8 @@ zenture auth clear                 # delete the local record only
   Revoke the connection itself in zenture under
   *Zugriff & Sicherheit -> Verbindungen*.
 - **Secure storage.** The authorization is kept in the operating system's
-  credential store. `--session-only` / `session_only=True` keeps it in memory for
-  the current process instead.
+  credential store. `session_only=True` keeps it in memory for the current process
+  instead; the CLI `--session-only` option only verifies and discards it.
 
 | Platform | Credential store | Status |
 |---|---|---|
@@ -193,7 +193,7 @@ Import these from `zenture.auth`. Messages carry a fixed code, never a credentia
 |---|---|---|
 | `AuthorizationRequired` | No stored authorization, or it can no longer be used (for example after an interrupted refresh or a revoked connection) | Run `zenture auth login` |
 | `AuthUnavailable` | Authorization could not be checked now; the stored state is unchanged | Try again later |
-| `SecureStoreUnavailable` | No protected credential store on this system | Use `zenture auth login --session-only` |
+| `SecureStoreUnavailable` | No protected credential store on this system | Use in-process `login(session_only=True)`; CLI `--session-only` only verifies |
 | `PermissionDenied` | The server refused access for this authorization (HTTP 403) | Contact the zenture account owner; logging in again does not widen access |
 | `LoginCancelled` | The authorization was declined, cancelled or stopped | Nothing was connected; run the login again if you meant it |
 
@@ -206,7 +206,7 @@ Import these from `zenture.auth`. Messages carry a fixed code, never a credentia
 | `2` | invalid command line |
 | `3` | authorization_required: log in again |
 | `4` | unavailable: nothing changed; the message says whether retrying later helps |
-| `5` | store_unavailable: no protected credential store (try `--session-only`) |
+| `5` | store_unavailable: no protected credential store (CLI `--session-only` only verifies) |
 | `6` | login cancelled (denied or declined) |
 | `7` | permission denied by the server |
 | `130` | interrupted (Ctrl+C, also while waiting for a device login) |

@@ -111,10 +111,11 @@ refused instead of silently acting as the new one.
 | Linux | Secret Service | implemented, not yet verified |
 
 If no protected store is available you get `SecureStoreUnavailable`. Use
-`zenture auth login --session-only` (or `login(session_only=True)`) to keep the
+`login(session_only=True)` in-process to keep the
 authorization in memory for the current process only; nothing is written and it
-cannot outlive the process. In the CLI, `--session-only` verifies the login and
-then discards it.
+cannot outlive the process. The CLI `--session-only` option is verification only:
+it checks the login and then discards it. To use the session, call
+`login(session_only=True)` in-process and pass the session to `McpClient.connect(session=...)`.
 
 ### Refresh safety
 
@@ -150,7 +151,7 @@ All are importable from `zenture.auth`.
 |---|---|
 | `AuthorizationRequired` | Run `zenture auth login` |
 | `AuthUnavailable` | Try again later; nothing was changed |
-| `SecureStoreUnavailable` | Use `zenture auth login --session-only` |
+| `SecureStoreUnavailable` | Use in-process `login(session_only=True)`; CLI `--session-only` only verifies |
 | `PermissionDenied` | Contact the account owner; a new login does not widen access |
 | `LoginCancelled` | Nothing was connected |
 
