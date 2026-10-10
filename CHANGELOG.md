@@ -6,7 +6,7 @@ The project follows semantic versioning once public releases begin. Prerelease
 versions may change while the Public API contract is still in release-candidate
 state.
 
-## Unreleased
+## 1.0.1 - 2026-10-10
 
 - MCP peers keep authorization failures (`AuthorizationRequired`,
   `PermissionDenied`, including inside an `ExceptionGroup`) classified and

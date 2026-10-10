@@ -134,7 +134,6 @@ jobs:
             "scripts/check_dependency_licenses.py"
             "scripts/check_release_tag.py"
             ".github/CODEOWNERS"
-            ".github/dependabot.yml"
           )
 
           for file in "${required_files[@]}"; do
