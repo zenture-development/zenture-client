@@ -33,8 +33,11 @@ def _first_response_id(result: object) -> str:
     raise RuntimeError("Expected model_response_id in the completed chat operation result.")
 
 
-def evaluate_external_answer(client: ZentureClient) -> None:
-    """Evaluate text that was produced outside zenture chat history."""
+def evaluate_external_answer(client: ZentureClient, *, show_result: bool = False) -> None:
+    """Evaluate text that was produced outside zenture chat history.
+
+    Prints identifiers and status; the evaluation result is printed only when show_result is set.
+    """
 
     result = client.evaluations.run(
         user_message="What does the SDK do?",
@@ -44,11 +47,16 @@ def evaluate_external_answer(client: ZentureClient) -> None:
         idempotency_key=idempotency_key("example", "evaluation-external", "v1"),
         timeout=120.0,
     )
-    print("external", result.operation_id, result.status, result.result)
+    print("external", result.operation_id, result.status)
+    if show_result:
+        print(result.result)
 
 
-def evaluate_zenture_chat_turn(client: ZentureClient) -> None:
-    """Create a chat, continue it, and evaluate the second AI answer."""
+def evaluate_zenture_chat_turn(client: ZentureClient, *, show_result: bool = False) -> None:
+    """Create a chat, continue it, and evaluate the second AI answer.
+
+    Prints identifiers and status; the evaluation result is printed only when show_result is set.
+    """
 
     first_message = "Give me a concise onboarding checklist for a new API user."
     first = client.chat.run(
@@ -86,19 +94,26 @@ def evaluate_zenture_chat_turn(client: ZentureClient) -> None:
         idempotency_key=idempotency_key("example", "evaluation-chat-turn", "v1"),
         timeout=120.0,
     )
-    print("chat-turn", evaluation.operation_id, evaluation.status, evaluation.result)
+    print("chat-turn", evaluation.operation_id, evaluation.status)
+    if show_result:
+        print(evaluation.result)
 
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Run a zenture evaluation example.")
     parser.add_argument("mode", choices=("external", "chat-turn"), default="external", nargs="?")
+    parser.add_argument(
+        "--show-result",
+        action="store_true",
+        help="also print the evaluation result content (default: IDs and status only)",
+    )
     args = parser.parse_args([] if argv is None else argv)
 
     with ZentureClient.from_env() as client:
         if args.mode == "external":
-            evaluate_external_answer(client)
+            evaluate_external_answer(client, show_result=args.show_result)
         else:
-            evaluate_zenture_chat_turn(client)
+            evaluate_zenture_chat_turn(client, show_result=args.show_result)
 
 
 if __name__ == "__main__":
