@@ -88,6 +88,7 @@ linked follow-ups from Python, preserving the predecessor on idempotent recovery
 | `attach_artifact` | `attach_artifact(file_name=..., mime_type=..., byte_size=..., content_hash=...)` | Register an artifact upload when the host provides an approved artifact resolver |
 | `list_runs` | `list_runs(status=..., limit=5, cursor=...)` | List Runs, one bounded page |
 | `get_run` | `get_run(run_id, view="summary" or "full", replay_cursor=...)` | Read a Run, optionally with one replay page |
+| `wait_run` | `wait_run(run_id, timeout, stop_on=())` (async peer: `await`) | Observe one Run with summary reads until a terminal state or `stop_on`, within a finite caller budget; never starts or cancels a Run |
 | `cancel_run` | `cancel_run(run_id)` | Cancel a Run |
 | `record_run_outcome` | `record_run_outcome(run_id, outcome=...)` | Record what you did with the result |
 

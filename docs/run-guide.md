@@ -22,8 +22,9 @@ File registration is available; it does not enable file evaluation.
 Runs and Async Operations have different IDs and lifecycle semantics. Do not
 pass a `run_...` ID to `client.operations.wait()`. `client.runs.run()` prepares
 and starts, but does **not** poll to terminal status; `chat.run()` and
-`evaluations.run()` do poll. No equivalent automatic wait helper exists on the
-MCP peer. Both sync and async clients expose matching operations; use `await`
+`evaluations.run()` do poll. On the MCP peers `run()` only starts a Run; observe
+it with `wait_run(run_id, timeout)` (sync, or `await` on the async peer), which
+polls summaries within a caller budget. Both sync and async clients expose matching operations; use `await`
 for async calls and `async for` for the REST event stream.
 
 For REST setup see [README](../README.md#authentication); for stored MCP login
