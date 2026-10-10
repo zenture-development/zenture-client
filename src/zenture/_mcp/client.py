@@ -225,10 +225,13 @@ def _raise_transport_failure(exc: Exception, *, retryable: bool = True) -> NoRet
 
 
 def _parse_model(model: type[ModelT], payload: Mapping[str, object]) -> ModelT:
+    # Raised outside the handler so the Pydantic error (which echoes submitted values)
+    # is neither chained nor shown in the traceback.
     try:
         return model.model_validate(payload)
-    except ValidationError as exc:
-        raise ZentureMCPProtocolError("invalid_result_contract") from exc
+    except ValidationError:
+        contract_error = ZentureMCPProtocolError("invalid_result_contract")
+    raise contract_error
 
 
 def _tool_names(result: object) -> tuple[str, ...]:

@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import importlib
 import json
+import traceback
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from functools import partial
@@ -663,6 +664,34 @@ def test_mcp_error_envelope_preserves_bounded_optional_metadata() -> None:
 def test_mcp_client_maps_invalid_result_contract_to_protocol_error() -> None:
     with pytest.raises(ZentureMCPProtocolError, match="invalid_result_contract"):
         McpClient(RawTransport({})).get_run(RUN_ID)
+
+
+SYNTHETIC_SUBMITTED_VALUE = "SYNTHETIC_SUBMITTED_VALUE_4d9c"
+
+
+def test_mcp_result_contract_error_does_not_chain_submitted_values() -> None:
+    transport = RecordingTransport({"get_run": _run(status=SYNTHETIC_SUBMITTED_VALUE)})
+
+    with pytest.raises(ZentureMCPProtocolError, match="invalid_result_contract") as caught:
+        McpClient(transport).get_run(RUN_ID)
+
+    rendered = "".join(traceback.format_exception(caught.value))
+    assert SYNTHETIC_SUBMITTED_VALUE not in rendered
+    assert caught.value.__cause__ is None
+    assert caught.value.__context__ is None
+
+
+@pytest.mark.asyncio
+async def test_async_mcp_result_contract_error_does_not_chain_submitted_values() -> None:
+    transport = AsyncRecordingTransport({"get_run": _run(status=SYNTHETIC_SUBMITTED_VALUE)})
+
+    with pytest.raises(ZentureMCPProtocolError, match="invalid_result_contract") as caught:
+        await AsyncMcpClient(transport).get_run(RUN_ID)
+
+    rendered = "".join(traceback.format_exception(caught.value))
+    assert SYNTHETIC_SUBMITTED_VALUE not in rendered
+    assert caught.value.__cause__ is None
+    assert caught.value.__context__ is None
 
 
 def test_mcp_client_maps_transport_failures_to_safe_typed_error() -> None:
