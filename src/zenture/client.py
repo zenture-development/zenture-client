@@ -1,4 +1,4 @@
-"""Synchronous public client for the zenture SDK."""
+"""Synchronous public client for the zenture client."""
 
 from __future__ import annotations
 
@@ -128,7 +128,7 @@ class ZentureClient:
         return self._helloworld.get()
 
     def close(self) -> None:
-        """Close SDK-owned transport resources."""
+        """Close client-owned transport resources."""
 
         self._transport.close()
 

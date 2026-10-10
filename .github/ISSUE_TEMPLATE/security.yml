@@ -1,5 +1,5 @@
 name: Security report
-description: Report SDK security hardening, release safety, dependency, or redaction concerns.
+description: Report client security hardening, release safety, dependency, or redaction concerns.
 title: "Security: "
 labels:
   - security
@@ -7,8 +7,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        Use this template for SDK security hardening, dependency concerns, release-process issues,
-        documentation gaps, redaction problems, or suspected SDK vulnerabilities.
+        Use this template for client security hardening, dependency concerns, release-process issues,
+        documentation gaps, redaction problems, or suspected client vulnerabilities.
 
         Do not include real zenture API tokens, JWTs, customer data, private prompts, provider
         payloads, production URLs with sensitive query strings, or working exploit instructions.
@@ -35,7 +35,7 @@ body:
     id: expected_property
     attributes:
       label: Expected security property
-      description: Describe the property the SDK should preserve.
+      description: Describe the property the client should preserve.
       placeholder: "Example: API tokens must never appear in exception strings or debug output."
     validations:
       required: true

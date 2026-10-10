@@ -1,4 +1,4 @@
-"""Public response and value types for the zenture SDK."""
+"""Public response and value types for the zenture client."""
 
 from __future__ import annotations
 

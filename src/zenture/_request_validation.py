@@ -1,5 +1,5 @@
 """Filepath: src/zenture/_request_validation.py
-Purpose: Preserve local Run validation semantics with content-free SDK exceptions.
+Purpose: Preserve local Run validation semantics with content-free client exceptions.
 """
 
 from __future__ import annotations

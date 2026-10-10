@@ -1,4 +1,4 @@
-"""Opt-in local Product Run acceptance through the public SDK only."""
+"""Opt-in local Product Run acceptance through the public client only."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ def _require_local_e2e_enablement() -> None:
 @pytest.mark.asyncio
 @pytest.mark.parametrize("profile", tuple(RunProfile))
 async def test_product_run_sdk_acceptance(profile: RunProfile) -> None:
-    """Run one complete public SDK journey for each supported profile."""
+    """Run one complete public client journey for each supported profile."""
 
     _require_local_e2e_enablement()
     fixture = ProductRunFixture(

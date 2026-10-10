@@ -1,6 +1,6 @@
 """Local same-Run wait policy; no execution or lifecycle authority.
 
-Owns deadline, polling and read retry decisions. Imports only SDK contracts
+Owns deadline, polling and read retry decisions. Imports only client contracts
 and policies; callers supply the parsed summary-read boundary and clock seam.
 """
 

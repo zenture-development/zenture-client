@@ -1,6 +1,6 @@
 # Async Operations
 
-Some zenture routes create asynchronous operations. The SDK exposes three usage
+Some zenture routes create asynchronous operations. The client exposes three usage
 levels:
 
 - `create(...)` or `create_operation(...)`: create an operation and return the
@@ -56,7 +56,7 @@ attributes are not interpolated into exception strings.
 
 ## Polling Frequency
 
-Prefer `.run(...)` or `operations.wait(...)`; both use the SDK polling policy:
+Prefer `.run(...)` or `operations.wait(...)`; both use the client polling policy:
 wait `1s`, then `2s`, then `4s`, then cap at `8s` between operation status
 reads. This keeps normal callers away from avoidable rate limits.
 
@@ -92,7 +92,7 @@ from zenture.idempotency import idempotency_key
 
 async with AsyncZentureClient.from_env() as client:
     evaluation = await client.evaluations.run(
-        user_message="What does the SDK do?",
+        user_message="What does the client do?",
         ai_answer="It helps server-side Python integrations call zenture.",
         external_id="support-ticket-123-answer-a",
         idempotency_key=idempotency_key("support-ticket-123-answer-a", "evaluate", "v1"),

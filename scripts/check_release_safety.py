@@ -1,4 +1,4 @@
-"""Scan public SDK release files for private origins and token-shaped text."""
+"""Scan public client release files for private origins and token-shaped text."""
 
 from __future__ import annotations
 

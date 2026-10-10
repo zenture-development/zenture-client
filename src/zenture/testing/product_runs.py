@@ -1,10 +1,10 @@
-"""SDK-only Product Run E2E fixture and report adapter.
+"""client-only Product Run E2E fixture and report adapter.
 
 Filepath: src/zenture/testing/product_runs.py
-Purpose: Bind one approved fixture to one public SDK Run observation.
+Purpose: Bind one approved fixture to one public client Run observation.
 Input: A caller-owned AsyncZentureClient client and a synthetic fixture.
-Output: A bounded report containing the SDK responses and event replay.
-Critical Logic: Every observation stays bound to the Run created by the SDK.
+Output: A bounded report containing the client responses and event replay.
+Critical Logic: Every observation stays bound to the Run created by the client.
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ class ProductRunFixture:
 
 @dataclass(frozen=True, slots=True)
 class ProductRunReport:
-    """The public SDK observations for one fixture-bound Run."""
+    """The public client observations for one fixture-bound Run."""
 
     fixture: ProductRunFixture
     started: PublicRunResponse
@@ -63,12 +63,12 @@ class ProductRunReport:
 
 def _require_same_run(response: PublicRunResponse, *, run_id: str, stage: str) -> None:
     if response.run_id != run_id:
-        raise ValueError(f"SDK Run response at {stage} changed the bound run_id")
+        raise ValueError(f"client Run response at {stage} changed the bound run_id")
 
 
 def _require_replay_identity(replay: ListRunEventsResponse, *, run_id: str) -> None:
     if any(event.run_id != run_id for event in replay.events):
-        raise ValueError("SDK Run event replay changed the bound run_id")
+        raise ValueError("client Run event replay changed the bound run_id")
 
 
 _TERMINAL_STATUSES = frozenset(
@@ -113,7 +113,7 @@ async def run_product_e2e(
     initial_interval: float = 1.0,
     max_interval: float = 8.0,
 ) -> ProductRunReport:
-    """Observe one Product Run through the official async SDK resource."""
+    """Observe one Product Run through the official async client resource."""
 
     started = await client.runs.run(
         task=fixture.task,

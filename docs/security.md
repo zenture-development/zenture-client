@@ -14,15 +14,15 @@ logs, traces, analytics, screenshots, or support messages.
 
 ## Public Surface
 
-The SDK exposes public clients and resource helpers. It does not expose an
+The client exposes public clients and resource helpers. It does not expose an
 API-token management surface. Agentic chat mode is not part of Public V1, and
-this SDK must not document or add public helpers for it. Internal `_contract`
+this client must not document or add public helpers for it. Internal `_contract`
 models are implementation details and must not be exported from the top-level
 package.
 
 ## Base URL Restrictions
 
-The default production origin is `https://api.zenture.app`. Public SDK
+The default production origin is `https://api.zenture.app`. Public client
 documentation must not publish non-production API hostnames, deployment names,
 or local port conventions. Never derive constructor `base_url` values from user
 input.

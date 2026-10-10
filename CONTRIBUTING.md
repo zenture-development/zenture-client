@@ -1,7 +1,7 @@
 # Contributing
 
-`zenture-client` provides the public `zenture` Python SDK for the zenture Public API. The current
-repository contains the runtime SDK, typed contract layer, public docs,
+`zenture-client` provides the public `zenture` Python client for the zenture Public API. The current
+repository contains the runtime client, typed contract layer, public docs,
 examples, and packaging configuration used for prerelease validation.
 
 ## Development Standards
@@ -36,8 +36,8 @@ Pull requests should include:
 
 Use one primary PR type:
 
-- `type: fix` - bug fix or incorrect SDK behavior
-- `type: feat` - new public SDK capability
+- `type: fix` - bug fix or incorrect client behavior
+- `type: feat` - new public client capability
 - `type: docs` - README, examples, AGENTS, changelog, or prose docs
 - `type: test` - tests only
 - `type: chore` - CI, packaging, metadata, dependency upkeep
@@ -61,7 +61,7 @@ Before merge:
 
 ## Local Checks
 
-Run the full local gate before handing off SDK changes:
+Run the full local gate before handing off client changes:
 
 ```bash
 python3 -m ruff format --check .
@@ -80,6 +80,6 @@ checks for docs and examples.
 
 ## Release Process
 
-Public PyPI releases are blocked until the SDK reviewer gate passes. Publishing
+Public PyPI releases are blocked until the client reviewer gate passes. Publishing
 must use PyPI Trusted Publishing through GitHub Actions OIDC, not long-lived
 package tokens.

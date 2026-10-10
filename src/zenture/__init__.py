@@ -1,4 +1,4 @@
-"""Official Python SDK package for the zenture Public API."""
+"""Official Python client package for the zenture Public API."""
 
 from __future__ import annotations
 

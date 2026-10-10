@@ -60,7 +60,7 @@ def build_url(config: ZentureConfig, path: str) -> str:
 
 
 def build_timeout(config: ZentureConfig) -> httpx.Timeout:
-    """Build the explicit HTTP timeout policy for SDK-owned clients."""
+    """Build the explicit HTTP timeout policy for client-owned clients."""
 
     return httpx.Timeout(
         connect=config.connect_timeout,

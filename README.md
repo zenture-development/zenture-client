@@ -157,10 +157,10 @@ set -a
 set +a
 ```
 
-The SDK intentionally does not parse `.env` files. Load environment variables
+The client intentionally does not parse `.env` files. Load environment variables
 through your runtime, deployment platform, secrets manager, or preferred local
-loader. Public SDK usage targets the production API origin:
-`https://api.zenture.app`. The SDK has no API-token management surface.
+loader. Public client usage targets the production API origin:
+`https://api.zenture.app`. The client has no API-token management surface.
 Full details, including MCP login, secure storage and refresh safety:
 [authentication](./docs/authentication.md).
 
@@ -172,9 +172,9 @@ Full details, including MCP login, secure storage and refresh safety:
 - [Migration](./docs/migration.md) from the former `zenture-sdk` package: a hard
   source cutover to `ZentureClient` / `AsyncZentureClient`, no legacy aliases;
   do not install both distributions into one environment.
-- Classic API: [API reference](./docs/api-reference.md), [SDK call reference](./docs/sdk-call-reference.md), [response shapes](./docs/response-shapes.md).
+- Classic API: [API reference](./docs/api-reference.md), [client call reference](./docs/sdk-call-reference.md), [response shapes](./docs/response-shapes.md).
 - Public API documentation: `https://www.zenture.app/developers`. The committed
-  OpenAPI artifact is the SDK's local contract source of truth.
+  OpenAPI artifact is the client's local contract source of truth.
 
 ## MCP and native login
 
@@ -401,7 +401,7 @@ with ZentureClient.from_env() as client:
 ```
 
 Agentic chat mode is not part of Public V1. Do not document or add public
-helpers for it in this SDK.
+helpers for it in this client.
 
 Continue a chat with a follow-up turn:
 
@@ -501,7 +501,7 @@ That id is not the user-message id. Passing only `chat_id` or `turn_id` is not
 enough; the API rejects that request with `422 validation_failed` before it
 creates an operation or checks credits.
 
-The SDK also validates that shape locally. `chat_id` or `turn_id` without
+The client also validates that shape locally. `chat_id` or `turn_id` without
 `model_response_id` raises Pydantic `ValidationError` before an HTTP request is
 sent. A valid-looking target that the API user does not own raises
 `ZentureValidationError` from the API.
@@ -538,7 +538,7 @@ with ZentureClient.from_env() as client:
         print(evaluation.result.evaluation_id, evaluation.status)
         print(evaluation.result.amount_billed)
     except ValidationError:
-        # Local SDK validation, for example chat_id/turn_id without model_response_id.
+        # Local client validation, for example chat_id/turn_id without model_response_id.
         handle_invalid_evaluation_target()
     except ZentureValidationError as exc:
         # Server-side validation, for example a model_response_id not owned by this user.
@@ -702,12 +702,12 @@ with ZentureClient.from_env() as client:
         print(exc.request_id)
 ```
 
-SDK exceptions redact sensitive content. Request and response bodies are not
+Client exceptions redact sensitive content. Request and response bodies are not
 included in exception strings.
 
 ### Timeout, Retry, Polling, and Rate Limits
 
-- SDK-owned HTTP clients use explicit timeouts: connect `5s`,
+- client-owned HTTP clients use explicit timeouts: connect `5s`,
   read/write/pool `30s`.
 - `operations.wait(timeout=...)` and `.run(timeout=...)` use a total operation
   polling budget, not the raw HTTP read timeout.

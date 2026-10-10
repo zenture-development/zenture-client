@@ -1,4 +1,4 @@
-"""Configuration for zenture SDK runtime primitives."""
+"""Configuration for zenture client runtime primitives."""
 
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ def _redact_validation_error(error: ValidationError) -> ValidationError:
 
 
 class ZentureConfig(SDKBaseModel):
-    """Validated SDK configuration."""
+    """Validated client configuration."""
 
     model_config = ConfigDict(hide_input_in_errors=True)
 
@@ -163,7 +163,7 @@ class ZentureConfig(SDKBaseModel):
 
 
 def load_config_from_env() -> ZentureConfig:
-    """Load SDK config from environment variables."""
+    """Load client config from environment variables."""
 
     api_key = os.environ.get("ZENTURE_API_KEY")
     if api_key is None or not api_key.strip():

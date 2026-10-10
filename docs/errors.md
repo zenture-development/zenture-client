@@ -1,6 +1,6 @@
 # Errors
 
-The SDK raises typed exceptions for public API errors and local SDK failures.
+The client raises typed exceptions for public API errors and local client failures.
 API errors include safe fields such as `error_code`, `status_code`,
 `request_id`, and `retry_after` when available.
 
@@ -45,7 +45,7 @@ different target modes:
   AI-answer `model_response_id`. `chat_id` and `turn_id` are optional
   correlation fields, but if either is present, `model_response_id` is required.
 
-The SDK catches the common internal/external mix-up locally. Passing `chat_id`
+The client catches the common internal/external mix-up locally. Passing `chat_id`
 or `turn_id` without `model_response_id` raises Pydantic `ValidationError`
 before any HTTP request is sent. Server-side target validation, such as a
 `model_response_id` that does not belong to the authenticated API user, raises
@@ -107,7 +107,7 @@ The tuple is empty when the producer supplies no details or when optional
 details fail structural or public-schema checks. The existing error code,
 status and retry policy remain the primary failure contract.
 
-The sync and async REST SDK automatically send `X-Zenture-Error-Details: issues`
+The sync and async REST client automatically send `X-Zenture-Error-Details: issues`
 for Run and artifact requests, including event streams. Direct HTTP callers can
 send the same header to request safe details. Gateway includes `error.issues`
 only for the recognized value when safe details exist; missing or unknown values

@@ -140,7 +140,7 @@ REST client contract.
 
 ## Complete tool discovery
 
-`client.get_tool_catalog()` returns a tuple of SDK-owned `McpToolDefinition`
+`client.get_tool_catalog()` returns a tuple of client-owned `McpToolDefinition`
 objects. Await the method on `AsyncMcpClient`. Import the definition type from
 `zenture.mcp`; callers need no imports from the MCP transport package.
 

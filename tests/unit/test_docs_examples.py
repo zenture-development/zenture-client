@@ -279,7 +279,7 @@ def test_docs_and_agents_exist_with_required_public_onboarding_content() -> None
         "python3 -m ruff format --check .",
         "python3 -m twine check dist/*",
         "no token logging",
-        "no API-token-management SDK resource",
+        "no API-token-management client resource",
         "no internal `_contract` top-level exports",
     ]
     for item in required:
@@ -383,7 +383,7 @@ def test_response_shapes_document_current_public_endpoint_surface() -> None:
 
     assert "/v1/api-tokens" not in response_shapes
     assert "user_session" not in response_shapes
-    assert "Not exposed by this SDK" not in response_shapes
+    assert "Not exposed by this client" not in response_shapes
     assert "agentic" in response_shapes.lower()
     assert "response-shapes.md" in linked_docs
 
@@ -503,7 +503,7 @@ def test_contributing_and_security_are_public_beta_current() -> None:
     assert "planning/bootstrap" not in contributing
     assert "planning/bootstrap" not in security
     assert "private/bootstrap" not in security
-    assert "Runtime SDK implementation starts only after" not in contributing
+    assert "Runtime client implementation starts only after" not in contributing
     assert "python3 -m ruff format --check ." in contributing
     assert "python3 -m pyright" in contributing
     assert "python3 -m pytest" in contributing

@@ -1,16 +1,16 @@
 # API Reference
 
-This is the compact resource index for the zenture Python SDK. Use it as the
+This is the compact resource index for the zenture Python client. Use it as the
 map of available clients, resources, and flows.
 
 The human-facing public API documentation lives at
-`https://www.zenture.app/developers`. This SDK also ships the local
+`https://www.zenture.app/developers`. This client also ships the local
 OpenAPI contract artifact under `openapi/zenture-public-api-v1.openapi.json` for
 deterministic contract-drift tests.
 
 For copy-paste calls, HTTP routes, and example response structures for every
-SDK/API call, use [`sdk-call-reference.md`](./sdk-call-reference.md).
-For raw JSON response bodies and SDK model mapping, use
+client/API call, use [`sdk-call-reference.md`](./sdk-call-reference.md).
+For raw JSON response bodies and client model mapping, use
 [`response-shapes.md`](./response-shapes.md).
 
 ## Clients
@@ -151,10 +151,10 @@ the existing owned zenture response. Requests with `chat_id` or `turn_id` but
 without `model_response_id` are rejected as `422 validation_failed` before an
 operation is created or credits are checked.
 
-In the Python SDK, that malformed local payload raises Pydantic
+In the Python client, that malformed local payload raises Pydantic
 `ValidationError` before the HTTP request is sent. If the payload shape is valid
 but the server rejects the target, for example because `model_response_id` does
-not belong to the authenticated user, the SDK raises `ZentureValidationError`
+not belong to the authenticated user, the client raises `ZentureValidationError`
 with `error_code == "validation_failed"`.
 
 ```python
@@ -220,7 +220,7 @@ from zenture.idempotency import idempotency_key
 
 with ZentureClient.from_env() as client:
     evaluation = client.evaluations.run(
-        user_message="What does the SDK do?",
+        user_message="What does the client do?",
         ai_answer=(
             "It helps server-side Python integrations call zenture. "
             "[Source](https://example.com/sdk-brief)"

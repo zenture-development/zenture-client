@@ -1,4 +1,4 @@
-"""Test-support helpers for SDK-owned product journeys."""
+"""Test-support helpers for client-owned product journeys."""
 
 from zenture.testing.product_runs import (
     ProductRunFixture,

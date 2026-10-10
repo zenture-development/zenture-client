@@ -1,6 +1,6 @@
 # Release
 
-The SDK is prepared for a public beta once the critical review gate and
+The client is prepared for a public beta once the critical review gate and
 pre-go-live configuration are complete.
 
 ## Public Beta Expectations
