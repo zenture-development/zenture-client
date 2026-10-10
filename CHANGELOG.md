@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `zenture-sdk` will be documented in this file.
+All notable changes to `zenture` will be documented in this file.
 
 The project follows semantic versioning once public releases begin. Prerelease
 versions may change while the Public API contract is still in release-candidate
@@ -8,7 +8,66 @@ state.
 
 ## Unreleased
 
-No unreleased changes.
+- MCP peers keep authorization failures (`AuthorizationRequired`,
+  `PermissionDenied`, including inside an `ExceptionGroup`) classified and
+  do not retry them in `wait_run` or discovery; only unknown transport failures
+  are wrapped as retryable `mcp_transport_unavailable`.
+
+- MCP result-contract errors no longer chain the Pydantic validation error, so
+  submitted values do not appear in tracebacks.
+
+- The MCP run review example uses `wait_run` under one caller budget that also
+  covers the final full read; a late completion raises `ZenturePollingTimeoutError`.
+
+- The end-to-end example reports a billed total only when every component is
+  known, and names the operations included in each total.
+
+- Documented `wait_run` on both MCP peers and clarified that MCP `run()` only
+  starts a Run. Documented in-process `login(session_only=True)`; the CLI
+  `--session-only` option is verification only. PyPI publication requires
+  Trusted Publishing without a long-lived token fallback.
+
+- Examples print identifiers and status by default; evaluation results and the
+  optimized prompt require `--show-result` / `--show-prompt`.
+
+- Added immutable typed validation `issues` on REST and MCP errors, bounded by
+  public field schemas, and content-free local Run `ValidationError` summaries.
+  Sync/async REST Run and artifact requests automatically negotiate safe details
+  with `X-Zenture-Error-Details: issues`; older servers remain supported.
+
+- Added sync/async `get_tool_catalog()` and public `zenture.mcp.McpToolDefinition`
+  for detached registered schemas, descriptions and annotations, with bounded
+  complete pagination. Existing name-only `list_tools()` behavior is preserved.
+
+- MCP Run peers now allocate or accept a strict caller-owned idempotency key and
+  expose validated Run-only success/error receipts for deliberate recovery.
+  Save an explicit key before interruption; default model serialization and
+  REST models retain their existing shape.
+
+- Rename the repository to `zenture-client`, the distribution to `zenture`, and
+  public API classes to `ZentureClient` / `AsyncZentureClient` without aliases.
+- Preserve API-token resource behavior and caller-provided bearer MCP support;
+  Public package publication remains outside this source cutover.
+- Added native authorization for the hosted MCP endpoint: explicit browser
+  (PKCE, loopback) and headless device login through `zenture.auth.login` /
+  `login_async`, secure credential storage (macOS Keychain proven; Windows
+  Credential Manager and Linux Secret Service implemented, not yet verified)
+  with a session-only mode, and safe refresh that requires a new login after an
+  interrupted refresh.
+- Added the `zenture` command: `zenture auth login [--device] [--session-only]`,
+  `zenture auth status` and `zenture auth clear` with documented exit codes.
+- Added the public `zenture.mcp` module with `McpClient` and `AsyncMcpClient`
+  exposing the six Run tools; the former `zenture._mcp` path is internal and no
+  alias exists (hard cutover).
+- Declared CPython 3.14 support and configured the CI matrix for 3.11 to 3.14
+  across Linux, macOS and Windows (configured, not yet run).
+
+- Added nullable `deadline_at` Run response fields, additive response tolerance,
+  and finite sync/async Run waits with deadline-aware timeout context.
+- Added an opt-in, internal MCP client peer adapter with sync/async transport
+  ports, official Streamable HTTP integration, typed Run mappings, bounded safe
+  errors and local cross-channel composition tests. The API-only installation
+  remains unchanged; public `zenture-client` promotion is deferred.
 
 ## 1.0.0rc3 - 2026-06-28
 
@@ -49,3 +108,5 @@ No unreleased changes.
   models, model discovery, single-/multi-model chat, evaluation creation,
   operation reads, billing, usage, limits, idempotency, retry, timeout and
   polling primitives.
+
+- Add sync/async MCP `wait_run` with finite deadlines, same-Run summary observation, safe read retries and official per-call read budgets.

@@ -12,6 +12,7 @@ from zenture._resources import (
     AsyncLimitsResource,
     AsyncModelsResource,
     AsyncOperationsResource,
+    AsyncRunsResource,
     AsyncUsageResource,
     AsyncWalletResource,
 )
@@ -33,7 +34,7 @@ if TYPE_CHECKING:
     import httpx
 
 
-class AsyncZenture:
+class AsyncZentureClient:
     """Asynchronous client for the zenture Public API."""
 
     def __init__(
@@ -74,6 +75,7 @@ class AsyncZenture:
             user_agent=user_agent,
         )
         self.operations = AsyncOperationsResource(self._transport)
+        self.runs = AsyncRunsResource(self._transport)
         self.chat = AsyncChatResource(self._transport)
         self.input_wizard = AsyncInputWizardResource(self._transport)
         self.evaluations = AsyncEvaluationsResource(self._transport)
@@ -96,7 +98,7 @@ class AsyncZenture:
         max_retries: int | None = None,
         initial_retry_backoff: float | None = None,
         max_retry_backoff: float | None = None,
-    ) -> AsyncZenture:
+    ) -> AsyncZentureClient:
         """Create a client from supported environment variables."""
 
         config = ZentureConfig.from_env()
@@ -130,11 +132,11 @@ class AsyncZenture:
 
         await self._transport.aclose()
 
-    async def __aenter__(self) -> AsyncZenture:
+    async def __aenter__(self) -> AsyncZentureClient:
         return self
 
     async def __aexit__(self, *_exc_info: object) -> None:
         await self.aclose()
 
     def __repr__(self) -> str:
-        return f"AsyncZenture(api_key='{REDACTED}', base_url={self._config.api_base_url!r})"
+        return f"AsyncZentureClient(api_key='{REDACTED}', base_url={self._config.api_base_url!r})"

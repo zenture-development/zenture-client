@@ -3,13 +3,23 @@
 from __future__ import annotations
 
 import os
-from typing import Self
+from typing import TYPE_CHECKING, Any, Self, cast
 from urllib.parse import urlsplit, urlunsplit
 
-from pydantic import Field, computed_field, field_validator, model_validator
+from pydantic import (
+    ConfigDict,
+    Field,
+    ValidationError,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 
 from zenture.models import SDKBaseModel
 from zenture.redaction import REDACTED
+
+if TYPE_CHECKING:
+    from pydantic_core import InitErrorDetails
 
 DEFAULT_BASE_URL = "https://api.zenture.app"
 API_VERSION_PATH = "/v1"
@@ -27,8 +37,20 @@ _LIVE_TOKEN_PREFIX = "zt_live_"
 _TEST_TOKEN_PREFIX = "zt_test_"
 
 
+def _redact_validation_error(error: ValidationError) -> ValidationError:
+    """Remove validated input values from a config validation error."""
+
+    line_errors = [
+        cast("InitErrorDetails", {**line_error, "input": REDACTED})
+        for line_error in error.errors(include_context=True)
+    ]
+    return ValidationError.from_exception_data(error.title, line_errors)
+
+
 class ZentureConfig(SDKBaseModel):
     """Validated SDK configuration."""
+
+    model_config = ConfigDict(hide_input_in_errors=True)
 
     api_key: str = Field(repr=False)
     base_url: str = DEFAULT_BASE_URL
@@ -39,6 +61,16 @@ class ZentureConfig(SDKBaseModel):
     max_retries: int = Field(default=DEFAULT_MAX_RETRIES, ge=0, le=10)
     initial_retry_backoff: float = Field(default=DEFAULT_INITIAL_RETRY_BACKOFF, ge=0)
     max_retry_backoff: float = Field(default=DEFAULT_MAX_RETRY_BACKOFF, ge=0)
+
+    def __init__(self, **data: Any) -> None:
+        sanitized_error: ValidationError | None = None
+        try:
+            super().__init__(**data)
+        except ValidationError as error:
+            sanitized_error = _redact_validation_error(error)
+
+        if sanitized_error is not None:
+            raise sanitized_error
 
     @field_validator("api_key", mode="before")
     @classmethod

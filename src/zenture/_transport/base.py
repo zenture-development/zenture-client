@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from email.utils import parsedate_to_datetime
 from time import time
 from typing import TYPE_CHECKING, cast
@@ -13,7 +14,28 @@ from zenture._version import __version__
 if TYPE_CHECKING:
     from zenture.config import ZentureConfig
 
-DEFAULT_USER_AGENT = f"zenture-sdk-python/{__version__}"
+DEFAULT_USER_AGENT = f"zenture-python/{__version__}"
+MAX_RESPONSE_BYTES = 512 * 1024
+
+
+def bounded_response_body(body: bytes, *, label: str) -> bytes:
+    """Return a response body only when it is within the public byte ceiling."""
+
+    if len(body) > MAX_RESPONSE_BYTES:
+        raise ValueError(f"{label} was too large")
+    return body
+
+
+def decode_bounded_json(body: bytes, *, label: str) -> object:
+    """Decode JSON only after enforcing the public response byte ceiling."""
+
+    return json.loads(bounded_response_body(body, label=label))
+
+
+def decode_bounded_text(body: bytes, *, encoding: str, label: str) -> str:
+    """Decode text only after enforcing the public response byte ceiling."""
+
+    return bounded_response_body(body, label=label).decode(encoding, errors="replace")
 
 
 def default_headers(
@@ -107,3 +129,15 @@ def _parse_retry_after(value: str) -> float | None:
         return None
     retry_at_timestamp = retry_at.timestamp()
     return max(0.0, retry_at_timestamp - time())
+
+
+def request_error_details(headers: dict[str, str], path: str) -> None:
+    """Opt scoped REST requests into safe details, preserving explicit overrides."""
+    normalized = path if path.startswith("/") else "/" + path
+    if not any(
+        normalized == prefix or normalized.startswith(prefix + "/")
+        for prefix in ("/runs", "/run-artifacts")
+    ):
+        return
+    if not any(key.lower() == "x-zenture-error-details" for key in headers):
+        headers["X-Zenture-Error-Details"] = "issues"

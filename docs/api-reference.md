@@ -15,13 +15,32 @@ For raw JSON response bodies and SDK model mapping, use
 
 ## Clients
 
-- `Zenture`: synchronous client using `httpx.Client`.
-- `AsyncZenture`: asynchronous client using `httpx.AsyncClient`.
+- `ZentureClient`: synchronous client using `httpx.Client`.
+- `AsyncZentureClient`: asynchronous client using `httpx.AsyncClient`.
 
 Both clients support `from_env()`, explicit close methods, and context manager
 usage.
 
 ## Resource Index
+
+### Product Runs
+
+Use `client.runs` to evaluate selected content against a task and obtain an
+acceptance decision, findings and coverage. See the [Run guide](run-guide.md)
+for complete payloads, methods, return shapes and recovery. It also explains
+when to use the evaluation-specific API below.
+
+- `prepare(...)` inspects a proposal; `create(...)` starts that proposal.
+- `run(...)` prepares and starts; it does not poll to completion.
+- `get(...)`, `list(...)`, `wait(...)` read status and available results.
+- `list_events(...)` replays one page; `iter_events(...)` streams events.
+- `signed_upload(...)`, `attach_artifact(...)` authorize and send file bytes for
+  registration. Run preparation currently rejects `zenture_ref`; registration
+  does not enable file evaluation.
+- `cancel(...)` requests cancellation; `record_outcome(...)` records feedback.
+
+Run pages use limits 1-50 and cursors up to 512 characters, unlike the older
+chat/evaluation pagination defaults below. Async variants use the same resource.
 
 ### Connectivity
 
@@ -139,10 +158,10 @@ not belong to the authenticated user, the SDK raises `ZentureValidationError`
 with `error_code == "validation_failed"`.
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 from zenture.idempotency import idempotency_key
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     first = client.chat.run(
         message="Give me a concise onboarding checklist for a new API user.",
         mode="single",
@@ -158,15 +177,9 @@ with Zenture.from_env() as client:
     )
 
     turn_id = follow_up.result.turn_id
-    model_response_id = (
-        follow_up.result.model_response_id
-        or follow_up.result.model_response_ids[0]
-    )
+    model_response_id = follow_up.result.model_response_id or follow_up.result.model_response_ids[0]
 
-    turn = next(
-        item for item in client.chat.messages(chat_id).turns
-        if item.turn_id == turn_id
-    )
+    turn = next(item for item in client.chat.messages(chat_id).turns if item.turn_id == turn_id)
 
     evaluation = client.evaluations.run(
         user_message=turn.user_message,
@@ -202,10 +215,10 @@ Billing and evaluation result fields:
   `accessibilityScore`, and `responseTimeMs`.
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 from zenture.idempotency import idempotency_key
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     evaluation = client.evaluations.run(
         user_message="What does the SDK do?",
         ai_answer=(

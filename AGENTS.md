@@ -1,20 +1,26 @@
 # AGENTS.md
 
-Purpose: onboard contributors and coding agents to the public Python SDK for
-the zenture Public API.
+Purpose: onboard contributors and coding agents to the official Python client
+for the zenture REST API and hosted MCP endpoint.
 
 ## Repository Purpose
 
-`zenture-sdk` is the official server-side only Python SDK. It is intended for
-backend services, workers, automation jobs, CI, evaluation pipelines, and
-controlled notebooks. It is not for browsers, mobile apps, or frontend bundles.
+`zenture-client` is the official server-side Python REST client and the
+implementation home for hosted MCP peers and explicit native authentication.
+The default installation includes REST, MCP, native auth, and the `zenture`
+command; no extra is required. API tokens are REST-only, account OAuth is
+MCP-only, and Backend/Engine retain authorization, execution, billing, and
+tenant authority. The package provides no local MCP server. It is intended
+for backend services, workers, automation jobs, CI, evaluation pipelines, controlled
+notebooks and governed MCP-consuming clients. It is not for browsers, mobile
+apps, or frontend bundles.
 
 Package names:
 
-- Distribution: `zenture-sdk`
+- Distribution: `zenture`
 - Import package: `zenture`
-- Sync client: `Zenture`
-- Async client: `AsyncZenture`
+- Sync client: `ZentureClient`
+- Async client: `AsyncZentureClient`
 
 Public product references:
 
@@ -31,6 +37,12 @@ Public product references:
   public `client.<resource>` attributes for operations, chat, input wizard,
   evaluations, models, billing, usage, limits, and helloworld.
 - `src/zenture/_transport/`: private sync/async `httpx` transport layer.
+- `src/zenture/auth/`: public explicit login (`login`, `login_async`) and the
+  auth errors; implementation in private `src/zenture/_auth/`.
+- `src/zenture/mcp/`: public `McpClient` / `AsyncMcpClient`; implementation in
+  private `src/zenture/_mcp/` (transport ports, official Streamable HTTP binding,
+  typed Run adapter). It owns no Backend, Engine or persistence authority.
+- `src/zenture/cli.py`: the `zenture auth login|status|clear` command.
 - `src/zenture/_contract/`: internal OpenAPI-derived Pydantic models.
 - `src/zenture/errors.py`: typed SDK exceptions.
 - `src/zenture/polling.py`: polling policy primitives.
@@ -40,8 +52,15 @@ Public product references:
 
 ## Public vs Internal Surface
 
-Only `Zenture`, `AsyncZenture`, and `__version__` are top-level public exports.
+Only `ZentureClient`, `AsyncZentureClient`, and `__version__` are top-level
+public exports.
 Do not export internal `_contract` models from `zenture.__init__`.
+
+Public MCP/auth surface: `zenture.auth` (`login`, `login_async`, `AuthSession`,
+`AuthorizationRequired`, `AuthUnavailable`, `SecureStoreUnavailable`,
+`PermissionDenied`, `LoginCancelled`), `zenture.mcp` (`McpClient`,
+`AsyncMcpClient`) and the `zenture` command. `_auth`, `_mcp` and similar
+underscore namespaces are implementation details.
 
 Resource methods such as `client.chat.run(...)`, `client.models.list(...)`, and
 `client.operations.wait(...)` are the ergonomic public API. `_transport`,
@@ -67,6 +86,40 @@ When adding or changing a resource:
 - Add contract drift tests where the schema meaning matters.
 - Add sync and async resource tests using `httpx.MockTransport`.
 - Keep examples and docs aligned with the public surface.
+
+When a new Engine capability is intended for client consumption, extend this
+repository's canonical contract models and both peer surfaces: the API
+resource and the hosted MCP peers. Add sync/async parity and cross-channel
+acceptance tests here before release promotion; do not create a workspace-only client duplicate or move Engine/business authority into the
+SDK.
+
+## Using zenture as an agent
+
+Contracts: [`README.md`](./README.md) (quickstart, errors, exit codes),
+[`docs/authentication.md`](./docs/authentication.md),
+[`docs/mcp-client.md`](./docs/mcp-client.md), and
+[`docs/migration.md`](./docs/migration.md) (uninstall-first upgrade and published
+return baseline).
+
+- Check the connection with `zenture auth status` (exit code 0 means connected).
+  Only a human at a terminal should run `zenture auth login`; explain what is
+  needed and stop instead of logging in on the user's behalf.
+- no implicit login: call `McpClient.connect()` / `AsyncMcpClient.connect()` with
+  the stored authorization and handle `AuthorizationRequired` by reporting
+  "run `zenture auth login`".
+- no private imports: use `zenture`, `zenture.auth`, `zenture.mcp` only, never
+  underscore modules of the package.
+- never print, log, store or paste tokens, refresh credentials, codes or
+  authorization URLs. Session objects are safe to print; do not try to extract
+  credentials from them.
+- Sync `McpClient` must not run inside a running event loop; use `AsyncMcpClient`.
+- Do not use `zenture auth clear` to revoke access; it is local only. Revocation
+  happens in zenture under Zugriff & Sicherheit -> Verbindungen.
+- Save a caller-owned `run(idempotency_key=...)` key before dispatch when a Run
+  must survive interruption or restart. Reuse that key and the same request for
+  deliberate recovery; never switch to a new key after an uncertain outcome.
+  Read `run.idempotency_key` or `ZentureMCPError.idempotency_key` separately from
+  model serialization; do not log keys or treat receipts as effect evidence.
 
 ## Required Commands
 
@@ -102,8 +155,9 @@ New resources must include typed sync and async behavior, idempotency safety for
 mutating calls, no real network tests, and public-safe docs/examples when the
 usage surface changes.
 
-Examples must use `Zenture.from_env()` or `AsyncZenture.from_env()`. Mutating
-examples must pass explicit stable idempotency keys, preferably built with the
+Examples must use `ZentureClient.from_env()` or `AsyncZentureClient.from_env()` for REST
+and the documented auth/MCP public APIs (`zenture.auth`, `zenture.mcp`) for sign-in and MCP.
+Mutating examples must pass explicit stable idempotency keys, preferably built with the
 SDK helper. Do not create tracked `.env` files.
 
 ## Pull Request Rules

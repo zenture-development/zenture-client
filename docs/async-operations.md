@@ -65,13 +65,19 @@ schedule. Do not poll faster than once per second per operation, stop polling as
 soon as the operation reaches a terminal status, and honor `Retry-After` if the
 API returns `429`.
 
+The same finite wait contract applies to sync and async public Run clients:
+`runs.wait(...)` uses the first observed `deadline_at` plus the fixed 35-second
+recovery allowance and one polling interval when its timeout is omitted. An
+explicit finite timeout always wins. If stream consumption is unavailable,
+bounded Run polling is the fallback.
+
 ## Async Examples
 
 ```python
-from zenture import AsyncZenture
+from zenture import AsyncZentureClient
 from zenture.idempotency import idempotency_key
 
-async with AsyncZenture.from_env() as client:
+async with AsyncZentureClient.from_env() as client:
     operation = await client.chat.create_operation(
         message="Review this response.",
         mode="single",
@@ -81,10 +87,10 @@ async with AsyncZenture.from_env() as client:
 ```
 
 ```python
-from zenture import AsyncZenture
+from zenture import AsyncZentureClient
 from zenture.idempotency import idempotency_key
 
-async with AsyncZenture.from_env() as client:
+async with AsyncZentureClient.from_env() as client:
     evaluation = await client.evaluations.run(
         user_message="What does the SDK do?",
         ai_answer="It helps server-side Python integrations call zenture.",
