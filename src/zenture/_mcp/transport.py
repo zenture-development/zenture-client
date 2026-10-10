@@ -57,7 +57,7 @@ async def resolve_async_bearer_token(provider: AsyncBearerTokenProvider) -> str:
     return _validate_bearer_value(value)
 
 
-def _auth_failure(exc: BaseException, depth: int = 0) -> AuthError | None:
+def find_auth_failure(exc: BaseException, depth: int = 0) -> AuthError | None:
     """Find an authorization failure raised inside the official client's task group."""
 
     if isinstance(exc, AuthError):
@@ -68,7 +68,7 @@ def _auth_failure(exc: BaseException, depth: int = 0) -> AuthError | None:
     if exc.__cause__ is not None:
         children.append(exc.__cause__)
     for child in children:
-        found = _auth_failure(child, depth + 1)
+        found = find_auth_failure(child, depth + 1)
         if found is not None:
             return found
     return None
@@ -203,7 +203,7 @@ async def open_streamable_http_transport(
         ):
             # The official task groups wrap the caller's own exception; hand it back as raised.
             exc = caller_error if isinstance(caller_error, Exception) else exc
-        failure = _auth_failure(exc)
+        failure = find_auth_failure(exc)
         if failure is not None:
             raise failure from None
         if (

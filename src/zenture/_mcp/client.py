@@ -7,7 +7,7 @@ import json
 import re
 from collections.abc import AsyncGenerator, Awaitable, Generator, Iterable, Mapping, Sequence
 from contextlib import asynccontextmanager, contextmanager
-from typing import TYPE_CHECKING, Any, Literal, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Literal, NoReturn, TypeVar, cast
 from uuid import uuid4
 
 from pydantic import BaseModel, ValidationError
@@ -37,6 +37,7 @@ from zenture._mcp.transport import (
     AsyncBearerTokenProvider,
     AsyncMcpTransport,
     SyncMcpTransport,
+    find_auth_failure,
     open_streamable_http_transport,
 )
 from zenture._mcp.wait import supports_timeout, timed_call, wait_async, wait_sync
@@ -203,6 +204,24 @@ def _decode_tool_result(result: object, *, expected_key: str | None = None) -> d
     if _is_error_result(result) or "error" in payload:
         raise _error_from_payload(payload)
     return payload
+
+
+def _raise_transport_failure(exc: Exception, *, retryable: bool = True) -> NoReturn:
+    """Keep authorization failures classified; wrap only unknown transport failures.
+
+    Authorization errors are not retryable MCP transport outages, so they are
+    raised unchanged even when the official task group wrapped them.
+    """
+
+    failure = find_auth_failure(exc)
+    if failure is not None:
+        raise failure
+    raise ZentureMCPError(
+        "mcp_transport_unavailable",
+        status_code=503,
+        retryable=retryable,
+        next_action="retry_later",
+    ) from exc
 
 
 def _parse_model(model: type[ModelT], payload: Mapping[str, object]) -> ModelT:
@@ -391,12 +410,7 @@ class McpClient:
         except ZentureMCPError:
             raise
         except Exception as exc:
-            raise ZentureMCPError(
-                "mcp_transport_unavailable",
-                status_code=503,
-                retryable=True,
-                next_action="retry_later",
-            ) from exc
+            _raise_transport_failure(exc)
 
     def list_tools(self) -> tuple[str, ...]:
         """Return advertised tool names as a tuple, without calling a product tool.
@@ -411,12 +425,7 @@ class McpClient:
         except ZentureMCPError:
             raise
         except Exception as exc:
-            raise ZentureMCPError(
-                "mcp_transport_unavailable",
-                status_code=503,
-                retryable=True,
-                next_action="retry_later",
-            ) from exc
+            _raise_transport_failure(exc)
 
     def require_product_tools(self) -> None:
         """Check that run, list_runs, get_run, cancel_run and record_run_outcome exist.
@@ -445,12 +454,10 @@ class McpClient:
         except ZentureMCPError:
             raise
         except Exception as exc:
-            raise ZentureMCPError(
-                "mcp_transport_unavailable",
-                status_code=503,
+            _raise_transport_failure(
+                exc,
                 retryable=not (read_timeout_seconds is not None and isinstance(exc, TypeError)),
-                next_action="retry_later",
-            ) from exc
+            )
         return _decode_tool_result(
             result,
             expected_key=cast("str", validated["idempotency_key"]) if name == "run" else None,
@@ -795,12 +802,7 @@ class AsyncMcpClient:
         except ZentureMCPError:
             raise
         except Exception as exc:
-            raise ZentureMCPError(
-                "mcp_transport_unavailable",
-                status_code=503,
-                retryable=True,
-                next_action="retry_later",
-            ) from exc
+            _raise_transport_failure(exc)
 
     async def list_tools(self) -> tuple[str, ...]:
         """Return advertised tool names as a tuple, without calling a product tool.
@@ -817,12 +819,7 @@ class AsyncMcpClient:
         except ZentureMCPError:
             raise
         except Exception as exc:
-            raise ZentureMCPError(
-                "mcp_transport_unavailable",
-                status_code=503,
-                retryable=True,
-                next_action="retry_later",
-            ) from exc
+            _raise_transport_failure(exc)
 
     async def require_product_tools(self) -> None:
         """Check that run, list_runs, get_run, cancel_run and record_run_outcome exist.
@@ -853,12 +850,10 @@ class AsyncMcpClient:
         except ZentureMCPError:
             raise
         except Exception as exc:
-            raise ZentureMCPError(
-                "mcp_transport_unavailable",
-                status_code=503,
+            _raise_transport_failure(
+                exc,
                 retryable=not (read_timeout_seconds is not None and isinstance(exc, TypeError)),
-                next_action="retry_later",
-            ) from exc
+            )
         return _decode_tool_result(
             result,
             expected_key=cast("str", validated["idempotency_key"]) if name == "run" else None,
