@@ -1,5 +1,11 @@
 # Changelog
 
+All notable changes to `zenture` will be documented in this file.
+
+The project follows semantic versioning once public releases begin. Prerelease
+versions may change while the Public API contract is still in release-candidate
+state.
+
 ## Unreleased
 
 - MCP peers keep authorization failures (`AuthorizationRequired`,
@@ -55,14 +61,6 @@
   alias exists (hard cutover).
 - Declared CPython 3.14 support and configured the CI matrix for 3.11 to 3.14
   across Linux, macOS and Windows (configured, not yet run).
-
-All notable changes to `zenture-sdk` will be documented in this file.
-
-The project follows semantic versioning once public releases begin. Prerelease
-versions may change while the Public API contract is still in release-candidate
-state.
-
-## Unreleased
 
 - Added nullable `deadline_at` Run response fields, additive response tolerance,
   and finite sync/async Run waits with deadline-aware timeout context.

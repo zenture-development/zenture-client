@@ -508,7 +508,7 @@ def test_contributing_and_security_are_public_beta_current() -> None:
     assert "python3 -m pyright" in contributing
     assert "python3 -m pytest" in contributing
     assert "python3 -m twine check dist/*" in contributing
-    assert "GitHub Security Advisory" in security
+    assert "mailto:security@zenture.app" in security
 
 
 def test_sdist_includes_public_docs_examples_and_excludes_private_plan() -> None:
