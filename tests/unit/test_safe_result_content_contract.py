@@ -1,4 +1,4 @@
-"""Public SDK Safe Result Content contract and rejection tests."""
+"""Public client Safe Result Content contract and rejection tests."""
 
 from __future__ import annotations
 

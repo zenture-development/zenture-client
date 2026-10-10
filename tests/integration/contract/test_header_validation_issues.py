@@ -1,5 +1,5 @@
 """Filepath: tests/integration/contract/test_header_validation_issues.py
-Purpose: Preserve declared public header details across actual producer, MCP and SDK seams.
+Purpose: Preserve declared public header details across actual producer, MCP and client seams.
 """
 
 from __future__ import annotations

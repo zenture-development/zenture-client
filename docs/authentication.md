@@ -25,7 +25,7 @@ customer-visible errors.
 Create API tokens in the existing zenture webapp with an existing account:
 `https://ai.zenture.app/profile?tab=api-tokens`.
 
-The SDK intentionally does not expose an API-token management surface for
+The client intentionally does not expose an API-token management surface for
 creating, rotating, revoking, or auditing tokens.
 
 ### Environment Setup
@@ -50,9 +50,9 @@ the token from `ZENTURE_API_KEY`.
 
 The production origin is `https://api.zenture.app`.
 
-Public SDK usage targets the production API. Never derive constructor
+Public client usage targets the production API. Never derive constructor
 `base_url` values from user input. URL credentials, paths, query strings,
-fragments, plain HTTP origins, and arbitrary HTTPS origins are rejected by SDK
+fragments, plain HTTP origins, and arbitrary HTTPS origins are rejected by client
 configuration validation.
 
 ## Native login for MCP

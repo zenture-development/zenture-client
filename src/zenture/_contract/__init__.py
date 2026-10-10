@@ -1,4 +1,4 @@
-"""Internal OpenAPI-derived contract layer for zenture SDK implementation."""
+"""Internal OpenAPI-derived contract layer for zenture client implementation."""
 
 from __future__ import annotations
 

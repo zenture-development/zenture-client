@@ -1,4 +1,4 @@
-"""Asynchronous public client for the zenture SDK."""
+"""Asynchronous public client for the zenture client."""
 
 from __future__ import annotations
 
@@ -128,7 +128,7 @@ class AsyncZentureClient:
         return await self._helloworld.get()
 
     async def aclose(self) -> None:
-        """Close SDK-owned transport resources."""
+        """Close client-owned transport resources."""
 
         await self._transport.aclose()
 

@@ -40,7 +40,7 @@ def evaluate_external_answer(client: ZentureClient, *, show_result: bool = False
     """
 
     result = client.evaluations.run(
-        user_message="What does the SDK do?",
+        user_message="What does the client do?",
         ai_answer="It helps server-side Python integrations call zenture.",
         external_id="example-external-answer-v1",
         metadata={"source": "example", "kind": "external_answer"},

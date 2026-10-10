@@ -1,4 +1,4 @@
-"""Retry decision policy for SDK transport and polling."""
+"""Retry decision policy for client transport and polling."""
 
 from __future__ import annotations
 

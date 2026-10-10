@@ -1,4 +1,4 @@
-"""Package bootstrap tests for the prerelease SDK foundation."""
+"""Package bootstrap tests for the prerelease client foundation."""
 
 from __future__ import annotations
 

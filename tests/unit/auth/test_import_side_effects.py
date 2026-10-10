@@ -46,7 +46,7 @@ def test_import_does_no_network_browser_keyring_or_lock_file_work(tmp_path: Path
         env.update({key: os.environ[key] for key in ("SYSTEMROOT", "WINDIR") if key in os.environ})
 
     # Test the current source checkout under isolation; do not depend on an
-    # unrelated installed SDK in the selected test interpreter.
+    # unrelated installed client in the selected test interpreter.
     source = __import__("pathlib").Path(__file__).resolve().parents[3] / "src"
     result = subprocess.run(
         [

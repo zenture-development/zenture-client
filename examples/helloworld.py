@@ -1,4 +1,4 @@
-"""Minimal connectivity check for the zenture SDK."""
+"""Minimal connectivity check for the zenture client."""
 
 from __future__ import annotations
 

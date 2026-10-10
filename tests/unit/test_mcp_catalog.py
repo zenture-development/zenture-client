@@ -1,4 +1,4 @@
-"""Observable discovery contracts for SDK-owned complete MCP definitions."""
+"""Observable discovery contracts for client-owned complete MCP definitions."""
 
 from __future__ import annotations
 

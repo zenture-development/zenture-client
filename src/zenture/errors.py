@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 class ZentureError(Exception):
-    """Base class for all zenture SDK errors."""
+    """Base class for all zenture client errors."""
 
 
 class ZentureAPIError(ZentureError):

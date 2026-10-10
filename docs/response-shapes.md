@@ -2,7 +2,7 @@
 # Response Shapes
 
 This page documents sanitized request examples and raw zenture Public API response bodies.
-The committed OpenAPI artifact remains the contract source of truth; this file is generated from that artifact for SDK documentation and reviewable downstream diffs.
+The committed OpenAPI artifact remains the contract source of truth; this file is generated from that artifact for client documentation and reviewable downstream diffs.
 
 ## Conventions
 
@@ -10,22 +10,22 @@ The committed OpenAPI artifact remains the contract source of truth; this file i
 - `null` means the field is optional, unavailable, or intentionally absent.
 - Credit amounts use display strings such as `{"amount": "123.45", "unit": "credits"}`.
 - Operation statuses are `queued`, `running`, `succeeded`, `failed`, `cancelled`, and `expired`.
-- Mutating async routes return `PublicOperationResponse`; SDK `.run(...)` helpers wrap terminal operations in `OperationRunResult`.
+- Mutating async routes return `PublicOperationResponse`; client `.run(...)` helpers wrap terminal operations in `OperationRunResult`.
 - `PublicOperationError.code` is a domain operation code string and is separate from gateway error-envelope codes.
 - Rate-limit data is returned as HTTP headers, not in response bodies.
-- Agentic chat is not a Public V1 mode and has no public SDK helper.
+- Agentic chat is not a Public V1 mode and has no public client helper.
 
 ## Product Run interpretation
 
 See the [Run guide](run-guide.md#interpret-the-returned-run) for current typed
-SDK interpretation and the distinction between technical completion, acceptance,
+client interpretation and the distinction between technical completion, acceptance,
 result availability and Credits. Examples below illustrate wire shapes; use the
 current models and guide for optional/additive fields. MCP `get_run()` wraps its
 Run in `.run`, while REST `runs.get()` returns it directly.
 
 ## Endpoint Summary
 
-| Method | Endpoint | Success | SDK surface | SDK model |
+| Method | Endpoint | Success | Client surface | Client model |
 | --- | --- | --- | --- | --- |
 | `POST` | `/v1/chat` | `202` | `client.chat.create(...)`, `client.chat.create_operation(...)`, `client.chat.run(...)` | `PublicOperationResponse`, `OperationRunResult` |
 | `GET` | `/v1/chats` | `200` | `client.chat.list(...)`, `client.chat.iter(...)` | `PublicChatCollectionResponse` |
@@ -141,7 +141,7 @@ Terminal failure example:
 
 ### `OperationRunResult`
 
-`OperationRunResult` is SDK-only and is not returned as raw HTTP JSON.
+`OperationRunResult` is client-only and is not returned as raw HTTP JSON.
 
 ```json
 {
@@ -172,9 +172,9 @@ Terminal failure example:
 
 ### `POST /v1/chat`
 
-SDK surface: `client.chat.create(...)`, `client.chat.create_operation(...)`, `client.chat.run(...)`
+Client surface: `client.chat.create(...)`, `client.chat.create_operation(...)`, `client.chat.run(...)`
 
-SDK model: `PublicOperationResponse`, `OperationRunResult`
+Client model: `PublicOperationResponse`, `OperationRunResult`
 
 Auth mode: `api_token`
 
@@ -208,9 +208,9 @@ Schema: `PublicOperationResponse`
 
 ### `GET /v1/chats`
 
-SDK surface: `client.chat.list(...)`, `client.chat.iter(...)`
+Client surface: `client.chat.list(...)`, `client.chat.iter(...)`
 
-SDK model: `PublicChatCollectionResponse`
+Client model: `PublicChatCollectionResponse`
 
 Auth mode: `api_token`
 
@@ -240,9 +240,9 @@ Schema: `PublicChatCollectionResponse`
 
 ### `GET /v1/chats/{chat_id}`
 
-SDK surface: `client.chat.get(...)`
+Client surface: `client.chat.get(...)`
 
-SDK model: `PublicChatResponse`
+Client model: `PublicChatResponse`
 
 Auth mode: `api_token`
 
@@ -281,9 +281,9 @@ Schema: `PublicChatResponse`
 
 ### `GET /v1/chats/{chat_id}/messages`
 
-SDK surface: `client.chat.messages(...)`, `client.chat.iter_messages(...)`
+Client surface: `client.chat.messages(...)`, `client.chat.iter_messages(...)`
 
-SDK model: `PublicChatMessagesResponse`
+Client model: `PublicChatMessagesResponse`
 
 Auth mode: `api_token`
 
@@ -318,9 +318,9 @@ Schema: `PublicChatMessagesResponse`
 
 ### `POST /v1/evaluate`
 
-SDK surface: `client.evaluations.create(...)`, `client.evaluations.run(...)`
+Client surface: `client.evaluations.create(...)`, `client.evaluations.run(...)`
 
-SDK model: `PublicOperationResponse`, `OperationRunResult`
+Client model: `PublicOperationResponse`, `OperationRunResult`
 
 Auth mode: `api_token`
 
@@ -355,9 +355,9 @@ Schema: `PublicOperationResponse`
 
 ### `GET /v1/evaluations`
 
-SDK surface: `client.evaluations.list(...)`, `client.evaluations.iter(...)`
+Client surface: `client.evaluations.list(...)`, `client.evaluations.iter(...)`
 
-SDK model: `PublicEvaluationCollectionResponse`
+Client model: `PublicEvaluationCollectionResponse`
 
 Auth mode: `api_token`
 
@@ -393,9 +393,9 @@ Schema: `PublicEvaluationCollectionResponse`
 
 ### `GET /v1/evaluations/{evaluation_id}`
 
-SDK surface: `client.evaluations.get(...)`
+Client surface: `client.evaluations.get(...)`
 
-SDK model: `PublicEvaluationResponse`
+Client model: `PublicEvaluationResponse`
 
 Auth mode: `api_token`
 
@@ -429,9 +429,9 @@ Schema: `PublicEvaluationResponse`
 
 ### `GET /v1/helloworld`
 
-SDK surface: `client.helloworld()`
+Client surface: `client.helloworld()`
 
-SDK model: `str`
+Client model: `str`
 
 Auth mode: `none`
 
@@ -452,14 +452,14 @@ Base URL: `https://api.zenture.app/v1`
 
 Developer docs: `https://www.zenture.app/developers`
 
-Python SDK: [zenture95/zenture-client](https://github.com/zenture95/zenture-client)
+Python client: [zenture95/zenture-client](https://github.com/zenture95/zenture-client)
 ```
 
 ### `POST /v1/input-wizard`
 
-SDK surface: `client.input_wizard.create(...)`, `client.input_wizard.run(...)`
+Client surface: `client.input_wizard.create(...)`, `client.input_wizard.run(...)`
 
-SDK model: `PublicOperationResponse`, `OperationRunResult`
+Client model: `PublicOperationResponse`, `OperationRunResult`
 
 Auth mode: `api_token`
 
@@ -493,9 +493,9 @@ Schema: `PublicOperationResponse`
 
 ### `GET /v1/limits`
 
-SDK surface: `client.limits.get()`
+Client surface: `client.limits.get()`
 
-SDK model: `LimitsResponse`
+Client model: `LimitsResponse`
 
 Auth mode: `api_token`
 
@@ -520,9 +520,9 @@ Schema: `LimitsResponse`
 
 ### `GET /v1/models`
 
-SDK surface: `client.models.list(mode=None | "single" | "multi")`
+Client surface: `client.models.list(mode=None | "single" | "multi")`
 
-SDK model: `PublicModelListResponse`
+Client model: `PublicModelListResponse`
 
 Auth mode: `api_token`
 
@@ -560,9 +560,9 @@ Schema: `PublicModelListResponse`
 
 ### `GET /v1/operations/{operation_id}`
 
-SDK surface: `client.operations.get(...)`, `client.operations.wait(...)`
+Client surface: `client.operations.get(...)`, `client.operations.wait(...)`
 
-SDK model: `PublicOperationResponse`
+Client model: `PublicOperationResponse`
 
 Auth mode: `api_token`
 
@@ -587,9 +587,9 @@ Schema: `PublicOperationResponse`
 
 ### `POST /v1/run-artifacts`
 
-SDK surface: `client.runs.attach_artifact(...)`
+Client surface: `client.runs.attach_artifact(...)`
 
-SDK model: `PublicRunArtifactResponse`
+Client model: `PublicRunArtifactResponse`
 
 Auth mode: `api_token`
 
@@ -620,9 +620,9 @@ Schema: `PublicRunArtifactResponse`
 
 ### `POST /v1/run-artifacts/signed-upload`
 
-SDK surface: `client.runs.signed_upload(...)`
+Client surface: `client.runs.signed_upload(...)`
 
-SDK model: `PublicSignedUploadResponse`
+Client model: `PublicSignedUploadResponse`
 
 Auth mode: `api_token`
 
@@ -657,9 +657,9 @@ Schema: `PublicSignedUploadResponse`
 
 ### `GET /v1/runs`
 
-SDK surface: `client.runs.list(...)`
+Client surface: `client.runs.list(...)`
 
-SDK model: `PublicRunCollectionResponse`
+Client model: `PublicRunCollectionResponse`
 
 Auth mode: `api_token`
 
@@ -696,9 +696,9 @@ Schema: `PublicRunCollectionResponse`
 
 ### `POST /v1/runs`
 
-SDK surface: `client.runs.create(...)`, `client.runs.run(...)`
+Client surface: `client.runs.create(...)`, `client.runs.run(...)`
 
-SDK model: `PublicRunResponse`
+Client model: `PublicRunResponse`
 
 Auth mode: `api_token`
 
@@ -842,9 +842,9 @@ Schema: `PublicRunResponse`
 
 ### `POST /v1/runs/prepare`
 
-SDK surface: `client.runs.prepare(...)`
+Client surface: `client.runs.prepare(...)`
 
-SDK model: `PrepareRunResponse`
+Client model: `PrepareRunResponse`
 
 Auth mode: `api_token`
 
@@ -904,9 +904,9 @@ Schema: `PrepareRunResponse`
 
 ### `GET /v1/runs/{run_id}`
 
-SDK surface: `client.runs.get(...)`
+Client surface: `client.runs.get(...)`
 
-SDK model: `PublicRunResponse`
+Client model: `PublicRunResponse`
 
 Auth mode: `api_token`
 
@@ -979,9 +979,9 @@ Schema: `PublicRunResponse`
 
 ### `POST /v1/runs/{run_id}/cancel`
 
-SDK surface: `client.runs.cancel(...)`
+Client surface: `client.runs.cancel(...)`
 
-SDK model: `PublicRunResponse`
+Client model: `PublicRunResponse`
 
 Auth mode: `api_token`
 
@@ -1062,9 +1062,9 @@ Schema: `PublicRunResponse`
 
 ### `GET /v1/runs/{run_id}/events`
 
-SDK surface: `client.runs.list_events(...)`
+Client surface: `client.runs.list_events(...)`
 
-SDK model: `PublicRunEventsResponse`
+Client model: `PublicRunEventsResponse`
 
 Auth mode: `api_token`
 
@@ -1111,9 +1111,9 @@ Schema: `PublicRunEventsResponse`
 
 ### `GET /v1/runs/{run_id}/events/stream`
 
-SDK surface: `client.runs.iter_events(...)`
+Client surface: `client.runs.iter_events(...)`
 
-SDK model: `string`
+Client model: `string`
 
 Auth mode: `api_token`
 
@@ -1133,9 +1133,9 @@ example
 
 ### `POST /v1/runs/{run_id}/outcome`
 
-SDK surface: `client.runs.record_outcome(...)`
+Client surface: `client.runs.record_outcome(...)`
 
-SDK model: `PublicRunOutcomeResponse`
+Client model: `PublicRunOutcomeResponse`
 
 Auth mode: `api_token`
 
@@ -1223,9 +1223,9 @@ Schema: `PublicRunOutcomeResponse`
 
 ### `GET /v1/usage`
 
-SDK surface: `client.usage.get(...)`
+Client surface: `client.usage.get(...)`
 
-SDK model: `PublicUsageResponse`
+Client model: `PublicUsageResponse`
 
 Auth mode: `api_token`
 
@@ -1248,9 +1248,9 @@ Schema: `PublicUsageResponse`
 
 ### `GET /v1/wallet`
 
-SDK surface: `client.wallet.get()`
+Client surface: `client.wallet.get()`
 
-SDK model: `PublicWalletResponse`
+Client model: `PublicWalletResponse`
 
 Auth mode: `api_token`
 
@@ -1350,4 +1350,4 @@ Stable public gateway error codes are:
 - `budget_ceiling_exceeded`
 - `execution_failed`
 
-The SDK maps known public error codes to typed exceptions where available and keeps future unknown safe error codes as `ZentureAPIError` without exposing API tokens, bearer headers, prompts, or other secrets in exception strings.
+The client maps known public error codes to typed exceptions where available and keeps future unknown safe error codes as `ZentureAPIError` without exposing API tokens, bearer headers, prompts, or other secrets in exception strings.

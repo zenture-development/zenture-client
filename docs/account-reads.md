@@ -1,6 +1,6 @@
 # Account Reads
 
-The SDK exposes read-only helpers for account-adjacent status:
+The client exposes read-only helpers for account-adjacent status:
 
 - `client.wallet.get()`
 - `client.usage.get(scope="api")`
@@ -22,7 +22,7 @@ with ZentureClient.from_env() as client:
 ```
 
 `wallet.plan`, `wallet.status`, and `wallet.credits_available` are safe public
-projections. The SDK does not expose internal billing ledgers, Stripe
+projections. The client does not expose internal billing ledgers, Stripe
 identifiers, price internals, or invoice payloads.
 
 ## Usage

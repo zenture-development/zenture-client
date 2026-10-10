@@ -1,6 +1,6 @@
 # Pagination
 
-Public list-style read routes use cursor pagination. The SDK exposes both page
+Public list-style read routes use cursor pagination. The client exposes both page
 methods and iterator helpers.
 
 ## Page Methods
@@ -46,5 +46,5 @@ async with AsyncZentureClient.from_env() as client:
         print(chat.chat_id)
 ```
 
-The SDK validates `limit` and `cursor` before sending the request, matching the
+The client validates `limit` and `cursor` before sending the request, matching the
 public OpenAPI bounds. Invalid pagination input raises `ValueError`.

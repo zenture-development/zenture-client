@@ -1,4 +1,4 @@
-"""Peer-level MCP Run clients backed by the canonical SDK contracts."""
+"""Peer-level MCP Run clients backed by the canonical client contracts."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Redaction behavior for SDK safety surfaces."""
+"""Redaction behavior for client safety surfaces."""
 
 from __future__ import annotations
 

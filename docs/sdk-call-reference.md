@@ -1,13 +1,13 @@
-# SDK Call Reference
+# Client Call Reference
 
-This page is the copy-paste oriented reference for every public SDK call. Each
-section shows the SDK method, the underlying public API route, and the typical
+This page is the copy-paste oriented reference for every public client call. Each
+section shows the client method, the underlying public API route, and the typical
 response object shape.
 
-For raw JSON response bodies and SDK model mapping, see
+For raw JSON response bodies and client model mapping, see
 [`response-shapes.md`](./response-shapes.md).
 
-All mutating routes require an `Idempotency-Key`. The SDK methods expose this as
+All mutating routes require an `Idempotency-Key`. The client methods expose this as
 `idempotency_key`. Use stable keys from your own system for retries of the same
 request body. Do not include prompts, answers, API tokens, or customer PII in
 idempotency keys.
@@ -239,13 +239,13 @@ Use `chat_id` for follow-up turns. Use `model_response_id` as the internal
 AI-answer id when evaluating this zenture-generated answer.
 
 Set `include_content=True` when the caller needs the matching public chat turn
-in the same SDK call. The SDK then performs one additional
+in the same client call. The client then performs one additional
 `GET /v1/chats/{chat_id}/messages` request and attaches the matching turn as
 `result.chat_turn`. Leave it unset for lower-latency operation polling.
 
-The SDK exposes chat operation results as flat fields on `result`. If a public
+The client exposes chat operation results as flat fields on `result`. If a public
 operation read contains the same ids nested under a known result wrapper, the
-SDK normalizes it before returning the typed object.
+client normalizes it before returning the typed object.
 
 Follow-up turn:
 
@@ -532,7 +532,7 @@ creates an operation or checks credits. A terminal failed evaluation operation
 means execution started and then failed; it should not be used to detect a
 malformed internal-vs-external payload.
 
-The SDK validates the most common internal/external mix-up locally: if
+The client validates the most common internal/external mix-up locally: if
 `chat_id` or `turn_id` is supplied without `model_response_id`,
 `client.evaluations.create(...)` and `client.evaluations.run(...)` raise
 Pydantic `ValidationError` before sending an HTTP request. Server-side target
@@ -541,7 +541,7 @@ raises `ZentureValidationError` with `status_code == 422` and
 `error_code == "validation_failed"`.
 
 If the external answer contains sources, include them directly in `ai_answer`
-as Markdown links, footnotes, or plain URLs. The SDK does not require a separate
+as Markdown links, footnotes, or plain URLs. The client does not require a separate
 `sources` field for Public V1; zenture evaluates the submitted Markdown answer
 as one payload. Keep source text concise and avoid pasting private documents
 unless your application is allowed to send them to zenture.
@@ -626,7 +626,7 @@ Example response:
 ```
 
 Set `include_detail=True` when the caller wants the public evaluation detail in
-the same SDK call. The SDK then performs one additional
+the same client call. The client then performs one additional
 `GET /v1/evaluations/{evaluation_id}` request and attaches it as
 `result.evaluation`. Leave it unset when the operation result is enough.
 
@@ -902,7 +902,7 @@ Example response:
 If local polling times out or is stopped after create succeeded, the raised
 exception exposes `operation_id` and `idempotency_key` attributes for recovery.
 
-Polling cadence: the SDK waits `1s`, then `2s`, then `4s`, then caps at `8s`
+Polling cadence: the client waits `1s`, then `2s`, then `4s`, then caps at `8s`
 between reads. If you call `GET /v1/operations/{operation_id}` yourself, use the
 same cadence, do not poll faster than once per second per operation, and honor
 `Retry-After` on `429` responses.

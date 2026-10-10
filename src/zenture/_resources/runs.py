@@ -427,7 +427,7 @@ class RunsResource:
             idempotency_key: Caller-owned key saved before dispatch. Reuse the same
                 key and identical request after an uncertain outcome; never use a new
                 key as a retry fallback. Keep credentials and personal data out of it.
-                The SDK derives a :prepare key; reserve space for this suffix within
+                The client derives a :prepare key; reserve space for this suffix within
                 the REST 255-character limit.
 
         Returns PrepareKnowledgeRunResponse. Inspect proposal_id, proposal_hash,
@@ -461,7 +461,7 @@ class RunsResource:
         """Start a previously prepared proposal and return its current Run state.
 
         proposal_id and proposal_hash must be copied together from prepare(); do
-        not compute a hash. idempotency_key is a saved caller key (the SDK appends
+        not compute a hash. idempotency_key is a saved caller key (the client appends
         :create). wait is an optional integer HTTP wait preference, clamped to
         0-15 seconds; it does not guarantee completion. predecessor_run_id is an
         optional owned run_... reference to an earlier Run; None means no predecessor.
@@ -517,7 +517,7 @@ class RunsResource:
             idempotency_key: Caller-owned key saved before dispatch. Reuse the same
                 key and identical request after an uncertain outcome; never use a new
                 key as a retry fallback. Keep credentials and personal data out of it.
-                The SDK derives :prepare and :create keys; do not add them yourself.
+                The client derives :prepare and :create keys; do not add them yourself.
             wait: Optional integer wait preference, clamped to 0-15 seconds.
             predecessor_run_id: Optional owned earlier run_... reference, forwarded
                 only to create. None means none. Preserve it on recovery with the
@@ -528,7 +528,7 @@ class RunsResource:
         wait() or get() for progress, then get(view="full") for the result. Unlike
         chat.run/evaluations.run, this method does not wait until terminal status.
         Starting can consume Credits or a Trial slot. Local invalid inputs raise
-        ValueError/ValidationError; API/transport failures use the typed SDK errors.
+        ValueError/ValidationError; API/transport failures use the typed client errors.
         See docs/run-guide.md for uncertain starts and decision interpretation.
         """
 
@@ -600,7 +600,7 @@ class RunsResource:
         safe_result_content.status before using its content; unavailable is not an
         empty successful result. Invalid ID/view raises ValueError; malformed or
         foreign-ID responses raise ZentureResponseError; API errors are typed.
-        _timeout is reserved for the SDK polling budget; ordinary callers omit it.
+        _timeout is reserved for the client polling budget; ordinary callers omit it.
         This read never starts, retries or cancels a Run.
         """
 
@@ -624,7 +624,7 @@ class RunsResource:
         omit for first page. limit is 1-50, default 50. Returns ListRunEventsResponse
         with events, has_more and next_cursor. Pass returned cursors unchanged.
         Invalid ID/limit/cursor or foreign event IDs raise ValueError; malformed
-        responses and API errors use the SDK response/API exceptions.
+        responses and API errors use the client response/API exceptions.
         """
 
         validate_run_id(run_id)
@@ -731,6 +731,10 @@ class RunsResource:
             )
             if delay > 0:
                 time.sleep(delay)
+            if remaining is not None and delay >= remaining:
+                # The wait consumed the caller's budget; a coarse monotonic clock (e.g. on
+                # Windows) must not let one more request start after the deadline.
+                raise ZenturePollingTimeoutError(operation_id=run_id)
 
     def wait(
         self,
@@ -848,7 +852,7 @@ class RunsResource:
 
         Returns the updated PublicRunResponse, preserving the original acceptance
         verdict. Does not re-evaluate edited content. ValidationError rejects invalid
-        combinations; API/transport failures use the typed SDK errors. Do not infer
+        combinations; API/transport failures use the typed client errors. Do not infer
         feedback from silence or comments.
         """
 
@@ -884,7 +888,7 @@ class RunsResource:
         idempotency_key is a saved REST key for this authorization request.
 
         Returns SignedUploadResponse: preserve upload_id and expires_at, then send
-        bytes with attach_artifact before expiry. upload_url may be absent; the SDK
+        bytes with attach_artifact before expiry. upload_url may be absent; the client
         attach_artifact method uses the public artifact route. Do not treat upload_id
         or upload_url as an artifact_ref. Invalid inputs raise ValidationError;
         API errors raise ZentureAPIError subclasses.
@@ -928,9 +932,9 @@ class RunsResource:
 
         Returns ArtifactUploadResponse with the registered artifact_ref. Registration
         does not enable evaluation: Run preparation currently rejects zenture_ref.
-        The SDK validates
+        The client validates
         byte count/hash; mismatch raises ValueError (stream validation occurs while
-        sending). Other local validation/API failures use typed SDK errors.
+        sending). Other local validation/API failures use typed client errors.
         Unlike MCP attach_artifact, this method receives and sends real bytes.
         """
 

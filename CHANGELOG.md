@@ -6,6 +6,13 @@ The project follows semantic versioning once public releases begin. Prerelease
 versions may change while the Public API contract is still in release-candidate
 state.
 
+## 1.0.2 - 2026-10-10
+
+- Run event iteration (`iter_events`, sync and async) stops with a polling timeout once a
+  reconnect wait consumes the caller's budget, so a coarse monotonic clock (e.g. on Windows)
+  cannot start one more request after the deadline.
+- Package description and documentation call the package the zenture client instead of an SDK.
+
 ## 1.0.1 - 2026-10-10
 
 - Documentation leads with Runs; the classic API resources are documented as secondary.

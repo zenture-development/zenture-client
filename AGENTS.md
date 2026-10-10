@@ -28,7 +28,7 @@ Public product references:
 - Human-facing API documentation lives at
   `https://www.zenture.app/developers`.
 - The committed `openapi/zenture-public-api-v1.openapi.json` file remains the
-  SDK-local contract source of truth for implementation and drift tests.
+  client-local contract source of truth for implementation and drift tests.
 
 ## Architecture Map
 
@@ -44,7 +44,7 @@ Public product references:
   typed Run adapter). It owns no Backend, Engine or persistence authority.
 - `src/zenture/cli.py`: the `zenture auth login|status|clear` command.
 - `src/zenture/_contract/`: internal OpenAPI-derived Pydantic models.
-- `src/zenture/errors.py`: typed SDK exceptions.
+- `src/zenture/errors.py`: typed client exceptions.
 - `src/zenture/polling.py`: polling policy primitives.
 - `src/zenture/retries.py`: retry decision policy.
 - `src/zenture/idempotency.py`: idempotency-key helpers.
@@ -76,7 +76,7 @@ operation result shapes, idempotency header constraints, and excluded
 user-session routes.
 
 Use `https://www.zenture.app/developers` for human-facing API context,
-but do not implement SDK behavior from website prose unless the local OpenAPI
+but do not implement client behavior from website prose unless the local OpenAPI
 artifact and drift tests agree.
 
 When adding or changing a resource:
@@ -91,7 +91,7 @@ When a new Engine capability is intended for client consumption, extend this
 repository's canonical contract models and both peer surfaces: the API
 resource and the hosted MCP peers. Add sync/async parity and cross-channel
 acceptance tests here before release promotion; do not create a workspace-only client duplicate or move Engine/business authority into the
-SDK.
+client.
 
 ## Using zenture as an agent
 
@@ -143,7 +143,7 @@ Remove local artifacts after verification: `.coverage`, `.pytest_cache`,
 - no token logging
 - no token literals in examples, docs, tests, or issue text
 - no arbitrary base URL origins
-- no API-token-management SDK resource
+- no API-token-management client resource
 - no public helper for agentic chat mode in Public V1
 - no internal `_contract` top-level exports
 - no request or response body logging by default
@@ -158,7 +158,7 @@ usage surface changes.
 Examples must use `ZentureClient.from_env()` or `AsyncZentureClient.from_env()` for REST
 and the documented auth/MCP public APIs (`zenture.auth`, `zenture.mcp`) for sign-in and MCP.
 Mutating examples must pass explicit stable idempotency keys, preferably built with the
-SDK helper. Do not create tracked `.env` files.
+client helper. Do not create tracked `.env` files.
 
 ## Pull Request Rules
 

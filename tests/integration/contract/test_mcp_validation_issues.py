@@ -1,5 +1,5 @@
 """Filepath: tests/integration/contract/test_mcp_validation_issues.py
-Purpose: Carry real registered MCP validation details into typed SDK errors.
+Purpose: Carry real registered MCP validation details into typed client errors.
 """
 
 from __future__ import annotations

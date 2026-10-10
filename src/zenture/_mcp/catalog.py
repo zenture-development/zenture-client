@@ -1,4 +1,4 @@
-"""SDK-owned tool definitions and bounded, detached MCP catalog parsing."""
+"""client-owned tool definitions and bounded, detached MCP catalog parsing."""
 
 from __future__ import annotations
 

@@ -1198,7 +1198,7 @@ class ChatRequest(SDKBaseModel):
 
 
 class OperationRunResult(SDKBaseModel):
-    """SDK operation run wrapper returned by high-level polling helpers."""
+    """Operation run wrapper returned by high-level polling helpers."""
 
     operation_id: str = Field(pattern=r"^op_[A-Za-z0-9_-]{3,128}$")
     status: OperationStatus

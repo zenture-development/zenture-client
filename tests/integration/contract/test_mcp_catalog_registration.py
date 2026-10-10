@@ -1,4 +1,4 @@
-"""SDK catalog parity across the actual Run registration and official MCP session."""
+"""Client-owned catalog parity across the actual Run registration and official MCP session."""
 
 from __future__ import annotations
 

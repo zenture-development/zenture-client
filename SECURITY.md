@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-`zenture` is prerelease software. Security reports are welcome for SDK
+`zenture` is prerelease software. Security reports are welcome for client
 runtime behavior, documentation, examples, packaging, CI, and release workflows.
 
 ## Reporting a Vulnerability
@@ -40,7 +40,7 @@ zenture API tokens are server-side credentials. They must not be embedded in
 browsers, mobile apps, frontend bundles, public repositories, notebooks with
 shared output, logs, analytics, traces, or customer-visible error reports.
 
-The SDK must not log or expose:
+The client must not log or expose:
 
 - API tokens or Authorization headers
 - JWTs
@@ -52,11 +52,11 @@ Examples and tests must use fake credentials only.
 
 ## Token Environment Binding
 
-zenture API tokens are environment-bound. Public SDK users should use tokens
+zenture API tokens are environment-bound. Public client users should use tokens
 only with the production zenture API.
 
-The SDK performs client-side validation to prevent accidental cross-environment
-token use. The API must enforce the same rule server-side. Public SDK
+The client performs client-side validation to prevent accidental cross-environment
+token use. The API must enforce the same rule server-side. Public client
 documentation must not publish non-production API hostnames, deployment names,
 local port conventions, or token validation internals.
 

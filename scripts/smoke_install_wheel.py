@@ -1,4 +1,4 @@
-"""Install the built wheel into a fresh venv and import the public SDK surface."""
+"""Install the built wheel into a fresh venv and import the public client surface."""
 
 from __future__ import annotations
 

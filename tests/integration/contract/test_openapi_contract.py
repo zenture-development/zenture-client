@@ -1,4 +1,4 @@
-"""OpenAPI contract drift checks for the SDK surface."""
+"""OpenAPI contract drift checks for the client surface."""
 
 from __future__ import annotations
 

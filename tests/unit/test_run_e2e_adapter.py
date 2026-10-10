@@ -1,4 +1,4 @@
-"""Contract tests for the SDK-only Product Run E2E adapter."""
+"""Contract tests for the client-only Product Run E2E adapter."""
 
 from __future__ import annotations
 

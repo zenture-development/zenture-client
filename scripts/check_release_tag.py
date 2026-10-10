@@ -1,4 +1,4 @@
-"""Validate that a release tag matches the SDK package version."""
+"""Validate that a release tag matches the client package version."""
 
 from __future__ import annotations
 

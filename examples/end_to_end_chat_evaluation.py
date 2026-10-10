@@ -15,7 +15,7 @@ from zenture.idempotency import idempotency_key
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-DEFAULT_PROMPT = "Explain why deterministic tests matter for an SDK."
+DEFAULT_PROMPT = "Explain why deterministic tests matter for a client."
 
 
 def main() -> None:
