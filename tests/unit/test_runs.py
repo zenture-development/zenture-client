@@ -1523,7 +1523,8 @@ def test_sync_wait_passes_remaining_budget_to_each_run_request() -> None:
 
     assert result.status.value == "completed"
     assert len(read_timeouts) == 1
-    assert 0 < read_timeouts[0] <= 1.0
+    # Deadline subtraction may exceed the budget by one clock ULP (see the ULP test).
+    assert 0 < read_timeouts[0] <= 1.0 + math.ulp(time.monotonic() + 1.0)
     client.close()
 
 
@@ -1894,7 +1895,8 @@ async def test_async_wait_passes_remaining_budget_to_each_run_request() -> None:
 
     assert result.status.value == "completed"
     assert len(read_timeouts) == 1
-    assert 0 < read_timeouts[0] <= 1.0
+    # Deadline subtraction may exceed the budget by one clock ULP (see the ULP test).
+    assert 0 < read_timeouts[0] <= 1.0 + math.ulp(time.monotonic() + 1.0)
     await client.aclose()
 
 
@@ -2614,7 +2616,8 @@ def test_sync_iter_events_passes_remaining_timeout_to_stream() -> None:
     list(client.runs.iter_events(RUN_ID, timeout=5.0))
 
     assert read_timeouts
-    assert 0 < read_timeouts[0] <= 5.0
+    # Deadline subtraction may exceed the budget by one clock ULP (see the ULP test).
+    assert 0 < read_timeouts[0] <= 5.0 + math.ulp(time.monotonic() + 5.0)
     client.close()
 
 
@@ -2798,7 +2801,8 @@ async def test_async_iter_events_passes_remaining_timeout_to_stream() -> None:
     [message async for message in client.runs.iter_events(RUN_ID, timeout=5.0)]
 
     assert read_timeouts
-    assert 0 < read_timeouts[0] <= 5.0
+    # Deadline subtraction may exceed the budget by one clock ULP (see the ULP test).
+    assert 0 < read_timeouts[0] <= 5.0 + math.ulp(time.monotonic() + 5.0)
     await client.aclose()
 
 
@@ -2821,3 +2825,73 @@ def test_run_event_dedupe_memory_is_bounded_for_long_streams() -> None:
         )
 
     assert len(state.seen_event_ids) <= 1_024
+
+
+def test_sync_iter_events_stops_when_the_wait_consumes_the_budget_on_a_coarse_clock(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import zenture._resources.runs as runs_module
+
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return _stream_response(
+            _sse_event(
+                event_id="event_aaa", sequence=1, status="running", event_cursor="cursor_aaa"
+            )
+        )
+
+    # A coarse clock that does not advance across the wait, as on Windows.
+    def sleep(_seconds: float) -> None:
+        return None
+
+    monkeypatch.setattr(runs_module, "time", SimpleNamespace(monotonic=lambda: 100.0, sleep=sleep))
+    client = ZentureClient(
+        api_key=API_KEY, http_client=httpx.Client(transport=httpx.MockTransport(handler))
+    )
+    with pytest.raises(ZenturePollingTimeoutError):
+        list(client.runs.iter_events(RUN_ID, timeout=1.0, initial_interval=2.0, max_interval=2.0))
+
+    assert len(requests) == 1
+    client.close()
+
+
+@pytest.mark.asyncio
+async def test_async_iter_events_stops_when_the_wait_consumes_the_budget_on_a_coarse_clock(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import zenture._resources.async_runs as async_runs_module
+
+    requests: list[httpx.Request] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return _stream_response(
+            _sse_event(
+                event_id="event_aaa", sequence=1, status="running", event_cursor="cursor_aaa"
+            )
+        )
+
+    async def no_sleep(_seconds: float) -> None:
+        return None
+
+    import zenture._resources.runs as runs_module
+
+    coarse_clock = SimpleNamespace(monotonic=lambda: 100.0)
+    monkeypatch.setattr(async_runs_module, "time", coarse_clock)
+    monkeypatch.setattr(runs_module, "time", coarse_clock)
+    monkeypatch.setattr(asyncio, "sleep", no_sleep)
+    client = AsyncZentureClient(
+        api_key=API_KEY, http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    )
+    with pytest.raises(ZenturePollingTimeoutError):
+        [
+            message
+            async for message in client.runs.iter_events(
+                RUN_ID, timeout=1.0, initial_interval=2.0, max_interval=2.0
+            )
+        ]
+
+    assert len(requests) == 1
+    await client.aclose()

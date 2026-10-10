@@ -487,6 +487,10 @@ class AsyncRunsResource:
             )
             if delay > 0:
                 await asyncio.sleep(delay)
+            if remaining is not None and delay >= remaining:
+                # The wait consumed the caller's budget; a coarse monotonic clock (e.g. on
+                # Windows) must not let one more request start after the deadline.
+                raise ZenturePollingTimeoutError(operation_id=run_id)
 
     async def wait(
         self,

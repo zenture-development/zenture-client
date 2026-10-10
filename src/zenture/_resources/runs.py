@@ -731,6 +731,10 @@ class RunsResource:
             )
             if delay > 0:
                 time.sleep(delay)
+            if remaining is not None and delay >= remaining:
+                # The wait consumed the caller's budget; a coarse monotonic clock (e.g. on
+                # Windows) must not let one more request start after the deadline.
+                raise ZenturePollingTimeoutError(operation_id=run_id)
 
     def wait(
         self,
