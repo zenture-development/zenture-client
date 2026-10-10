@@ -228,16 +228,12 @@ def test_readme_rest_quickstart_runs_against_the_public_client(
         )
 
     monkeypatch.setenv("ZENTURE_API_KEY", "zt_" + "live_" + "0" * 32)
-    original = ZentureClient.from_env.__func__  # type: ignore[attr-defined]
-    monkeypatch.setattr(
-        ZentureClient,
-        "from_env",
-        classmethod(
-            lambda cls: original(
-                cls, http_client=httpx.Client(transport=httpx.MockTransport(respond))
-            )
-        ),
-    )
+    original = ZentureClient.from_env
+
+    def from_env_with_mock_transport(cls: type[ZentureClient]) -> ZentureClient:
+        return original(http_client=httpx.Client(transport=httpx.MockTransport(respond)))
+
+    monkeypatch.setattr(ZentureClient, "from_env", classmethod(from_env_with_mock_transport))
     exec(compile(_readme_quickstart_blocks()[0], "README-rest", "exec"), {})
     assert "completed revise" in capsys.readouterr().out
     assert [r.method + r.url.path for r in requests if r.method == "POST"] == [
@@ -251,7 +247,11 @@ def test_readme_mcp_quickstart_runs_against_the_public_client(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     port = McpPort()
-    monkeypatch.setattr(McpClient, "connect", classmethod(lambda cls: nullcontext(McpClient(port))))
+
+    def connect_to_fake_port(cls: type[McpClient]) -> nullcontext[McpClient]:
+        return nullcontext(McpClient(port))
+
+    monkeypatch.setattr(McpClient, "connect", classmethod(connect_to_fake_port))
     exec(compile(_readme_quickstart_blocks()[1], "README-mcp", "exec"), {})
     assert "completed revise" in capsys.readouterr().out
     assert port.calls[0][0] == "run"
