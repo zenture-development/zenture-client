@@ -1,5 +1,11 @@
 # Run guide for API and MCP clients
 
+This is the entry point for Runs, the primary zenture product. The README shows
+the shortest path (start, wait, read) for REST and MCP; this guide holds every
+field, bound and recovery rule. The classic resources (chat, evaluations, input
+wizard, models, account reads) are secondary and documented in the
+[API reference](api-reference.md).
+
 Use a Run to evaluate one explicitly selected text answer against its
 original task and stated requirements. Keep the selected content intact,
 including relevant citations. Ask for the selection or criteria when ambiguous;

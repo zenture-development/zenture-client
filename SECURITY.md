@@ -71,5 +71,4 @@ Before any public PyPI release, the repository must have:
 - required CI checks
 - CODEOWNERS review for protected paths
 - secret scanning and push protection
-- dependency update automation
 - protected `pypi` release environment with manual approval

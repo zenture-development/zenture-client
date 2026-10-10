@@ -14,10 +14,6 @@ tenant authorities.
 
 ## Upgrade in one virtual environment
 
-Canonical PyPI publication is pending. Use an approved checkout or a candidate
-wheel supplied by the repository owner until publication. Do not treat
-`pip install zenture` as an available public release.
-
 Use a user-owned virtual environment for this application and keep the same
 interpreter for every install and uninstall. For example, with Python 3.11
 on a POSIX shell:
@@ -25,22 +21,13 @@ on a POSIX shell:
 ```bash
 python3 -m venv .venv-zenture
 .venv-zenture/bin/python -m pip uninstall -y zenture-sdk
-.venv-zenture/bin/python -m pip install /path/to/zenture-client
+.venv-zenture/bin/python -m pip install zenture
 ```
 
 For an existing virtual environment containing `zenture-sdk`, skip creation
 and substitute its Python executable in both commands. On Windows, the
 executable inside the environment is `Scripts/python.exe` instead of
-`bin/python`. These command forms do not establish platform verification.
-
-To install an approved provided wheel instead of the checkout, use this as
-the install step after uninstalling `zenture-sdk`:
-
-```bash
-.venv-zenture/bin/python -m pip install /path/to/approved/zenture-candidate.whl
-```
-
-Replace that placeholder with the actual wheel filename supplied to you.
+`bin/python`.
 
 Update your application imports and class references together:
 

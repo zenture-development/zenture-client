@@ -7,7 +7,9 @@ Dependencies: pytest and httpx. No credentials, login or external service use.
 from __future__ import annotations
 
 import importlib.util
+import re
 import time
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Any
 
@@ -186,3 +188,72 @@ def test_mcp_example_uncertain_start_propagates_original_key_without_retry() -> 
         )
     assert exc.value.idempotency_key == "review_123"
     assert [name for name, _ in port.calls] == ["run"]
+
+
+def _readme_quickstart_blocks() -> tuple[str, str]:
+    text = (ROOT / "README.md").read_text(encoding="utf-8")
+    section = text.split("## Quickstart: your first Run", 1)[1].split("### Anatomy", 1)[0]
+    blocks = re.findall(r"```python\n(.*?)```", section, re.DOTALL)
+    assert len(blocks) == 2
+    return blocks[0], blocks[1]
+
+
+def test_readme_rest_quickstart_runs_against_the_public_client(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.url.path.endswith("/prepare"):
+            return httpx.Response(
+                200,
+                json={
+                    "proposal_id": "33333333-3333-4333-8333-333333333333",
+                    "proposal_version": 1,
+                    "expires_at": "2026-10-07T10:00:00Z",
+                    "inferred_work_type": "answer",
+                    "task_contract_summary": {
+                        "work_type": "answer",
+                        "summary_ref": "snapshot:guide",
+                        "requirement_count": 1,
+                    },
+                    "expected_duration_seconds": 30,
+                    "start_admissible": True,
+                    "proposal_hash": "a" * 64,
+                },
+            )
+        return httpx.Response(
+            200, json=run_payload("queued" if request.method == "POST" else "completed")
+        )
+
+    monkeypatch.setenv("ZENTURE_API_KEY", "zt_" + "live_" + "0" * 32)
+    original = ZentureClient.from_env
+
+    def from_env_with_mock_transport(cls: type[ZentureClient]) -> ZentureClient:
+        return original(http_client=httpx.Client(transport=httpx.MockTransport(respond)))
+
+    monkeypatch.setattr(ZentureClient, "from_env", classmethod(from_env_with_mock_transport))
+    exec(compile(_readme_quickstart_blocks()[0], "README-rest", "exec"), {})
+    assert "completed revise" in capsys.readouterr().out
+    assert [r.method + r.url.path for r in requests if r.method == "POST"] == [
+        "POST/v1/runs/prepare",
+        "POST/v1/runs",
+    ]
+    assert requests[-1].url.params["view"] == "full"
+
+
+def test_readme_mcp_quickstart_runs_against_the_public_client(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    port = McpPort()
+
+    def connect_to_fake_port(cls: type[McpClient]) -> nullcontext[McpClient]:
+        return nullcontext(McpClient(port))
+
+    monkeypatch.setattr(McpClient, "connect", classmethod(connect_to_fake_port))
+    exec(compile(_readme_quickstart_blocks()[1], "README-mcp", "exec"), {})
+    assert "completed revise" in capsys.readouterr().out
+    assert port.calls[0][0] == "run"
+    assert port.calls[0][1]["idempotency_key"] == "review_case_123"
+    assert port.calls[-1][1]["view"] == "full"
