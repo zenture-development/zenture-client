@@ -48,6 +48,8 @@ def test_registered_get_run_issues_survive_sdk_sanitation(
     category: str,
 ) -> None:
     source = Path(__file__).resolve().parents[4] / "zenture-mcp/services/mcp-server/src"
+    if not (source / "zenture_mcp_server").is_dir():
+        pytest.skip("sibling zenture-mcp checkout is not available (repo-local CI)")
     monkeypatch.setattr(sys, "path", [str(source), *sys.path])
     server = importlib.import_module("zenture_mcp_server.mcp_adapter").ZentureMCPServer(
         "sdk-contract"

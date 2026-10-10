@@ -98,11 +98,7 @@ def test_optional_issue_sanitation_preserves_original_payload_guards(
         async def call_tool(self, name: str, arguments: Any) -> object:
             return SyncPeer({}).call_tool(name, arguments)
 
-    peer = (
-        AsyncMcpClient(AsyncPeer({}))
-        if asynchronous
-        else McpClient(SyncPeer({}))
-    )
+    peer = AsyncMcpClient(AsyncPeer({})) if asynchronous else McpClient(SyncPeer({}))
 
     async def invoke() -> None:
         kwargs: dict[str, Any] = {

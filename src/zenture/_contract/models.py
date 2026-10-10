@@ -182,9 +182,7 @@ class PrepareCreditsProjectionV1(_RunResponseModel):
 
 
 class TerminalBillingSummaryV1(_RunResponseModel):
-    schema_version: Literal["run.terminal_billing_summary.v1"] = (
-        "run.terminal_billing_summary.v1"
-    )
+    schema_version: Literal["run.terminal_billing_summary.v1"] = "run.terminal_billing_summary.v1"
     status: Literal["pending", "settled", "released", "unavailable"]
     final_credits: CreditAmountProjectionV1 | None = None
 
@@ -464,7 +462,9 @@ class RunHeaderSchema(SDKBaseModel):
 
     idempotency_key: str = Field(alias="Idempotency-Key", min_length=1, max_length=255)
     content_length: int = Field(
-        alias="Content-Length", ge=0, le=10 * 1024 * 1024,
+        alias="Content-Length",
+        ge=0,
+        le=10 * 1024 * 1024,
         json_schema_extra={"x-validation-unit": "bytes"},
     )
     last_event_id: str = Field(alias="Last-Event-ID", min_length=1, max_length=512)
@@ -617,7 +617,6 @@ class RecordRunOutcomeRequest(_RunRequestModel):
         if (self.outcome == "edited") != (self.edited_artifact_ref is not None):
             raise ValueError("edited outcome requires an edited_artifact_ref")
         return self
-
 
     @model_validator(mode="wrap")
     @classmethod

@@ -153,9 +153,7 @@ class AsyncRecordingTransport:
         self.calls: list[tuple[str, Mapping[str, object]]] = []
 
     async def list_tools(self) -> object:
-        return {
-            "tools": [{"name": name} for name in self.tool_names]
-        }
+        return {"tools": [{"name": name} for name in self.tool_names]}
 
     async def call_tool(self, name: str, arguments: Mapping[str, object]) -> object:
         self.calls.append((name, arguments))

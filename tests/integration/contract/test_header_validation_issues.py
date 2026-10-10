@@ -21,6 +21,8 @@ from zenture.validation_issues import safe_issues
 @pytest.fixture
 def producer(monkeypatch: pytest.MonkeyPatch) -> tuple[Any, Any, Any]:
     root = Path(__file__).resolve().parents[4] / "zenture-mcp/services/mcp-server"
+    if not (root / "src/zenture_mcp_server").is_dir():
+        pytest.skip("sibling zenture-mcp checkout is not available (repo-local CI)")
     unit = Path(__file__).resolve().parents[2] / "unit"
     monkeypatch.setattr(sys, "path", [str(root / "src"), str(root / "tests"), str(unit), *sys.path])
     helpers = importlib.import_module("test_gateway_validation_producers")

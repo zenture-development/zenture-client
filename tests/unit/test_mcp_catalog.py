@@ -125,7 +125,9 @@ def test_complete_catalog_preserves_registered_json_and_public_type(
 
 @pytest.mark.parametrize("asynchronous", [False, True])
 def test_absent_optional_metadata_and_attach_remain_absent(asynchronous: bool) -> None:
-    result = discover([{"tools": [{"name": "run", "inputSchema": dict[str, object]()}]}], asynchronous)
+    result = discover(
+        [{"tools": [{"name": "run", "inputSchema": dict[str, object]()}]}], asynchronous
+    )
     assert [item.name for item in result] == ["run"]
     assert (
         result[0].title,

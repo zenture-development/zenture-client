@@ -49,7 +49,13 @@ def test_import_does_no_network_browser_keyring_or_lock_file_work(tmp_path: Path
     # unrelated installed SDK in the selected test interpreter.
     source = __import__("pathlib").Path(__file__).resolve().parents[3] / "src"
     result = subprocess.run(
-        [sys.executable, "-I", "-c", "import sys; sys.path.insert(0, sys.argv[1]);\n" + PROBE, str(source)],
+        [
+            sys.executable,
+            "-I",
+            "-c",
+            "import sys; sys.path.insert(0, sys.argv[1]);\n" + PROBE,
+            str(source),
+        ],
         env=env,
         capture_output=True,
         text=True,

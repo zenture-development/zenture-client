@@ -125,11 +125,14 @@ def test_actual_mcp_producer_output_is_consumed_without_fixture_fields(
     import sys
     from pathlib import Path
 
+    producer_src = Path(__file__).resolve().parents[3] / "zenture-mcp/services/mcp-server/src"
+    if not (producer_src / "zenture_mcp_server").is_dir():
+        pytest.skip("sibling zenture-mcp checkout is not available (repo-local CI)")
     monkeypatch.setattr(
         sys,
         "path",
         [
-            str(Path(__file__).resolve().parents[3] / "zenture-mcp/services/mcp-server/src"),
+            str(producer_src),
             *sys.path,
         ],
     )
