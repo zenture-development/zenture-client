@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+- MCP peers keep authorization failures (`AuthorizationRequired`,
+  `PermissionDenied`, including inside an `ExceptionGroup`) classified and
+  do not retry them in `wait_run` or discovery; only unknown transport failures
+  are wrapped as retryable `mcp_transport_unavailable`.
+
+- MCP result-contract errors no longer chain the Pydantic validation error, so
+  submitted values do not appear in tracebacks.
+
+- The MCP run review example uses `wait_run` under one caller budget that also
+  covers the final full read; a late completion raises `ZenturePollingTimeoutError`.
+
+- The end-to-end example reports a billed total only when every component is
+  known, and names the operations included in each total.
+
+- Documented `wait_run` on both MCP peers and clarified that MCP `run()` only
+  starts a Run. Documented in-process `login(session_only=True)`; the CLI
+  `--session-only` option is verification only. PyPI publication requires
+  Trusted Publishing without a long-lived token fallback.
+
+- Examples print identifiers and status by default; evaluation results and the
+  optimized prompt require `--show-result` / `--show-prompt`.
+
 - Added immutable typed validation `issues` on REST and MCP errors, bounded by
   public field schemas, and content-free local Run `ValidationError` summaries.
   Sync/async REST Run and artifact requests automatically negotiate safe details
