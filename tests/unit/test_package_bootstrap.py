@@ -67,8 +67,8 @@ def test_package_artifact_and_install_smoke_scripts_are_wired_into_development_w
 def test_canonical_distribution_and_repository_metadata() -> None:
     project = tomllib.loads(Path("pyproject.toml").read_text())["project"]
     assert project["name"] == "zenture"
-    assert project["urls"]["Repository"] == "https://github.com/zenture95/zenture-client"
-    assert project["urls"]["Issues"] == "https://github.com/zenture95/zenture-client/issues"
+    assert project["urls"]["Repository"] == "https://github.com/zenture-development/zenture-client"
+    assert project["urls"]["Issues"] == "https://github.com/zenture-development/zenture-client/issues"
 
 
 def test_release_transfers_canonical_artifacts_with_explicit_publish_gate() -> None:

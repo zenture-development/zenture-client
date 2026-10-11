@@ -55,8 +55,8 @@ zenture = "zenture.cli:main"
 
 [project.urls]
 Homepage = "https://www.zenture.app/about"
-Repository = "https://github.com/zenture95/zenture-client"
-Issues = "https://github.com/zenture95/zenture-client/issues"
+Repository = "https://github.com/zenture-development/zenture-client"
+Issues = "https://github.com/zenture-development/zenture-client/issues"
 
 [tool.hatch.version]
 path = "src/zenture/_version.py"

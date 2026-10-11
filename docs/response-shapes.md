@@ -452,7 +452,7 @@ Base URL: `https://api.zenture.app/v1`
 
 Developer docs: `https://www.zenture.app/developers`
 
-Python client: [zenture95/zenture-client](https://github.com/zenture95/zenture-client)
+Python client: [zenture-development/zenture-client](https://github.com/zenture-development/zenture-client)
 ```
 
 ### `POST /v1/input-wizard`
