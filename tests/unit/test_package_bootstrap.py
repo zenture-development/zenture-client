@@ -68,7 +68,9 @@ def test_canonical_distribution_and_repository_metadata() -> None:
     project = tomllib.loads(Path("pyproject.toml").read_text())["project"]
     assert project["name"] == "zenture"
     assert project["urls"]["Repository"] == "https://github.com/zenture-development/zenture-client"
-    assert project["urls"]["Issues"] == "https://github.com/zenture-development/zenture-client/issues"
+    assert (
+        project["urls"]["Issues"] == "https://github.com/zenture-development/zenture-client/issues"
+    )
 
 
 def test_release_transfers_canonical_artifacts_with_explicit_publish_gate() -> None:
