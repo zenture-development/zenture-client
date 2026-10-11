@@ -1,6 +1,6 @@
 # Release
 
-The SDK is prepared for a public beta once the critical review gate and
+The client is prepared for a public beta once the critical review gate and
 pre-go-live configuration are complete.
 
 ## Public Beta Expectations
@@ -16,9 +16,9 @@ pre-go-live configuration are complete.
 
 ## Publishing
 
-PyPI publishing should use Trusted Publishing through GitHub Actions OIDC. Do
-not add long-lived PyPI tokens to repository secrets unless there is an explicit
-documented fallback plan.
+PyPI publishing uses Trusted Publishing through GitHub Actions OIDC only, as
+SECURITY.md and CONTRIBUTING.md require. Do not add long-lived PyPI tokens to
+repository secrets, including as a fallback.
 
 Before public go-live, confirm branch protection, required checks, CODEOWNERS,
 secret scanning, push protection, and protected publishing environments.

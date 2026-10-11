@@ -1,13 +1,13 @@
-# SDK Call Reference
+# Client Call Reference
 
-This page is the copy-paste oriented reference for every public SDK call. Each
-section shows the SDK method, the underlying public API route, and the typical
+This page is the copy-paste oriented reference for every public client call. Each
+section shows the client method, the underlying public API route, and the typical
 response object shape.
 
-For raw JSON response bodies and SDK model mapping, see
+For raw JSON response bodies and client model mapping, see
 [`response-shapes.md`](./response-shapes.md).
 
-All mutating routes require an `Idempotency-Key`. The SDK methods expose this as
+All mutating routes require an `Idempotency-Key`. The client methods expose this as
 `idempotency_key`. Use stable keys from your own system for retries of the same
 request body. Do not include prompts, answers, API tokens, or customer PII in
 idempotency keys.
@@ -15,6 +15,13 @@ idempotency keys.
 High-level `.run(...)` helpers create work and wait for a terminal operation.
 Low-level `.create(...)` or `.create_operation(...)` helpers return the initial
 `PublicOperationResponse` immediately.
+
+## Product Runs
+
+For every `client.runs.*` method, payload field, response meaning, and complete
+REST/MCP evaluation examples, use the [Run guide](run-guide.md). Product Runs
+have their own lifecycle; `runs.run()` does not have the create-and-wait behavior
+of `chat.run()` or `evaluations.run()` below.
 
 ## Response Wrappers
 
@@ -63,9 +70,9 @@ Failed terminal operations keep the operation response shape:
 Route: `GET /v1/helloworld`
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     response = client.helloworld()
     print(response)
 ```
@@ -85,9 +92,9 @@ Use this only as a cheap connectivity check. It does not create billable work.
 Route: `GET /v1/models`
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     response = client.models.list(mode="single")
     for model in response.models:
         print(model.id, model.display_name, model.is_available)
@@ -129,10 +136,10 @@ chat. Omit `mode` to list all visible public models.
 Route: `POST /v1/chat`
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 from zenture.idempotency import idempotency_key
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     operation = client.chat.create(
         message="Draft three support next steps.",
         mode="single",
@@ -159,10 +166,10 @@ Use `client.operations.wait(operation.operation_id)` to poll this operation.
 Route: `POST /v1/chat`
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 from zenture.idempotency import idempotency_key
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     operation = client.chat.create_operation(
         message="Compare these draft answers.",
         mode="multi",
@@ -190,10 +197,10 @@ Example response:
 Route: `POST /v1/chat`, then `GET /v1/operations/{operation_id}`
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 from zenture.idempotency import idempotency_key
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     result = client.chat.run(
         message="Draft three support next steps.",
         mode="single",
@@ -232,21 +239,21 @@ Use `chat_id` for follow-up turns. Use `model_response_id` as the internal
 AI-answer id when evaluating this zenture-generated answer.
 
 Set `include_content=True` when the caller needs the matching public chat turn
-in the same SDK call. The SDK then performs one additional
+in the same client call. The client then performs one additional
 `GET /v1/chats/{chat_id}/messages` request and attaches the matching turn as
 `result.chat_turn`. Leave it unset for lower-latency operation polling.
 
-The SDK exposes chat operation results as flat fields on `result`. If a public
+The client exposes chat operation results as flat fields on `result`. If a public
 operation read contains the same ids nested under a known result wrapper, the
-SDK normalizes it before returning the typed object.
+client normalizes it before returning the typed object.
 
 Follow-up turn:
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 from zenture.idempotency import idempotency_key
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     first = client.chat.run(
         message="Create a short onboarding checklist.",
         mode="single",
@@ -267,9 +274,9 @@ with Zenture.from_env() as client:
 Route: `GET /v1/chats`
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     page = client.chat.list(limit=50)
     print(page.next_cursor)
 ```
@@ -297,9 +304,9 @@ Example response:
 Route: repeated `GET /v1/chats`
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     for chat in client.chat.iter(limit=50):
         print(chat.chat_id, chat.title)
 ```
@@ -322,9 +329,9 @@ The iterator follows `next_cursor` until the API returns `None`.
 Route: `GET /v1/chats/{chat_id}`
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     response = client.chat.get("chat_example")
     print(response.chat.chat_id)
 ```
@@ -357,9 +364,9 @@ Example response:
 Route: `GET /v1/chats/{chat_id}/messages`
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     response = client.chat.messages("chat_example", limit=50)
     turn = response.turns[0]
     print(turn.user_message, turn.model_answer, turn.model_response_id)
@@ -392,9 +399,9 @@ internal evaluation of an existing zenture chat answer.
 Route: repeated `GET /v1/chats/{chat_id}/messages`
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     for turn in client.chat.iter_messages("chat_example", limit=50):
         print(turn.turn_id, turn.model_response_id)
 ```
@@ -419,10 +426,10 @@ Example yielded item:
 Route: `POST /v1/input-wizard`
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 from zenture.idempotency import idempotency_key
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     operation = client.input_wizard.create(
         prompt="Improve this onboarding prompt for a support assistant.",
         idempotency_key=idempotency_key("case-123", "input-wizard", "v1"),
@@ -457,10 +464,10 @@ Route: `POST /v1/input-wizard`, then `GET /v1/operations/{operation_id}` if
 needed
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 from zenture.idempotency import idempotency_key
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     result = client.input_wizard.run(
         prompt="Improve this onboarding prompt for a support assistant.",
         idempotency_key=idempotency_key("case-123", "input-wizard", "v1"),
@@ -525,7 +532,7 @@ creates an operation or checks credits. A terminal failed evaluation operation
 means execution started and then failed; it should not be used to detect a
 malformed internal-vs-external payload.
 
-The SDK validates the most common internal/external mix-up locally: if
+The client validates the most common internal/external mix-up locally: if
 `chat_id` or `turn_id` is supplied without `model_response_id`,
 `client.evaluations.create(...)` and `client.evaluations.run(...)` raise
 Pydantic `ValidationError` before sending an HTTP request. Server-side target
@@ -534,7 +541,7 @@ raises `ZentureValidationError` with `status_code == 422` and
 `error_code == "validation_failed"`.
 
 If the external answer contains sources, include them directly in `ai_answer`
-as Markdown links, footnotes, or plain URLs. The SDK does not require a separate
+as Markdown links, footnotes, or plain URLs. The client does not require a separate
 `sources` field for Public V1; zenture evaluates the submitted Markdown answer
 as one payload. Keep source text concise and avoid pasting private documents
 unless your application is allowed to send them to zenture.
@@ -544,10 +551,10 @@ unless your application is allowed to send them to zenture.
 Route: `POST /v1/evaluate`
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 from zenture.idempotency import idempotency_key
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     operation = client.evaluations.create(
         user_message="What does zenture do?",
         ai_answer="zenture evaluates AI outputs.",
@@ -574,10 +581,10 @@ Example response:
 Route: `POST /v1/evaluate`, then `GET /v1/operations/{operation_id}`
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 from zenture.idempotency import idempotency_key
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     result = client.evaluations.run(
         user_message="What changed in today's German financial news?",
         ai_answer=(
@@ -619,7 +626,7 @@ Example response:
 ```
 
 Set `include_detail=True` when the caller wants the public evaluation detail in
-the same SDK call. The SDK then performs one additional
+the same client call. The client then performs one additional
 `GET /v1/evaluations/{evaluation_id}` request and attaches it as
 `result.evaluation`. Leave it unset when the operation result is enough.
 
@@ -628,12 +635,12 @@ the same SDK call. The SDK then performs one additional
 Route: `POST /v1/evaluate`, then `GET /v1/operations/{operation_id}`
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 from zenture.idempotency import idempotency_key
 from pydantic import ValidationError
 from zenture.errors import ZentureValidationError
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     try:
         chat = client.chat.run(
             message="Draft three support next steps.",
@@ -644,10 +651,7 @@ with Zenture.from_env() as client:
         turn_id = chat.result.turn_id
         model_response_id = chat.result.model_response_id or chat.result.model_response_ids[0]
 
-        turn = next(
-            item for item in client.chat.messages(chat_id).turns
-            if item.turn_id == turn_id
-        )
+        turn = next(item for item in client.chat.messages(chat_id).turns if item.turn_id == turn_id)
 
         result = client.evaluations.run(
             user_message=turn.user_message,
@@ -716,16 +720,12 @@ Example response:
     "score": 86.0,
     "created_at": "2026-06-22T10:05:00Z",
     "amount_billed": {"amount": "2.00", "unit": "credits"},
-    "zenture_summary": {
-        "public_api": "The answer is relevant but relies on unavailable sources."
-    },
+    "zenture_summary": {"public_api": "The answer is relevant but relies on unavailable sources."},
     "zenture_suggestion": {
         "public_api": "Replace unavailable links with accessible primary sources."
     },
     "zenture_kpi_details": {
-        "public_api": {
-            "src_acces": {"value": 0, "analysis": "The cited URL returned 404."}
-        }
+        "public_api": {"src_acces": {"value": 0, "analysis": "The cited URL returned 404."}}
     },
     "results": [
         {
@@ -754,9 +754,9 @@ Example response:
 Route: `GET /v1/evaluations`
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     page = client.evaluations.list(limit=50)
     print(page.next_cursor)
 ```
@@ -782,9 +782,9 @@ Example response:
 Route: repeated `GET /v1/evaluations`
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     for evaluation in client.evaluations.iter(limit=50):
         print(evaluation.evaluation_id, evaluation.score)
 ```
@@ -805,9 +805,9 @@ Example yielded item:
 Route: `GET /v1/evaluations/{evaluation_id}`
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     evaluation = client.evaluations.get("eval_example")
     print(evaluation.status, evaluation.score)
 ```
@@ -830,9 +830,9 @@ Example response:
 Route: `GET /v1/operations/{operation_id}`
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     operation = client.operations.get("op_example")
     print(operation.status, operation.result)
 ```
@@ -876,9 +876,9 @@ as a prompt or answer body store.
 Route: repeated `GET /v1/operations/{operation_id}`
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     final_operation = client.operations.wait("op_example", timeout=120.0)
     print(final_operation.status)
 ```
@@ -902,7 +902,7 @@ Example response:
 If local polling times out or is stopped after create succeeded, the raised
 exception exposes `operation_id` and `idempotency_key` attributes for recovery.
 
-Polling cadence: the SDK waits `1s`, then `2s`, then `4s`, then caps at `8s`
+Polling cadence: the client waits `1s`, then `2s`, then `4s`, then caps at `8s`
 between reads. If you call `GET /v1/operations/{operation_id}` yourself, use the
 same cadence, do not poll faster than once per second per operation, and honor
 `Retry-After` on `429` responses.
@@ -914,9 +914,9 @@ same cadence, do not poll faster than once per second per operation, and honor
 Route: `GET /v1/wallet`
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     wallet = client.wallet.get()
     print(wallet.plan, wallet.status, wallet.credits_available.amount)
 ```
@@ -937,9 +937,9 @@ Example response:
 Route: `GET /v1/usage`
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     api_usage = client.usage.get(scope="api")
     all_usage = client.usage.get(scope="all")
     print(api_usage.operation_count, all_usage.operation_count)
@@ -962,9 +962,9 @@ counters visible to the token.
 Route: `GET /v1/limits`
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     limits = client.limits.get()
     print(limits.routes["POST /v1/evaluate"].idempotency_required)
 ```
@@ -997,14 +997,14 @@ Example response:
 
 ## Async Client
 
-`AsyncZenture` exposes the same resources and response shapes. Only `await` and
+`AsyncZentureClient` exposes the same resources and response shapes. Only `await` and
 `async with` change:
 
 ```python
-from zenture import AsyncZenture
+from zenture import AsyncZentureClient
 from zenture.idempotency import idempotency_key
 
-async with AsyncZenture.from_env() as client:
+async with AsyncZentureClient.from_env() as client:
     result = await client.evaluations.run(
         user_message="What does zenture do?",
         ai_answer="zenture evaluates AI outputs.",
@@ -1017,9 +1017,9 @@ async with AsyncZenture.from_env() as client:
 Async iterators use `async for`:
 
 ```python
-from zenture import AsyncZenture
+from zenture import AsyncZentureClient
 
-async with AsyncZenture.from_env() as client:
+async with AsyncZentureClient.from_env() as client:
     async for evaluation in client.evaluations.iter(limit=50):
         print(evaluation.evaluation_id)
 ```

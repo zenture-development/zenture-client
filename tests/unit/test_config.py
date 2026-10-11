@@ -15,6 +15,24 @@ NON_PROD_OVERRIDE_ENV = "ZENTURE_SDK_ALLOW_NON_PROD_BASE_URL"
 INT_API_BASE_URL = "https://api-int.zenture.app"
 
 
+def _assert_validation_error_does_not_disclose_api_key(
+    exc_info: pytest.ExceptionInfo[ValidationError],
+    api_key: str,
+) -> None:
+    error = exc_info.value
+    rendered_error = "\n".join(
+        (
+            str(error),
+            repr(error),
+            repr(error.errors()),
+            error.json(),
+        )
+    )
+
+    assert api_key not in rendered_error
+    assert api_key[:12] not in rendered_error
+
+
 def test_config_is_frozen_pydantic_model_and_redacts_api_key() -> None:
     config = ZentureConfig(api_key=LIVE_CONFIG_KEY)
 
@@ -90,6 +108,22 @@ def test_test_token_requires_explicit_non_production_origin() -> None:
 
     with pytest.raises(ValidationError, match="Test API tokens cannot"):
         ZentureConfig(api_key=TEST_CONFIG_KEY, base_url="https://api.zenture.app")
+
+
+def test_config_validation_errors_do_not_disclose_api_key_fragments() -> None:
+    with pytest.raises(ValidationError) as exc_info:
+        ZentureConfig(api_key=TEST_CONFIG_KEY, base_url=INT_API_BASE_URL)
+
+    _assert_validation_error_does_not_disclose_api_key(exc_info, TEST_CONFIG_KEY)
+
+
+def test_field_validation_errors_do_not_disclose_api_key_fragments() -> None:
+    invalid_api_key = f" {TEST_CONFIG_KEY} "
+
+    with pytest.raises(ValidationError) as exc_info:
+        ZentureConfig(api_key=invalid_api_key)
+
+    _assert_validation_error_does_not_disclose_api_key(exc_info, TEST_CONFIG_KEY)
 
 
 def test_test_token_accepts_local_non_production_origin(

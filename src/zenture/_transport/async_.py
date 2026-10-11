@@ -3,23 +3,36 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, cast
+import time
+from contextlib import asynccontextmanager
+from typing import TYPE_CHECKING, Any, cast
 
 import httpx
 
 from zenture._transport.base import (
+    MAX_RESPONSE_BYTES,
     build_timeout,
     build_url,
+    decode_bounded_json,
+    decode_bounded_text,
     default_headers,
     extract_error_code,
     has_idempotency_key,
+    request_error_details,
     retry_delay,
 )
-from zenture.errors import ZentureResponseError, ZentureTransportError, error_from_response
+from zenture.errors import (
+    ZentureAPIError,
+    ZentureResponseError,
+    ZentureTransportError,
+    error_from_response,
+)
 from zenture.redaction import redact_text
 from zenture.retries import should_retry
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator, AsyncIterable
+
     from zenture.config import ZentureConfig
 
 
@@ -68,7 +81,14 @@ class AsyncTransport:
             json=json,
             params=params,
         )
-        return response.text
+        try:
+            return decode_bounded_text(
+                response.content,
+                encoding=response.encoding or "utf-8",
+                label="Public API response",
+            )
+        except ValueError:
+            raise ZentureResponseError("Public API response was too large.") from None
 
     async def request_json(
         self,
@@ -79,6 +99,9 @@ class AsyncTransport:
         headers: dict[str, str] | None = None,
         json: object | None = None,
         params: dict[str, str] | None = None,
+        content: bytes | AsyncIterable[bytes] | None = None,
+        replayable: bool = True,
+        timeout: float | None = None,
     ) -> object:
         """Request a JSON response and map public API errors."""
 
@@ -89,13 +112,62 @@ class AsyncTransport:
             headers=headers,
             json=json,
             params=params,
+            content=content,
+            replayable=replayable,
+            timeout=timeout,
         )
         response_error: ZentureResponseError | None = None
         try:
-            return response.json()
-        except ValueError:
-            response_error = ZentureResponseError("Public API response was not valid JSON.")
+            return decode_bounded_json(response.content, label="Public API response")
+        except ValueError as exc:
+            response_error = ZentureResponseError(
+                "Public API response was too large."
+                if "too large" in str(exc)
+                else "Public API response was not valid JSON."
+            )
         raise response_error
+
+    @asynccontextmanager
+    async def stream(
+        self,
+        method: str,
+        path: str,
+        *,
+        auth: bool = True,
+        headers: dict[str, str] | None = None,
+        params: dict[str, str] | None = None,
+        timeout: float | None = None,
+    ) -> AsyncGenerator[httpx.Response, None]:
+        """Open one non-buffered public stream without mutation retries."""
+
+        request_headers = self._request_headers(auth=auth)
+        if headers is not None:
+            request_headers.update(headers)
+        request_error_details(request_headers, path)
+        try:
+            if timeout is None:
+                stream = self._client.stream(
+                    method,
+                    build_url(self._config, path),
+                    headers=request_headers,
+                    params=params,
+                )
+            else:
+                stream = self._client.stream(
+                    method,
+                    build_url(self._config, path),
+                    headers=request_headers,
+                    params=params,
+                    timeout=timeout,
+                )
+            async with stream as response:
+                if response.status_code >= 400:
+                    await _raise_stream_error(response)
+                yield response
+        except (ZentureResponseError, ZentureAPIError):
+            raise
+        except httpx.HTTPError as exc:
+            raise ZentureTransportError(redact_text(str(exc))) from exc
 
     async def _request(
         self,
@@ -106,30 +178,54 @@ class AsyncTransport:
         headers: dict[str, str] | None,
         json: object | None,
         params: dict[str, str] | None,
+        content: bytes | AsyncIterable[bytes] | None = None,
+        replayable: bool = True,
+        timeout: float | None = None,
     ) -> httpx.Response:
         request_headers = self._request_headers(auth=auth)
         if headers is not None:
             request_headers.update(headers)
+        request_error_details(request_headers, path)
 
         attempt = 1
         max_attempts = self._config.max_retries + 1
+        request_deadline = time.monotonic() + timeout if timeout is not None else None
         while True:
             response: httpx.Response | None = None
             transport_error: ZentureTransportError | None = None
             try:
+                request_timeout = (
+                    None
+                    if request_deadline is None
+                    else max(0.0, request_deadline - time.monotonic())
+                )
+                if request_timeout is not None and request_timeout <= 0:
+                    raise httpx.ReadTimeout("request deadline exceeded")
+                if content is None:
+                    request_kwargs: dict[str, Any] = {
+                        "headers": request_headers,
+                        "params": params,
+                        "json": json,
+                    }
+                else:
+                    request_kwargs = {
+                        "headers": request_headers,
+                        "params": params,
+                        "content": content,
+                    }
+                if request_timeout is not None:
+                    request_kwargs["timeout"] = request_timeout
                 response = await self._client.request(
                     method,
                     build_url(self._config, path),
-                    headers=request_headers,
-                    json=json,
-                    params=params,
+                    **request_kwargs,
                 )
             except httpx.HTTPError as exc:
                 decision = should_retry(
                     method=method,
                     status_code=503,
                     error_code="dependency_unavailable",
-                    has_idempotency_key=has_idempotency_key(request_headers),
+                    has_idempotency_key=has_idempotency_key(request_headers) and replayable,
                     attempt=attempt,
                     max_attempts=max_attempts,
                 )
@@ -140,8 +236,12 @@ class AsyncTransport:
                         initial_backoff=self._config.initial_retry_backoff,
                         max_backoff=self._config.max_retry_backoff,
                     )
+                    if request_deadline is not None:
+                        delay = min(delay, max(0.0, request_deadline - time.monotonic()))
                     if delay > 0:
                         await asyncio.sleep(delay)
+                    if request_deadline is not None and time.monotonic() >= request_deadline:
+                        raise ZentureTransportError("request deadline exceeded") from None
                     attempt += 1
                     continue
                 transport_error = ZentureTransportError(redact_text(str(exc)))
@@ -155,10 +255,12 @@ class AsyncTransport:
             payload: object | None = None
             response_error: ZentureResponseError | None = None
             try:
-                payload = response.json()
-            except ValueError:
+                payload = decode_bounded_json(response.content, label="Public API error response")
+            except ValueError as exc:
                 response_error = ZentureResponseError(
-                    "Public API error response was not valid JSON."
+                    "Public API error response was too large."
+                    if "too large" in str(exc)
+                    else "Public API error response was not valid JSON."
                 )
             if response_error is not None:
                 raise response_error
@@ -171,7 +273,7 @@ class AsyncTransport:
                 method=method,
                 status_code=response.status_code,
                 error_code=extract_error_code(payload_dict),
-                has_idempotency_key=has_idempotency_key(request_headers),
+                has_idempotency_key=has_idempotency_key(request_headers) and replayable,
                 attempt=attempt,
                 max_attempts=max_attempts,
             )
@@ -182,8 +284,12 @@ class AsyncTransport:
                     initial_backoff=self._config.initial_retry_backoff,
                     max_backoff=self._config.max_retry_backoff,
                 )
+                if request_deadline is not None:
+                    delay = min(delay, max(0.0, request_deadline - time.monotonic()))
                 if delay > 0:
                     await asyncio.sleep(delay)
+                if request_deadline is not None and time.monotonic() >= request_deadline:
+                    raise ZentureTransportError("request deadline exceeded") from None
                 attempt += 1
                 continue
 
@@ -202,3 +308,31 @@ class AsyncTransport:
 
     async def __aexit__(self, *_exc_info: object) -> None:
         await self.aclose()
+
+
+async def _raise_stream_error(response: httpx.Response) -> None:
+    try:
+        body = bytearray()
+        content_length = response.headers.get("Content-Length")
+        if content_length is not None and int(content_length) > MAX_RESPONSE_BYTES:
+            raise ValueError("too large")
+        async for chunk in response.aiter_bytes():
+            body.extend(chunk)
+            if len(body) > MAX_RESPONSE_BYTES:
+                raise ValueError("too large")
+        payload = decode_bounded_json(bytes(body), label="Public API error response")
+    except ValueError as exc:
+        message = (
+            "Public API error response was too large."
+            if "too large" in str(exc)
+            else "Public API error response was not valid JSON."
+        )
+        raise ZentureResponseError(message) from None
+    if not isinstance(payload, dict):
+        raise ZentureResponseError("Public API error response was not an object.")
+    payload_dict = cast("dict[str, object]", payload)
+    raise error_from_response(
+        status_code=response.status_code,
+        payload=payload_dict,
+        headers=response.headers,
+    )

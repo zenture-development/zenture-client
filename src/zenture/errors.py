@@ -8,13 +8,14 @@ from pydantic import ValidationError
 
 from zenture.models import ForwardCompatibleErrorEnvelope
 from zenture.redaction import redact_text
+from zenture.validation_issues import ValidationIssue, safe_issues
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
 
 class ZentureError(Exception):
-    """Base class for all zenture SDK errors."""
+    """Base class for all zenture client errors."""
 
 
 class ZentureAPIError(ZentureError):
@@ -28,12 +29,14 @@ class ZentureAPIError(ZentureError):
         status_code: int,
         request_id: str | None = None,
         retry_after: float | None = None,
+        issues: tuple[ValidationIssue, ...] = (),
     ) -> None:
         self.message = redact_text(message)
         self.error_code = error_code
         self.status_code = status_code
         self.request_id = request_id
         self.retry_after = retry_after
+        self.issues = safe_issues(issues)
         super().__init__(self.message)
 
     def __str__(self) -> str:
@@ -101,6 +104,57 @@ class ZentureTransportError(ZentureError):
     """Raised for client-side network and timeout failures."""
 
 
+class ZentureMCPError(ZentureError):
+    """Raised for bounded MCP protocol and tool failures."""
+
+    def __init__(
+        self,
+        code: str,
+        *,
+        status_code: int = 502,
+        retryable: bool = False,
+        next_action: str = "check_request",
+        request_id: str | None = None,
+        retry_after_seconds: int | None = None,
+        idempotency_key: str | None = None,
+        issues: tuple[ValidationIssue, ...] = (),
+    ) -> None:
+        self.issues = safe_issues(issues, channel="mcp")
+        self.code = code
+        self.status_code = status_code
+        self.retryable = retryable
+        self.next_action = next_action
+        self.request_id = request_id
+        self.retry_after_seconds = retry_after_seconds
+        self.idempotency_key = idempotency_key
+        super().__init__(self._safe_message())
+
+    def _safe_message(self) -> str:
+        message = f"MCP request failed: {self.code}"
+        if self.request_id is not None:
+            message += f" (request_id={self.request_id})"
+        return message
+
+
+class ZentureMCPProtocolError(ZentureMCPError):
+    """Raised when an MCP result or catalog violates the bounded contract."""
+
+    def __init__(self, code: str = "protocol_error") -> None:
+        super().__init__(code, status_code=502, next_action="retry_later")
+
+
+class ZentureMCPDependencyError(ZentureMCPError):
+    """Raised when the optional official MCP transport is unavailable."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            "mcp_dependency_unavailable",
+            status_code=503,
+            retryable=True,
+            next_action="install_optional_dependency",
+        )
+
+
 class ZenturePollingTimeoutError(ZentureError):
     """Raised when local operation polling exhausts its timeout budget."""
 
@@ -111,11 +165,15 @@ class ZenturePollingTimeoutError(ZentureError):
         operation_id: str | None = None,
         idempotency_key: str | None = None,
         last_request_id: str | None = None,
+        last_status: str | None = None,
+        observed_deadline: str | None = None,
     ) -> None:
         self.message = redact_text(message)
         self.operation_id = operation_id
         self.idempotency_key = idempotency_key
         self.last_request_id = last_request_id
+        self.last_status = last_status
+        self.observed_deadline = observed_deadline
         super().__init__(self.message)
 
 
@@ -190,6 +248,7 @@ def error_from_response(
         status_code=status_code,
         request_id=envelope.request_id,
         retry_after=retry_after,
+        issues=envelope.error.issues,
     )
 
 

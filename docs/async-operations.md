@@ -1,6 +1,6 @@
 # Async Operations
 
-Some zenture routes create asynchronous operations. The SDK exposes three usage
+Some zenture routes create asynchronous operations. The client exposes three usage
 levels:
 
 - `create(...)` or `create_operation(...)`: create an operation and return the
@@ -56,7 +56,7 @@ attributes are not interpolated into exception strings.
 
 ## Polling Frequency
 
-Prefer `.run(...)` or `operations.wait(...)`; both use the SDK polling policy:
+Prefer `.run(...)` or `operations.wait(...)`; both use the client polling policy:
 wait `1s`, then `2s`, then `4s`, then cap at `8s` between operation status
 reads. This keeps normal callers away from avoidable rate limits.
 
@@ -65,13 +65,19 @@ schedule. Do not poll faster than once per second per operation, stop polling as
 soon as the operation reaches a terminal status, and honor `Retry-After` if the
 API returns `429`.
 
+The same finite wait contract applies to sync and async public Run clients:
+`runs.wait(...)` uses the first observed `deadline_at` plus the fixed 35-second
+recovery allowance and one polling interval when its timeout is omitted. An
+explicit finite timeout always wins. If stream consumption is unavailable,
+bounded Run polling is the fallback.
+
 ## Async Examples
 
 ```python
-from zenture import AsyncZenture
+from zenture import AsyncZentureClient
 from zenture.idempotency import idempotency_key
 
-async with AsyncZenture.from_env() as client:
+async with AsyncZentureClient.from_env() as client:
     operation = await client.chat.create_operation(
         message="Review this response.",
         mode="single",
@@ -81,12 +87,12 @@ async with AsyncZenture.from_env() as client:
 ```
 
 ```python
-from zenture import AsyncZenture
+from zenture import AsyncZentureClient
 from zenture.idempotency import idempotency_key
 
-async with AsyncZenture.from_env() as client:
+async with AsyncZentureClient.from_env() as client:
     evaluation = await client.evaluations.run(
-        user_message="What does the SDK do?",
+        user_message="What does the client do?",
         ai_answer="It helps server-side Python integrations call zenture.",
         external_id="support-ticket-123-answer-a",
         idempotency_key=idempotency_key("support-ticket-123-answer-a", "evaluate", "v1"),

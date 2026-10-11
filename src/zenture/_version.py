@@ -1,5 +1,5 @@
-"""Version metadata for zenture-sdk."""
+"""Version metadata for zenture."""
 
 from __future__ import annotations
 
-__version__ = "1.0.0rc3"
+__version__ = "1.0.2"

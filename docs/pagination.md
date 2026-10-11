@@ -1,6 +1,6 @@
 # Pagination
 
-Public list-style read routes use cursor pagination. The SDK exposes both page
+Public list-style read routes use cursor pagination. The client exposes both page
 methods and iterator helpers.
 
 ## Page Methods
@@ -23,9 +23,9 @@ Paginated public collections are ordered by `created_at desc`.
 Iterator helpers call the page methods repeatedly until `next_cursor` is `None`:
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     for chat in client.chat.iter(limit=50):
         print(chat.chat_id)
 
@@ -39,12 +39,12 @@ with Zenture.from_env() as client:
 Async clients expose async iterators with the same names:
 
 ```python
-from zenture import AsyncZenture
+from zenture import AsyncZentureClient
 
-async with AsyncZenture.from_env() as client:
+async with AsyncZentureClient.from_env() as client:
     async for chat in client.chat.iter(limit=50):
         print(chat.chat_id)
 ```
 
-The SDK validates `limit` and `cursor` before sending the request, matching the
+The client validates `limit` and `cursor` before sending the request, matching the
 public OpenAPI bounds. Invalid pagination input raises `ValueError`.

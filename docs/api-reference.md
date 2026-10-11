@@ -1,27 +1,46 @@
 # API Reference
 
-This is the compact resource index for the zenture Python SDK. Use it as the
+This is the compact resource index for the zenture Python client. Use it as the
 map of available clients, resources, and flows.
 
 The human-facing public API documentation lives at
-`https://www.zenture.app/developers`. This SDK also ships the local
+`https://www.zenture.app/developers`. This client also ships the local
 OpenAPI contract artifact under `openapi/zenture-public-api-v1.openapi.json` for
 deterministic contract-drift tests.
 
 For copy-paste calls, HTTP routes, and example response structures for every
-SDK/API call, use [`sdk-call-reference.md`](./sdk-call-reference.md).
-For raw JSON response bodies and SDK model mapping, use
+client/API call, use [`sdk-call-reference.md`](./sdk-call-reference.md).
+For raw JSON response bodies and client model mapping, use
 [`response-shapes.md`](./response-shapes.md).
 
 ## Clients
 
-- `Zenture`: synchronous client using `httpx.Client`.
-- `AsyncZenture`: asynchronous client using `httpx.AsyncClient`.
+- `ZentureClient`: synchronous client using `httpx.Client`.
+- `AsyncZentureClient`: asynchronous client using `httpx.AsyncClient`.
 
 Both clients support `from_env()`, explicit close methods, and context manager
 usage.
 
 ## Resource Index
+
+### Product Runs
+
+Use `client.runs` to evaluate selected content against a task and obtain an
+acceptance decision, findings and coverage. See the [Run guide](run-guide.md)
+for complete payloads, methods, return shapes and recovery. It also explains
+when to use the evaluation-specific API below.
+
+- `prepare(...)` inspects a proposal; `create(...)` starts that proposal.
+- `run(...)` prepares and starts; it does not poll to completion.
+- `get(...)`, `list(...)`, `wait(...)` read status and available results.
+- `list_events(...)` replays one page; `iter_events(...)` streams events.
+- `signed_upload(...)`, `attach_artifact(...)` authorize and send file bytes for
+  registration. Run preparation currently rejects `zenture_ref`; registration
+  does not enable file evaluation.
+- `cancel(...)` requests cancellation; `record_outcome(...)` records feedback.
+
+Run pages use limits 1-50 and cursors up to 512 characters, unlike the older
+chat/evaluation pagination defaults below. Async variants use the same resource.
 
 ### Connectivity
 
@@ -132,17 +151,17 @@ the existing owned zenture response. Requests with `chat_id` or `turn_id` but
 without `model_response_id` are rejected as `422 validation_failed` before an
 operation is created or credits are checked.
 
-In the Python SDK, that malformed local payload raises Pydantic
+In the Python client, that malformed local payload raises Pydantic
 `ValidationError` before the HTTP request is sent. If the payload shape is valid
 but the server rejects the target, for example because `model_response_id` does
-not belong to the authenticated user, the SDK raises `ZentureValidationError`
+not belong to the authenticated user, the client raises `ZentureValidationError`
 with `error_code == "validation_failed"`.
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 from zenture.idempotency import idempotency_key
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     first = client.chat.run(
         message="Give me a concise onboarding checklist for a new API user.",
         mode="single",
@@ -158,15 +177,9 @@ with Zenture.from_env() as client:
     )
 
     turn_id = follow_up.result.turn_id
-    model_response_id = (
-        follow_up.result.model_response_id
-        or follow_up.result.model_response_ids[0]
-    )
+    model_response_id = follow_up.result.model_response_id or follow_up.result.model_response_ids[0]
 
-    turn = next(
-        item for item in client.chat.messages(chat_id).turns
-        if item.turn_id == turn_id
-    )
+    turn = next(item for item in client.chat.messages(chat_id).turns if item.turn_id == turn_id)
 
     evaluation = client.evaluations.run(
         user_message=turn.user_message,
@@ -202,12 +215,12 @@ Billing and evaluation result fields:
   `accessibilityScore`, and `responseTimeMs`.
 
 ```python
-from zenture import Zenture
+from zenture import ZentureClient
 from zenture.idempotency import idempotency_key
 
-with Zenture.from_env() as client:
+with ZentureClient.from_env() as client:
     evaluation = client.evaluations.run(
-        user_message="What does the SDK do?",
+        user_message="What does the client do?",
         ai_answer=(
             "It helps server-side Python integrations call zenture. "
             "[Source](https://example.com/sdk-brief)"

@@ -23,7 +23,7 @@ MAX_CURSOR_LENGTH = 200
 
 
 def parse_response(model_type: type[ModelT], payload: object) -> ModelT:
-    """Validate a public API response against an SDK contract model."""
+    """Validate a public API response against a client contract model."""
 
     response_error: ZentureResponseError | None = None
     try:
@@ -36,7 +36,7 @@ def parse_response(model_type: type[ModelT], payload: object) -> ModelT:
 
 
 def idempotency_headers(idempotency_key: str) -> dict[str, str]:
-    """Build idempotency headers after SDK-side safety validation."""
+    """Build idempotency headers after client-side safety validation."""
 
     return {"Idempotency-Key": validate_idempotency_key(idempotency_key)}
 

@@ -1,4 +1,4 @@
-"""Utilities for removing secrets from SDK-visible text and metadata."""
+"""Utilities for removing secrets from client-visible text and metadata."""
 
 from __future__ import annotations
 

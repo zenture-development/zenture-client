@@ -20,6 +20,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 DOC_FILES = [
     ROOT / "docs" / "authentication.md",
+    ROOT / "docs" / "mcp-client.md",
+    ROOT / "docs" / "migration.md",
     ROOT / "docs" / "idempotency.md",
     ROOT / "docs" / "async-operations.md",
     ROOT / "docs" / "errors.md",
@@ -48,7 +50,18 @@ EXAMPLE_FILES = [
     ROOT / "examples" / "account_status.py",
     ROOT / "examples" / "end_to_end_chat_evaluation.py",
 ]
-PUBLIC_TEXT_FILES = [ROOT / "README.md", ROOT / "AGENTS.md", *DOC_FILES, *EXAMPLE_FILES]
+MCP_EXAMPLE_FILES = [
+    ROOT / "examples" / "mcp_async_login.py",
+    ROOT / "examples" / "mcp_sync_stored_login.py",
+    ROOT / "examples" / "mcp_device_login.py",
+]
+PUBLIC_TEXT_FILES = [
+    ROOT / "README.md",
+    ROOT / "AGENTS.md",
+    *DOC_FILES,
+    *EXAMPLE_FILES,
+    *MCP_EXAMPLE_FILES,
+]
 FORBIDDEN_PATTERNS = [
     re.compile("zt_" + "live_"),
     re.compile("zt_" + "test_"),
@@ -202,15 +215,20 @@ def test_readme_is_beta_ready_and_public_safe() -> None:
     assert '<img src="https://ai.zenture.app/logo.svg"' in text
     assert "docs/assets/zenture-logo.svg" not in text
     required = [
-        "pip install zenture-sdk",
+        "pip install zenture",
         "Python 3.11",
-        "server-side only",
+        "server-side credentials",
+        "Do not put them in browsers, mobile apps, frontend",
+        "bundles, public notebooks, logs, analytics, traces, or customer-visible errors.",
+        "The server retains authorization, Run execution, billing, and",
+        "tenant authority",
+        "no local MCP server",
         "ZENTURE_API_KEY",
         "https://ai.zenture.app/profile?tab=api-tokens",
         "https://www.zenture.app/developers",
         "docs/sdk-call-reference.md",
-        "Zenture.from_env()",
-        "AsyncZenture.from_env()",
+        "ZentureClient.from_env()",
+        "AsyncZentureClient.from_env()",
         "helloworld",
         'models.list(mode="single")',
         'models.list(mode="multi")',
@@ -261,7 +279,7 @@ def test_docs_and_agents_exist_with_required_public_onboarding_content() -> None
         "python3 -m ruff format --check .",
         "python3 -m twine check dist/*",
         "no token logging",
-        "no API-token-management SDK resource",
+        "no API-token-management client resource",
         "no internal `_contract` top-level exports",
     ]
     for item in required:
@@ -365,7 +383,7 @@ def test_response_shapes_document_current_public_endpoint_surface() -> None:
 
     assert "/v1/api-tokens" not in response_shapes
     assert "user_session" not in response_shapes
-    assert "Not exposed by this SDK" not in response_shapes
+    assert "Not exposed by this client" not in response_shapes
     assert "agentic" in response_shapes.lower()
     assert "response-shapes.md" in linked_docs
 
@@ -380,7 +398,7 @@ def test_examples_exist_compile_and_use_env_clients() -> None:
 
     async_source = _read(ROOT / "examples" / "async_chat.py")
     assert "asyncio.run(main())" in async_source
-    assert "AsyncZenture.from_env()" in async_source
+    assert "AsyncZentureClient.from_env()" in async_source
 
     multi_source = _read(ROOT / "examples" / "chat_multi.py")
     assert 'models.list(mode="multi")' in multi_source
@@ -485,12 +503,12 @@ def test_contributing_and_security_are_public_beta_current() -> None:
     assert "planning/bootstrap" not in contributing
     assert "planning/bootstrap" not in security
     assert "private/bootstrap" not in security
-    assert "Runtime SDK implementation starts only after" not in contributing
+    assert "Runtime client implementation starts only after" not in contributing
     assert "python3 -m ruff format --check ." in contributing
     assert "python3 -m pyright" in contributing
     assert "python3 -m pytest" in contributing
     assert "python3 -m twine check dist/*" in contributing
-    assert "GitHub Security Advisory" in security
+    assert "mailto:security@zenture.app" in security
 
 
 def test_sdist_includes_public_docs_examples_and_excludes_private_plan() -> None:

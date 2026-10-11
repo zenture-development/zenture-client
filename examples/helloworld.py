@@ -1,12 +1,12 @@
-"""Minimal connectivity check for the zenture SDK."""
+"""Minimal connectivity check for the zenture client."""
 
 from __future__ import annotations
 
-from zenture import Zenture
+from zenture import ZentureClient
 
 
 def main() -> None:
-    with Zenture.from_env() as client:
+    with ZentureClient.from_env() as client:
         print(client.helloworld())
 
 

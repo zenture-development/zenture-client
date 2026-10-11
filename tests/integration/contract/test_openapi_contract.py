@@ -1,4 +1,4 @@
-"""OpenAPI contract drift checks for the SDK surface."""
+"""OpenAPI contract drift checks for the client surface."""
 
 from __future__ import annotations
 
@@ -171,3 +171,23 @@ def test_openapi_collection_responses_keep_nullable_next_cursor() -> None:
         assert next_cursor["type"] == "string"
         assert next_cursor["nullable"] is True
         assert "Null means there is no further page" in next_cursor["description"]
+
+
+def test_openapi_signed_upload_response_uses_gateway_upload_id_bounds() -> None:
+    contract = _load_openapi()
+    upload_id = contract["components"]["schemas"]["PublicSignedUploadResponse"]["properties"][
+        "upload_id"
+    ]
+    assert upload_id["minLength"] == 8
+    assert upload_id["maxLength"] == 128
+    assert upload_id["pattern"] == r"^upload_[A-Za-z0-9_-]{8,128}$"
+
+
+def test_openapi_run_responses_expose_nullable_deadline_at() -> None:
+    contract = _load_openapi()
+    schemas = contract["components"]["schemas"]
+
+    for schema_name in ("PublicRunResponse", "PublicRunListItem"):
+        deadline_at = schemas[schema_name]["properties"]["deadline_at"]
+        assert deadline_at["format"] == "date-time"
+        assert deadline_at["type"] == ["string", "null"]

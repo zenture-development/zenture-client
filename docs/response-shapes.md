@@ -2,7 +2,7 @@
 # Response Shapes
 
 This page documents sanitized request examples and raw zenture Public API response bodies.
-The committed OpenAPI artifact remains the contract source of truth; this file is generated from that artifact for SDK documentation and reviewable downstream diffs.
+The committed OpenAPI artifact remains the contract source of truth; this file is generated from that artifact for client documentation and reviewable downstream diffs.
 
 ## Conventions
 
@@ -10,14 +10,22 @@ The committed OpenAPI artifact remains the contract source of truth; this file i
 - `null` means the field is optional, unavailable, or intentionally absent.
 - Credit amounts use display strings such as `{"amount": "123.45", "unit": "credits"}`.
 - Operation statuses are `queued`, `running`, `succeeded`, `failed`, `cancelled`, and `expired`.
-- Mutating async routes return `PublicOperationResponse`; SDK `.run(...)` helpers wrap terminal operations in `OperationRunResult`.
+- Mutating async routes return `PublicOperationResponse`; client `.run(...)` helpers wrap terminal operations in `OperationRunResult`.
 - `PublicOperationError.code` is a domain operation code string and is separate from gateway error-envelope codes.
 - Rate-limit data is returned as HTTP headers, not in response bodies.
-- Agentic chat is not a Public V1 mode and has no public SDK helper.
+- Agentic chat is not a Public V1 mode and has no public client helper.
+
+## Product Run interpretation
+
+See the [Run guide](run-guide.md#interpret-the-returned-run) for current typed
+client interpretation and the distinction between technical completion, acceptance,
+result availability and Credits. Examples below illustrate wire shapes; use the
+current models and guide for optional/additive fields. MCP `get_run()` wraps its
+Run in `.run`, while REST `runs.get()` returns it directly.
 
 ## Endpoint Summary
 
-| Method | Endpoint | Success | SDK surface | SDK model |
+| Method | Endpoint | Success | Client surface | Client model |
 | --- | --- | --- | --- | --- |
 | `POST` | `/v1/chat` | `202` | `client.chat.create(...)`, `client.chat.create_operation(...)`, `client.chat.run(...)` | `PublicOperationResponse`, `OperationRunResult` |
 | `GET` | `/v1/chats` | `200` | `client.chat.list(...)`, `client.chat.iter(...)` | `PublicChatCollectionResponse` |
@@ -31,6 +39,16 @@ The committed OpenAPI artifact remains the contract source of truth; this file i
 | `GET` | `/v1/limits` | `200` | `client.limits.get()` | `LimitsResponse` |
 | `GET` | `/v1/models` | `200` | `client.models.list(mode=None | "single" | "multi")` | `PublicModelListResponse` |
 | `GET` | `/v1/operations/{operation_id}` | `200` | `client.operations.get(...)`, `client.operations.wait(...)` | `PublicOperationResponse` |
+| `POST` | `/v1/run-artifacts` | `201` | `client.runs.attach_artifact(...)` | `PublicRunArtifactResponse` |
+| `POST` | `/v1/run-artifacts/signed-upload` | `200` | `client.runs.signed_upload(...)` | `PublicSignedUploadResponse` |
+| `GET` | `/v1/runs` | `200` | `client.runs.list(...)` | `PublicRunCollectionResponse` |
+| `POST` | `/v1/runs` | `200, 202` | `client.runs.create(...)`, `client.runs.run(...)` | `PublicRunResponse` |
+| `POST` | `/v1/runs/prepare` | `200` | `client.runs.prepare(...)` | `PrepareRunResponse` |
+| `GET` | `/v1/runs/{run_id}` | `200` | `client.runs.get(...)` | `PublicRunResponse` |
+| `POST` | `/v1/runs/{run_id}/cancel` | `200` | `client.runs.cancel(...)` | `PublicRunResponse` |
+| `GET` | `/v1/runs/{run_id}/events` | `200` | `client.runs.list_events(...)` | `PublicRunEventsResponse` |
+| `GET` | `/v1/runs/{run_id}/events/stream` | `200` | `client.runs.iter_events(...)` | `string` |
+| `POST` | `/v1/runs/{run_id}/outcome` | `200` | `client.runs.record_outcome(...)` | `PublicRunOutcomeResponse` |
 | `GET` | `/v1/usage` | `200` | `client.usage.get(...)` | `PublicUsageResponse` |
 | `GET` | `/v1/wallet` | `200` | `client.wallet.get()` | `PublicWalletResponse` |
 
@@ -123,7 +141,7 @@ Terminal failure example:
 
 ### `OperationRunResult`
 
-`OperationRunResult` is SDK-only and is not returned as raw HTTP JSON.
+`OperationRunResult` is client-only and is not returned as raw HTTP JSON.
 
 ```json
 {
@@ -154,9 +172,9 @@ Terminal failure example:
 
 ### `POST /v1/chat`
 
-SDK surface: `client.chat.create(...)`, `client.chat.create_operation(...)`, `client.chat.run(...)`
+Client surface: `client.chat.create(...)`, `client.chat.create_operation(...)`, `client.chat.run(...)`
 
-SDK model: `PublicOperationResponse`, `OperationRunResult`
+Client model: `PublicOperationResponse`, `OperationRunResult`
 
 Auth mode: `api_token`
 
@@ -190,9 +208,9 @@ Schema: `PublicOperationResponse`
 
 ### `GET /v1/chats`
 
-SDK surface: `client.chat.list(...)`, `client.chat.iter(...)`
+Client surface: `client.chat.list(...)`, `client.chat.iter(...)`
 
-SDK model: `PublicChatCollectionResponse`
+Client model: `PublicChatCollectionResponse`
 
 Auth mode: `api_token`
 
@@ -222,9 +240,9 @@ Schema: `PublicChatCollectionResponse`
 
 ### `GET /v1/chats/{chat_id}`
 
-SDK surface: `client.chat.get(...)`
+Client surface: `client.chat.get(...)`
 
-SDK model: `PublicChatResponse`
+Client model: `PublicChatResponse`
 
 Auth mode: `api_token`
 
@@ -263,9 +281,9 @@ Schema: `PublicChatResponse`
 
 ### `GET /v1/chats/{chat_id}/messages`
 
-SDK surface: `client.chat.messages(...)`, `client.chat.iter_messages(...)`
+Client surface: `client.chat.messages(...)`, `client.chat.iter_messages(...)`
 
-SDK model: `PublicChatMessagesResponse`
+Client model: `PublicChatMessagesResponse`
 
 Auth mode: `api_token`
 
@@ -300,9 +318,9 @@ Schema: `PublicChatMessagesResponse`
 
 ### `POST /v1/evaluate`
 
-SDK surface: `client.evaluations.create(...)`, `client.evaluations.run(...)`
+Client surface: `client.evaluations.create(...)`, `client.evaluations.run(...)`
 
-SDK model: `PublicOperationResponse`, `OperationRunResult`
+Client model: `PublicOperationResponse`, `OperationRunResult`
 
 Auth mode: `api_token`
 
@@ -337,9 +355,9 @@ Schema: `PublicOperationResponse`
 
 ### `GET /v1/evaluations`
 
-SDK surface: `client.evaluations.list(...)`, `client.evaluations.iter(...)`
+Client surface: `client.evaluations.list(...)`, `client.evaluations.iter(...)`
 
-SDK model: `PublicEvaluationCollectionResponse`
+Client model: `PublicEvaluationCollectionResponse`
 
 Auth mode: `api_token`
 
@@ -375,9 +393,9 @@ Schema: `PublicEvaluationCollectionResponse`
 
 ### `GET /v1/evaluations/{evaluation_id}`
 
-SDK surface: `client.evaluations.get(...)`
+Client surface: `client.evaluations.get(...)`
 
-SDK model: `PublicEvaluationResponse`
+Client model: `PublicEvaluationResponse`
 
 Auth mode: `api_token`
 
@@ -411,9 +429,9 @@ Schema: `PublicEvaluationResponse`
 
 ### `GET /v1/helloworld`
 
-SDK surface: `client.helloworld()`
+Client surface: `client.helloworld()`
 
-SDK model: `str`
+Client model: `str`
 
 Auth mode: `none`
 
@@ -434,14 +452,14 @@ Base URL: `https://api.zenture.app/v1`
 
 Developer docs: `https://www.zenture.app/developers`
 
-Python SDK: [zenture95/zenture-sdk](https://github.com/zenture95/zenture-sdk)
+Python client: [zenture95/zenture-client](https://github.com/zenture95/zenture-client)
 ```
 
 ### `POST /v1/input-wizard`
 
-SDK surface: `client.input_wizard.create(...)`, `client.input_wizard.run(...)`
+Client surface: `client.input_wizard.create(...)`, `client.input_wizard.run(...)`
 
-SDK model: `PublicOperationResponse`, `OperationRunResult`
+Client model: `PublicOperationResponse`, `OperationRunResult`
 
 Auth mode: `api_token`
 
@@ -475,9 +493,9 @@ Schema: `PublicOperationResponse`
 
 ### `GET /v1/limits`
 
-SDK surface: `client.limits.get()`
+Client surface: `client.limits.get()`
 
-SDK model: `LimitsResponse`
+Client model: `LimitsResponse`
 
 Auth mode: `api_token`
 
@@ -502,9 +520,9 @@ Schema: `LimitsResponse`
 
 ### `GET /v1/models`
 
-SDK surface: `client.models.list(mode=None | "single" | "multi")`
+Client surface: `client.models.list(mode=None | "single" | "multi")`
 
-SDK model: `PublicModelListResponse`
+Client model: `PublicModelListResponse`
 
 Auth mode: `api_token`
 
@@ -542,9 +560,9 @@ Schema: `PublicModelListResponse`
 
 ### `GET /v1/operations/{operation_id}`
 
-SDK surface: `client.operations.get(...)`, `client.operations.wait(...)`
+Client surface: `client.operations.get(...)`, `client.operations.wait(...)`
 
-SDK model: `PublicOperationResponse`
+Client model: `PublicOperationResponse`
 
 Auth mode: `api_token`
 
@@ -567,11 +585,647 @@ Schema: `PublicOperationResponse`
 }
 ```
 
+### `POST /v1/run-artifacts`
+
+Client surface: `client.runs.attach_artifact(...)`
+
+Client model: `PublicRunArtifactResponse`
+
+Auth mode: `api_token`
+
+Scopes: `evaluation:run`
+
+Idempotency: `required`
+
+Request body schema: `string`
+
+Request body example:
+
+```json
+"example"
+```
+
+Response `201` as `application/json`:
+
+Schema: `PublicRunArtifactResponse`
+
+```json
+{
+  "artifact_ref": "example",
+  "byte_size": 1,
+  "content_hash": "example",
+  "content_type": "example"
+}
+```
+
+### `POST /v1/run-artifacts/signed-upload`
+
+Client surface: `client.runs.signed_upload(...)`
+
+Client model: `PublicSignedUploadResponse`
+
+Auth mode: `api_token`
+
+Scopes: `evaluation:run`
+
+Idempotency: `required`
+
+Request body schema: `SignedUploadRequest`
+
+Request body example:
+
+```json
+{
+  "byte_size": 1,
+  "content_hash": "example",
+  "file_name": "example",
+  "mime_type": "example"
+}
+```
+
+Response `200` as `application/json`:
+
+Schema: `PublicSignedUploadResponse`
+
+```json
+{
+  "expires_at": "example",
+  "upload_id": "example",
+  "upload_url": "example"
+}
+```
+
+### `GET /v1/runs`
+
+Client surface: `client.runs.list(...)`
+
+Client model: `PublicRunCollectionResponse`
+
+Auth mode: `api_token`
+
+Scopes: `evaluation:read`
+
+Idempotency: `not required`
+
+Request body: none
+
+Response `200` as `application/json`:
+
+Schema: `PublicRunCollectionResponse`
+
+```json
+{
+  "has_more": true,
+  "next_cursor": "cursor_next",
+  "runs": [
+    {
+      "created_at": "2026-06-15T10:00:00Z",
+      "deadline_at": "example",
+      "decision": "ready",
+      "error_code": "example",
+      "profile": "fast",
+      "run_id": "example",
+      "status": "active",
+      "task_summary_ref": "example",
+      "title": "example",
+      "updated_at": "2026-06-15T10:00:30Z"
+    }
+  ]
+}
+```
+
+### `POST /v1/runs`
+
+Client surface: `client.runs.create(...)`, `client.runs.run(...)`
+
+Client model: `PublicRunResponse`
+
+Auth mode: `api_token`
+
+Scopes: `evaluation:run`
+
+Idempotency: `required`
+
+Request body schema: `CreateRunRequest`
+
+Request body example:
+
+```json
+{
+  "predecessor_run_id": "example",
+  "proposal_hash": "example",
+  "proposal_id": "example"
+}
+```
+
+Response `200` as `application/json`:
+
+Schema: `PublicRunResponse`
+
+```json
+{
+  "acceptance_decision": "ready",
+  "artifact_refs": [
+    "example"
+  ],
+  "billing_summary": {
+    "final_credits": "example",
+    "schema_version": "run.terminal_billing_summary.v1",
+    "status": "pending"
+  },
+  "cancellation_requested": true,
+  "capability_coverage": {
+    "available_refs": [
+      "example"
+    ],
+    "limitation_refs": [
+      "example"
+    ],
+    "unavailable_refs": [
+      "example"
+    ]
+  },
+  "completed_at": "2026-06-15T10:00:30Z",
+  "created_at": "2026-06-15T10:00:00Z",
+  "deadline_at": "example",
+  "event_cursor": "example",
+  "family": "knowledge",
+  "generation": 1,
+  "limitations": [
+    "example"
+  ],
+  "next_action": "example",
+  "profile": "fast",
+  "queue": {
+    "estimate_as_of": "example",
+    "estimated_completion_seconds": "example",
+    "estimated_start_seconds": "example",
+    "jobs_ahead": 1,
+    "queue_reason": "example"
+  },
+  "reason_code": "example",
+  "run_id": "example",
+  "run_insight_ref": "example",
+  "safe_result_content": "example",
+  "started_at": "example",
+  "status": "created",
+  "task_contract_summary": {
+    "requirement_count": 1,
+    "summary_ref": "example",
+    "work_type": "example"
+  },
+  "updated_at": "2026-06-15T10:00:30Z",
+  "work_type": "example"
+}
+```
+
+Response `202` as `application/json`:
+
+Schema: `PublicRunResponse`
+
+```json
+{
+  "acceptance_decision": "ready",
+  "artifact_refs": [
+    "example"
+  ],
+  "billing_summary": {
+    "final_credits": "example",
+    "schema_version": "run.terminal_billing_summary.v1",
+    "status": "pending"
+  },
+  "cancellation_requested": true,
+  "capability_coverage": {
+    "available_refs": [
+      "example"
+    ],
+    "limitation_refs": [
+      "example"
+    ],
+    "unavailable_refs": [
+      "example"
+    ]
+  },
+  "completed_at": "2026-06-15T10:00:30Z",
+  "created_at": "2026-06-15T10:00:00Z",
+  "deadline_at": "example",
+  "event_cursor": "example",
+  "family": "knowledge",
+  "generation": 1,
+  "limitations": [
+    "example"
+  ],
+  "next_action": "example",
+  "profile": "fast",
+  "queue": {
+    "estimate_as_of": "example",
+    "estimated_completion_seconds": "example",
+    "estimated_start_seconds": "example",
+    "jobs_ahead": 1,
+    "queue_reason": "example"
+  },
+  "reason_code": "example",
+  "run_id": "example",
+  "run_insight_ref": "example",
+  "safe_result_content": "example",
+  "started_at": "example",
+  "status": "created",
+  "task_contract_summary": {
+    "requirement_count": 1,
+    "summary_ref": "example",
+    "work_type": "example"
+  },
+  "updated_at": "2026-06-15T10:00:30Z",
+  "work_type": "example"
+}
+```
+
+### `POST /v1/runs/prepare`
+
+Client surface: `client.runs.prepare(...)`
+
+Client model: `PrepareRunResponse`
+
+Auth mode: `api_token`
+
+Scopes: `evaluation:run`
+
+Idempotency: `required`
+
+Request body schema: `PrepareRunRequest`
+
+Request body example:
+
+```json
+{
+  "artifact": {
+    "type": "example",
+    "value": "example"
+  },
+  "profile": "fast",
+  "task": "example"
+}
+```
+
+Response `200` as `application/json`:
+
+Schema: `PrepareRunResponse`
+
+```json
+{
+  "billing_projection": {
+    "estimated_credits": "example",
+    "maximum_credits": "example",
+    "schema_version": "run.prepare_credits_projection.v1"
+  },
+  "estimated_credits": "example",
+  "expected_duration_seconds": 1,
+  "expires_at": "example",
+  "guest_slot_cost": "example",
+  "inferred_work_type": "example",
+  "maximum_credits": "example",
+  "planned_checks": [
+    "example"
+  ],
+  "proposal_hash": "example",
+  "proposal_id": "example",
+  "proposal_version": 1,
+  "start_admissible": true,
+  "task_contract_summary": {
+    "requirement_count": 1,
+    "summary_ref": "example",
+    "work_type": "example"
+  },
+  "unavailable_checks": [
+    "example"
+  ]
+}
+```
+
+### `GET /v1/runs/{run_id}`
+
+Client surface: `client.runs.get(...)`
+
+Client model: `PublicRunResponse`
+
+Auth mode: `api_token`
+
+Scopes: `evaluation:read`
+
+Idempotency: `not required`
+
+Request body: none
+
+Response `200` as `application/json`:
+
+Schema: `PublicRunResponse`
+
+```json
+{
+  "acceptance_decision": "ready",
+  "artifact_refs": [
+    "example"
+  ],
+  "billing_summary": {
+    "final_credits": "example",
+    "schema_version": "run.terminal_billing_summary.v1",
+    "status": "pending"
+  },
+  "cancellation_requested": true,
+  "capability_coverage": {
+    "available_refs": [
+      "example"
+    ],
+    "limitation_refs": [
+      "example"
+    ],
+    "unavailable_refs": [
+      "example"
+    ]
+  },
+  "completed_at": "2026-06-15T10:00:30Z",
+  "created_at": "2026-06-15T10:00:00Z",
+  "deadline_at": "example",
+  "event_cursor": "example",
+  "family": "knowledge",
+  "generation": 1,
+  "limitations": [
+    "example"
+  ],
+  "next_action": "example",
+  "profile": "fast",
+  "queue": {
+    "estimate_as_of": "example",
+    "estimated_completion_seconds": "example",
+    "estimated_start_seconds": "example",
+    "jobs_ahead": 1,
+    "queue_reason": "example"
+  },
+  "reason_code": "example",
+  "run_id": "example",
+  "run_insight_ref": "example",
+  "safe_result_content": "example",
+  "started_at": "example",
+  "status": "created",
+  "task_contract_summary": {
+    "requirement_count": 1,
+    "summary_ref": "example",
+    "work_type": "example"
+  },
+  "updated_at": "2026-06-15T10:00:30Z",
+  "work_type": "example"
+}
+```
+
+### `POST /v1/runs/{run_id}/cancel`
+
+Client surface: `client.runs.cancel(...)`
+
+Client model: `PublicRunResponse`
+
+Auth mode: `api_token`
+
+Scopes: `evaluation:run`
+
+Idempotency: `required`
+
+Request body schema: `CancelRunRequest`
+
+Request body example:
+
+```json
+{
+  "reason": "user_requested"
+}
+```
+
+Response `200` as `application/json`:
+
+Schema: `PublicRunResponse`
+
+```json
+{
+  "acceptance_decision": "ready",
+  "artifact_refs": [
+    "example"
+  ],
+  "billing_summary": {
+    "final_credits": "example",
+    "schema_version": "run.terminal_billing_summary.v1",
+    "status": "pending"
+  },
+  "cancellation_requested": true,
+  "capability_coverage": {
+    "available_refs": [
+      "example"
+    ],
+    "limitation_refs": [
+      "example"
+    ],
+    "unavailable_refs": [
+      "example"
+    ]
+  },
+  "completed_at": "2026-06-15T10:00:30Z",
+  "created_at": "2026-06-15T10:00:00Z",
+  "deadline_at": "example",
+  "event_cursor": "example",
+  "family": "knowledge",
+  "generation": 1,
+  "limitations": [
+    "example"
+  ],
+  "next_action": "example",
+  "profile": "fast",
+  "queue": {
+    "estimate_as_of": "example",
+    "estimated_completion_seconds": "example",
+    "estimated_start_seconds": "example",
+    "jobs_ahead": 1,
+    "queue_reason": "example"
+  },
+  "reason_code": "example",
+  "run_id": "example",
+  "run_insight_ref": "example",
+  "safe_result_content": "example",
+  "started_at": "example",
+  "status": "created",
+  "task_contract_summary": {
+    "requirement_count": 1,
+    "summary_ref": "example",
+    "work_type": "example"
+  },
+  "updated_at": "2026-06-15T10:00:30Z",
+  "work_type": "example"
+}
+```
+
+### `GET /v1/runs/{run_id}/events`
+
+Client surface: `client.runs.list_events(...)`
+
+Client model: `PublicRunEventsResponse`
+
+Auth mode: `api_token`
+
+Scopes: `evaluation:read`
+
+Idempotency: `not required`
+
+Request body: none
+
+Response `200` as `application/json`:
+
+Schema: `PublicRunEventsResponse`
+
+```json
+{
+  "events": [
+    {
+      "estimated_completion_seconds": {
+        "max": "example",
+        "min": "example"
+      },
+      "estimated_start_seconds": {
+        "max": "example",
+        "min": "example"
+      },
+      "event_cursor": "example",
+      "event_id": "example",
+      "jobs_ahead": "example",
+      "message_key": "example",
+      "progress_percent": "example",
+      "run_id": "example",
+      "sequence": 1,
+      "status": "queued",
+      "terminal_refs": [
+        "example"
+      ],
+      "type": "run.event"
+    }
+  ],
+  "has_more": true,
+  "next_cursor": "cursor_next"
+}
+```
+
+### `GET /v1/runs/{run_id}/events/stream`
+
+Client surface: `client.runs.iter_events(...)`
+
+Client model: `string`
+
+Auth mode: `api_token`
+
+Scopes: `evaluation:read`
+
+Idempotency: `not required`
+
+Request body: none
+
+Response `200` as `text/event-stream`:
+
+Schema: `string`
+
+```markdown
+example
+```
+
+### `POST /v1/runs/{run_id}/outcome`
+
+Client surface: `client.runs.record_outcome(...)`
+
+Client model: `PublicRunOutcomeResponse`
+
+Auth mode: `api_token`
+
+Scopes: `evaluation:run`
+
+Idempotency: `required`
+
+Request body schema: `RunOutcomeRequest`
+
+Request body example:
+
+```json
+{
+  "edited_artifact_ref": "example",
+  "finding_adjudications": [
+    {
+      "finding_ref": "example",
+      "outcome": "confirmed"
+    }
+  ],
+  "outcome": "used"
+}
+```
+
+Response `200` as `application/json`:
+
+Schema: `PublicRunOutcomeResponse`
+
+```json
+{
+  "acceptance_decision": "ready",
+  "artifact_refs": [
+    "example"
+  ],
+  "billing_summary": {
+    "final_credits": "example",
+    "schema_version": "run.terminal_billing_summary.v1",
+    "status": "pending"
+  },
+  "cancellation_requested": true,
+  "capability_coverage": {
+    "available_refs": [
+      "example"
+    ],
+    "limitation_refs": [
+      "example"
+    ],
+    "unavailable_refs": [
+      "example"
+    ]
+  },
+  "completed_at": "2026-06-15T10:00:30Z",
+  "created_at": "2026-06-15T10:00:00Z",
+  "deadline_at": "example",
+  "event_cursor": "example",
+  "family": "knowledge",
+  "generation": 1,
+  "limitations": [
+    "example"
+  ],
+  "next_action": "example",
+  "profile": "fast",
+  "queue": {
+    "estimate_as_of": "example",
+    "estimated_completion_seconds": "example",
+    "estimated_start_seconds": "example",
+    "jobs_ahead": 1,
+    "queue_reason": "example"
+  },
+  "reason_code": "example",
+  "run_id": "example",
+  "run_insight_ref": "example",
+  "safe_result_content": "example",
+  "started_at": "example",
+  "status": "created",
+  "task_contract_summary": {
+    "requirement_count": 1,
+    "summary_ref": "example",
+    "work_type": "example"
+  },
+  "updated_at": "2026-06-15T10:00:30Z",
+  "work_type": "example"
+}
+```
+
 ### `GET /v1/usage`
 
-SDK surface: `client.usage.get(...)`
+Client surface: `client.usage.get(...)`
 
-SDK model: `PublicUsageResponse`
+Client model: `PublicUsageResponse`
 
 Auth mode: `api_token`
 
@@ -594,9 +1248,9 @@ Schema: `PublicUsageResponse`
 
 ### `GET /v1/wallet`
 
-SDK surface: `client.wallet.get()`
+Client surface: `client.wallet.get()`
 
-SDK model: `PublicWalletResponse`
+Client model: `PublicWalletResponse`
 
 Auth mode: `api_token`
 
@@ -636,6 +1290,28 @@ Failed HTTP responses use a public error envelope:
 }
 ```
 
+Run and artifact operations accept `X-Zenture-Error-Details: issues` to request safe validation details. Missing or unknown header values preserve the coarse envelope. The header changes only error representation; successful responses, authorization, admission, idempotency and retry behavior are unchanged.
+
+When available, `error.issues` contains 1–20 deduplicated entries. Each has a JSON Pointer `path` to a public argument and a closed `category`; optional `constraints` describe public bounds or allowed values. Input values, unknown key names and validator context are excluded. Details are omitted when unavailable, never null or an empty array.
+
+Example of a Run prepare error when details are requested:
+
+```json
+{
+  "error": {
+    "code": "validation_failed",
+    "message": "The request is invalid.",
+    "issues": [
+      {
+        "path": "/task",
+        "category": "required"
+      }
+    ]
+  },
+  "request_id": "req_00000000000000000000000000000000"
+}
+```
+
 Stable public gateway error codes are:
 
 - `unauthorized`
@@ -649,5 +1325,29 @@ Stable public gateway error codes are:
 - `internal_error`
 - `idempotency_conflict`
 - `operation_expired`
+- `proposal_expired`
+- `proposal_hash_mismatch`
+- `predecessor_run_invalid`
+- `account_required`
+- `legal_consent_required`
+- `artifact_required`
+- `artifact_ambiguous`
+- `artifact_unavailable`
+- `artifact_not_found`
+- `artifact_expired`
+- `artifact_type_unsupported`
+- `artifact_processing_unavailable`
+- `prepare_rate_limited`
+- `prepare_capacity_unavailable`
+- `too_many_outstanding_runs`
+- `capacity_temporarily_unavailable`
+- `maintenance_active`
+- `engine_unavailable_timeout`
+- `capability_unavailable`
+- `run_not_found`
+- `run_terminal`
+- `cancel_conflict`
+- `budget_ceiling_exceeded`
+- `execution_failed`
 
-The SDK maps known public error codes to typed exceptions where available and keeps future unknown safe error codes as `ZentureAPIError` without exposing API tokens, bearer headers, prompts, or other secrets in exception strings.
+The client maps known public error codes to typed exceptions where available and keeps future unknown safe error codes as `ZentureAPIError` without exposing API tokens, bearer headers, prompts, or other secrets in exception strings.

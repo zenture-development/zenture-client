@@ -1,12 +1,12 @@
 # Contributing
 
-`zenture-sdk` is the public Python SDK for the zenture Public API. The current
-repository contains the runtime SDK, typed contract layer, public docs,
+`zenture-client` provides the public `zenture` Python client for the zenture Public API. The current
+repository contains the runtime client, typed contract layer, public docs,
 examples, and packaging configuration used for prerelease validation.
 
 ## Development Standards
 
-- Keep public APIs typed and exposed through `Zenture`, `AsyncZenture`, and
+- Keep public APIs typed and exposed through `ZentureClient`, `AsyncZentureClient`, and
   resource attributes such as `client.chat`.
 - Keep `_transport`, `_resources`, and `_contract` as implementation
   namespaces.
@@ -36,16 +36,16 @@ Pull requests should include:
 
 Use one primary PR type:
 
-- `type: fix` - bug fix or incorrect SDK behavior
-- `type: feat` - new public SDK capability
+- `type: fix` - bug fix or incorrect client behavior
+- `type: feat` - new public client capability
 - `type: docs` - README, examples, AGENTS, changelog, or prose docs
 - `type: test` - tests only
 - `type: chore` - CI, packaging, metadata, dependency upkeep
 - `type: refactor` - internal change with no public behavior change
 - `type: security` - security hardening or vulnerability fix
 
-Public-surface changes require extra care. Any change to `Zenture`,
-`AsyncZenture`, public resources, public errors, return types, examples, or
+Public-surface changes require extra care. Any change to `ZentureClient`,
+`AsyncZentureClient`, public resources, public errors, return types, examples, or
 OpenAPI-derived contract behavior must update tests and docs in the same PR.
 Breaking changes are not allowed in V1 without an explicit release decision,
 migration note, and changelog entry.
@@ -61,7 +61,7 @@ Before merge:
 
 ## Local Checks
 
-Run the full local gate before handing off SDK changes:
+Run the full local gate before handing off client changes:
 
 ```bash
 python3 -m ruff format --check .
@@ -80,6 +80,6 @@ checks for docs and examples.
 
 ## Release Process
 
-Public PyPI releases are blocked until the SDK reviewer gate passes. Publishing
+Public PyPI releases are blocked until the client reviewer gate passes. Publishing
 must use PyPI Trusted Publishing through GitHub Actions OIDC, not long-lived
 package tokens.

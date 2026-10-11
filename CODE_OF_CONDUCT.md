@@ -1,6 +1,6 @@
 # Code of Conduct
 
-zenture SDK contributors are expected to participate professionally, respectfully,
+zenture client contributors are expected to participate professionally, respectfully,
 and constructively.
 
 Unacceptable behavior includes harassment, abusive comments, intimidation,

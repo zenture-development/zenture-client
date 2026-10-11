@@ -6,20 +6,23 @@ import json
 import os
 import sys
 from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from zenture import Zenture
+from zenture import ZentureClient
 from zenture.idempotency import idempotency_key
 
-DEFAULT_PROMPT = "Explain why deterministic tests matter for an SDK."
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+DEFAULT_PROMPT = "Explain why deterministic tests matter for a client."
 
 
 def main() -> None:
     prompt = os.environ.get("ZENTURE_EXAMPLE_PROMPT", DEFAULT_PROMPT)
     run_id = os.environ.get("ZENTURE_EXAMPLE_RUN_ID") or f"local-e2e-{uuid4().hex}"
 
-    with Zenture.from_env() as client:
+    with ZentureClient.from_env() as client:
         wallet = client.wallet.get()
         single_models = client.models.list(mode="single").models
         selected_model = _select_single_model(single_models)
@@ -89,7 +92,7 @@ def main() -> None:
             "score": evaluation_detail.score,
             "amount_billed": _dump_amount(evaluation_detail.amount_billed),
         },
-        "total_billed": {"amount": f"{chat_billed + evaluation_billed:.2f}", "unit": "credits"},
+        "total_billed": _total_billed({"chat": chat_billed, "evaluation": evaluation_billed}),
     }
     sys.stdout.write(json.dumps(summary, indent=2, sort_keys=True) + "\n")
 
@@ -113,10 +116,31 @@ def _find_turn_by_id(turns: tuple[Any, ...], turn_id: str) -> dict[str, Any]:
     raise RuntimeError(f"Could not find chat turn {turn_id}.")
 
 
-def _amount(value: Any | None) -> Decimal:
+def _amount(value: Any | None) -> Decimal | None:
     if value is None:
-        return Decimal("0.00")
+        return None
     return Decimal(str(value.amount))
+
+
+def _total_billed(components: Mapping[str, Decimal | None]) -> dict[str, Any]:
+    """Sum billed components only when every included operation reported its amount.
+
+    An unknown component is never counted as zero: the total is then partial
+    and names the operations whose amount is unavailable.
+    """
+    includes = list(components)
+    unknown = [name for name, amount in components.items() if amount is None]
+    if unknown:
+        return {
+            "amount": None,
+            "unit": "credits",
+            "status": "partial",
+            "includes": includes,
+            "unknown_components": unknown,
+        }
+    known = [amount for amount in components.values() if amount is not None]
+    total = sum(known, Decimal("0.00"))
+    return {"amount": f"{total:.2f}", "unit": "credits", "status": "complete", "includes": includes}
 
 
 def _dump_amount(value: Any | None) -> dict[str, str] | None:
