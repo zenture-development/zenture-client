@@ -109,9 +109,9 @@ def _assert_metadata(data: bytes) -> None:
     if not metadata["Version"]:
         raise SystemExit("Artifact is missing its release version.")
     urls = metadata.get_all("Project-URL", [])
-    if "Repository, https://github.com/zenture95/zenture-client" not in urls:
+    if "Repository, https://github.com/zenture-development/zenture-client" not in urls:
         raise SystemExit("Artifact is missing the canonical repository URL.")
-    if "Issues, https://github.com/zenture95/zenture-client/issues" not in urls:
+    if "Issues, https://github.com/zenture-development/zenture-client/issues" not in urls:
         raise SystemExit("Artifact is missing the canonical issue URL.")
 
 

@@ -23,7 +23,7 @@ from zenture import ZentureClient, AsyncZentureClient
 assert Path(zenture.__file__).is_relative_to(Path(sys.prefix))
 assert metadata("zenture")["Name"] == "zenture"
 assert version("zenture") == zenture.__version__
-assert "Repository, https://github.com/zenture95/zenture-client" in metadata("zenture").get_all("Project-URL")
+assert "Repository, https://github.com/zenture-development/zenture-client" in metadata("zenture").get_all("Project-URL")
 assert zenture.__all__ == ("AsyncZentureClient", "ZentureClient", "__version__")
 assert not hasattr(zenture, "Zenture") and not hasattr(zenture, "AsyncZenture")
 assert ZentureClient.__name__ == "ZentureClient"

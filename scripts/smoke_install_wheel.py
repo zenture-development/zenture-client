@@ -49,7 +49,7 @@ def main() -> None:
                     "assert metadata('zenture')['Name'] == 'zenture'; "
                     "assert not hasattr(zenture, 'Zenture'); "
                     "assert not hasattr(zenture, 'AsyncZenture'); "
-                    "assert 'Repository, https://github.com/zenture95/zenture-client' "
+                    "assert 'Repository, https://github.com/zenture-development/zenture-client' "
                     "in metadata('zenture').get_all('Project-URL'); "
                     "assert ZentureClient.__name__ == 'ZentureClient'; "
                     "assert AsyncZentureClient.__name__ == 'AsyncZentureClient'"
