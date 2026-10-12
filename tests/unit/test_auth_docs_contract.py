@@ -243,7 +243,11 @@ def test_development_workflow_tests_the_full_platform_matrix_and_native_keyring_
     text = _read(ROOT / ".github" / "workflows" / "development.yml")
     assert "\t" not in text
     testing = text.split("\n  testing:\n", 1)[1].split("\n  native-keyring:\n", 1)[0]
-    assert re.search(r'python-version: \["3\.11", "3\.12", "3\.13", "3\.14"\]', testing)
+    # Non-PR runs (push to main, manual) keep the full Python matrix; pull requests run the
+    # oldest and newest Python on every OS.
+    assert re.search(r"python-version: \$\{\{ fromJSON\(.*\) \}\}", testing)
+    assert "github.event_name == 'pull_request' && '[\"3.11\", \"3.14\"]'" in testing
+    assert "'[\"3.11\", \"3.12\", \"3.13\", \"3.14\"]'" in testing
     assert re.search(r"os: \[ubuntu-latest, macos-latest, windows-latest\]", testing)
     assert "runs-on: ${{ matrix.os }}" in testing
     assert "native_keyring" not in testing
