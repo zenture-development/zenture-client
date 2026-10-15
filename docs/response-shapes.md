@@ -450,7 +450,7 @@ Schema: `string`
 
 Base URL: `https://api.zenture.app/v1`
 
-Developer docs: `https://www.zenture.app/developers`
+Developer docs: `https://www.zenture.app/en/developers`
 
 Python client: [zenture-development/zenture-client](https://github.com/zenture-development/zenture-client)
 ```
