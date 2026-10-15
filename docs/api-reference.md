@@ -4,7 +4,7 @@ This is the compact resource index for the zenture Python client. Use it as the
 map of available clients, resources, and flows.
 
 The human-facing public API documentation lives at
-`https://www.zenture.app/developers`. This client also ships the local
+`https://www.zenture.app/en/developers`. This client also ships the local
 OpenAPI contract artifact under `openapi/zenture-public-api-v1.openapi.json` for
 deterministic contract-drift tests.
 

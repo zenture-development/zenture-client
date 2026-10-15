@@ -24,9 +24,9 @@ Package names:
 
 Public product references:
 
-- Users create API tokens at `https://ai.zenture.app/profile?tab=api-tokens`.
+- Users create API tokens at `https://ai.zenture.app/?settings=developer`.
 - Human-facing API documentation lives at
-  `https://www.zenture.app/developers`.
+  `https://www.zenture.app/en/developers`.
 - The committed `openapi/zenture-public-api-v1.openapi.json` file remains the
   client-local contract source of truth for implementation and drift tests.
 
@@ -75,7 +75,7 @@ local contract source of truth. Contract tests under
 operation result shapes, idempotency header constraints, and excluded
 user-session routes.
 
-Use `https://www.zenture.app/developers` for human-facing API context,
+Use `https://www.zenture.app/en/developers` for human-facing API context,
 but do not implement client behavior from website prose unless the local OpenAPI
 artifact and drift tests agree.
 

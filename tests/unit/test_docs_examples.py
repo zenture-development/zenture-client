@@ -224,8 +224,8 @@ def test_readme_is_beta_ready_and_public_safe() -> None:
         "tenant authority",
         "no local MCP server",
         "ZENTURE_API_KEY",
-        "https://ai.zenture.app/profile?tab=api-tokens",
-        "https://www.zenture.app/developers",
+        "https://ai.zenture.app/?settings=developer",
+        "https://www.zenture.app/en/developers",
         "docs/sdk-call-reference.md",
         "ZentureClient.from_env()",
         "AsyncZentureClient.from_env()",
@@ -274,8 +274,8 @@ def test_docs_and_agents_exist_with_required_public_onboarding_content() -> None
         "_transport",
         "_contract",
         "Contract drift",
-        "https://ai.zenture.app/profile?tab=api-tokens",
-        "https://www.zenture.app/developers",
+        "https://ai.zenture.app/?settings=developer",
+        "https://www.zenture.app/en/developers",
         "python3 -m ruff format --check .",
         "python3 -m twine check dist/*",
         "no token logging",
@@ -291,8 +291,8 @@ def test_docs_and_agents_exist_with_required_public_onboarding_content() -> None
     assert "API-token management surface" in combined_docs
     assert "api-" + "int" not in combined_docs
     assert "api-example" not in combined_docs
-    assert "https://ai.zenture.app/profile?tab=api-tokens" in combined_docs
-    assert "https://www.zenture.app/developers" in combined_docs
+    assert "https://ai.zenture.app/?settings=developer" in combined_docs
+    assert "https://www.zenture.app/en/developers" in combined_docs
     assert "https://www.zenture.app/api-documentation" not in combined_docs
 
 

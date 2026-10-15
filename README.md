@@ -50,7 +50,7 @@ installed version without logging in or touching the network.
 
 ## Quickstart: your first Run
 
-Create an API token at `https://ai.zenture.app/profile?tab=api-tokens`, keep it
+Create an API token at `https://ai.zenture.app/?settings=developer`, keep it
 outside source code (`ZENTURE_API_KEY`, see [Authentication](#authentication)),
 and save an idempotency key for the Run **before** you start it.
 
@@ -141,7 +141,7 @@ Two separate credentials; they never mix.
 
 | Channel | Credential | How |
 |---|---|---|
-| REST (`ZentureClient`, `AsyncZentureClient`) | zenture API token | Create it with an existing account at `https://ai.zenture.app/profile?tab=api-tokens`; read from `ZENTURE_API_KEY` |
+| REST (`ZentureClient`, `AsyncZentureClient`) | zenture API token | Create it in the Developer overlay with an existing account at `https://ai.zenture.app/?settings=developer`; read from `ZENTURE_API_KEY` |
 | Hosted MCP (`zenture.mcp`) | Your zenture account | `zenture auth login` (browser) or `zenture auth login --device` (headless) |
 
 Keep the token outside Python source code:
@@ -173,7 +173,7 @@ Full details, including MCP login, secure storage and refresh safety:
   source cutover to `ZentureClient` / `AsyncZentureClient`, no legacy aliases;
   do not install both distributions into one environment.
 - Classic API: [API reference](./docs/api-reference.md), [client call reference](./docs/sdk-call-reference.md), [response shapes](./docs/response-shapes.md).
-- Public API documentation: `https://www.zenture.app/developers`. The committed
+- Public API documentation: `https://www.zenture.app/en/developers`. The committed
   OpenAPI artifact is the client's local contract source of truth.
 
 ## MCP and native login
