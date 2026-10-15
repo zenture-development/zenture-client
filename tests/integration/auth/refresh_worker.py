@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -19,7 +20,29 @@ from zenture._auth.model import Target
 from zenture._auth.session import SessionCore
 
 if TYPE_CHECKING:
-    from zenture._auth.store import RecordKey
+    from zenture._auth.store import RecordKey, StoredRecord
+
+
+class RendezvousStore(FileStore):
+    """Hold each captured ready record until every no-lock worker has read it."""
+
+    def __init__(self, path: Path, directory: Path, participants: int) -> None:
+        super().__init__(path)
+        self.directory = directory
+        self.participants = participants
+
+    def load(self, identity: RecordKey) -> StoredRecord | None:
+        record = super().load(identity)
+        if record is None or record.state != "ready":
+            raise RuntimeError("rendezvous requires a ready record")
+        # Empty markers contain process identities only, never captured authority.
+        (self.directory / f"{os.getpid()}.ready").touch(exist_ok=False)
+        deadline = time.monotonic() + 30
+        while len(list(self.directory.glob("*.ready"))) != self.participants:
+            if time.monotonic() >= deadline:
+                raise TimeoutError("refresh read rendezvous timed out")
+            time.sleep(0.01)
+        return record
 
 
 def main() -> None:
@@ -33,7 +56,12 @@ def main() -> None:
             return contextlib.nullcontext()
         return binding_lock(identity, directory=directory, wait_seconds=60)
 
-    core = SessionCore(discovery=discovery, store=FileStore(Path(config["store"])), lock=lock)
+    store = FileStore(Path(config["store"]))
+    if "rendezvous" in config:
+        if not config.get("no_lock"):
+            raise RuntimeError("read rendezvous requires the no-lock oracle")
+        store = RendezvousStore(store.path, Path(config["rendezvous"]), config["participants"])
+    core = SessionCore(discovery=discovery, store=store, lock=lock)
     while time.time() < config.get("start_at", 0):
         time.sleep(0.001)
     try:
