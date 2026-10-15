@@ -22,8 +22,8 @@ customer-visible errors.
 
 ### Token Creation
 
-Create API tokens in the existing zenture webapp with an existing account:
-`https://ai.zenture.app/profile?tab=api-tokens`.
+Open the Developer overlay in the zenture webapp with an existing account to create API tokens:
+`https://ai.zenture.app/?settings=developer`.
 
 The client intentionally does not expose an API-token management surface for
 creating, rotating, revoking, or auditing tokens.

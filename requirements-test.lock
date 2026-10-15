@@ -1,4 +1,4 @@
-# input-sha256: pyproject.toml 1844730f6bdafdf49c986b6ab7026e63c9bc38725d2c4885d44a563390546de4
+# input-sha256: pyproject.toml 3b45578185797ba4b669eade74279960eaf46bcd50e140dafc6e44b10bb4f6d0
 annotated-types==0.8.0 \
     --hash=sha256:13b2beaad985e05e2d6407ee4c4f35590b11f8d693a258a561055cac8f64cab7 \
     --hash=sha256:f072f4d804ea359e4eaf198b1af7a8b0943881a87f31bb764f8bf219bb9419e0
