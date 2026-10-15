@@ -6,7 +6,7 @@ The project follows semantic versioning once public releases begin. Prerelease
 versions may change while the Public API contract is still in release-candidate
 state.
 
-## 1.0.3 - Unreleased
+## 1.0.3 - 2026-10-15
 
 - Align current developer documentation and API-token links with the canonical
   public destinations.

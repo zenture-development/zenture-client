@@ -28,8 +28,7 @@ For an existing virtual environment containing `zenture-sdk`, skip creation
 and substitute its Python executable in both commands. On Windows, the
 executable inside the environment is `Scripts/python.exe` instead of
 `bin/python`. The `--upgrade` flag also updates an existing canonical
-`zenture` installation, including 1.0.2, to 1.0.3. Version 1.0.3 is prepared
-locally; run the pinned install command after publication.
+`zenture` installation, including 1.0.2, to 1.0.3.
 
 Update your application imports and class references together:
 

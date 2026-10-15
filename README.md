@@ -43,9 +43,6 @@ Run preparation currently rejects `zenture_ref` inputs.
 python -m pip install --upgrade zenture==1.0.3
 ```
 
-Version 1.0.3 is prepared locally; publication is pending. The command above
-becomes available after publication.
-
 Supported Python: CPython 3.11, 3.12, 3.13, and 3.14 (Python 3.14 is declared; the CI matrix covers it but has not yet run; there is no upper version cap).
 The installation includes the `zenture` command and the `zenture.auth` and
 `zenture.mcp` modules; no extra is needed. `zenture --version` prints the
