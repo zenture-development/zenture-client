@@ -221,12 +221,52 @@ def _spawn(
     )
 
 
-def _outcomes(processes: list[subprocess.Popen[str]]) -> list[str]:
-    results: list[str] = []
+def _stop(processes: list[subprocess.Popen[str]]) -> None:
     for process in processes:
-        out, _ = process.communicate(timeout=120)
-        results.append(out.strip())
+        if process.poll() is None:
+            process.kill()
+        process.wait(timeout=5)
+
+
+def _outcomes(processes: list[subprocess.Popen[str]], *, timeout: float = 120) -> list[str]:
+    results: list[str] = []
+    deadline = time.monotonic() + timeout
+    try:
+        for process in processes:
+            out, _ = process.communicate(timeout=max(0.001, deadline - time.monotonic()))
+            assert process.returncode == 0, "refresh worker crashed"
+            outcome = out.strip()
+            assert outcome in {"ok", "AuthorizationRequired", "AuthUnavailable"}, (
+                "refresh worker did not report a recognized outcome"
+            )
+            results.append(outcome)
+    finally:
+        _stop(processes)
     return results
+
+
+@pytest.mark.parametrize("script", ["raise SystemExit(1)", "pass"])
+def test_worker_crash_or_missing_outcome_fails_the_harness(script: str) -> None:
+    process = subprocess.Popen([sys.executable, "-c", script], stdout=subprocess.PIPE, text=True)
+
+    with pytest.raises(AssertionError, match="refresh worker"):
+        _outcomes([process])
+
+
+def test_worker_timeout_fails_the_harness_and_cleans_up_all_children() -> None:
+    processes = [
+        subprocess.Popen(
+            [sys.executable, "-c", "import time; time.sleep(60)"],
+            stdout=subprocess.PIPE,
+            text=True,
+        )
+        for _ in range(2)
+    ]
+
+    with pytest.raises(subprocess.TimeoutExpired):
+        _outcomes(processes, timeout=0.05)
+
+    assert all(process.poll() is not None for process in processes)
 
 
 def test_concurrent_processes_rotate_serially_without_consumed_token_reuse(
@@ -249,14 +289,33 @@ def test_concurrent_processes_rotate_serially_without_consumed_token_reuse(
 
 
 def test_without_the_lock_the_same_scenario_reuses_a_consumed_token(
-    env: Environment, ready: FileStore, lock_dir: Path
+    env: Environment, ready: FileStore, lock_dir: Path, tmp_path: Path
 ) -> None:
     """Oracle check: the concurrency test above fails when the lock is removed."""
 
-    env.issuer.refresh_delay = 0.6
-    processes = [_spawn(env, ready, lock_dir, no_lock=True) for _ in range(4)]
-    _outcomes(processes)
+    initial = _record(env, ready).refresh_token
+    participants = 4
+    rendezvous = tmp_path / "refresh-reads"
+    rendezvous.mkdir()
+    processes = [
+        _spawn(
+            env,
+            ready,
+            lock_dir,
+            no_lock=True,
+            rendezvous=str(rendezvous),
+            participants=participants,
+        )
+        for _ in range(participants)
+    ]
+    outcomes = _outcomes(processes)
 
+    assert len(list(rendezvous.glob("*.ready"))) == participants
+    assert all(marker.read_bytes() == b"" for marker in rendezvous.iterdir())
+    assert len(outcomes) == participants
+    assert outcomes.count("AuthorizationRequired") >= participants - 1
+    assert len(env.issuer.refresh_requests) == participants
+    assert all(request == initial for request in env.issuer.refresh_requests)
     assert env.issuer.reuse_events >= 1
     assert env.issuer.grant_revoked()
 
@@ -267,11 +326,11 @@ def test_killed_writer_after_send_leaves_a_journal_that_blocks_any_replay(
     sent_token = _record(env, ready).refresh_token
     env.issuer.refresh_behaviors = ["hang"]
     writer = _spawn(env, ready, lock_dir)
-    assert env.issuer.refresh_seen.wait(60)
-
-    writer.kill()
-    writer.wait(timeout=30)
-    env.issuer.refresh_hold.set()
+    try:
+        assert env.issuer.refresh_seen.wait(60)
+    finally:
+        _stop([writer])
+        env.issuer.refresh_hold.set()
 
     assert _record(env, ready).state == "rotating"
     survivor = _spawn(env, ready, lock_dir)
