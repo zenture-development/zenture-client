@@ -215,7 +215,7 @@ def test_readme_is_beta_ready_and_public_safe() -> None:
     assert '<img src="https://ai.zenture.app/logo.svg"' in text
     assert "docs/assets/zenture-logo.svg" not in text
     required = [
-        "pip install zenture",
+        "pip install --upgrade zenture==1.0.3",
         "Python 3.11",
         "server-side credentials",
         "Do not put them in browsers, mobile apps, frontend",

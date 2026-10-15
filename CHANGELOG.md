@@ -6,6 +6,12 @@ The project follows semantic versioning once public releases begin. Prerelease
 versions may change while the Public API contract is still in release-candidate
 state.
 
+## 1.0.3 - Unreleased
+
+- Align current developer documentation and API-token links with the canonical
+  public destinations.
+- Make the migration install command upgrade an existing `zenture` installation.
+
 ## 1.0.2 - 2026-10-10
 
 - Run event iteration (`iter_events`, sync and async) stops with a polling timeout once a
