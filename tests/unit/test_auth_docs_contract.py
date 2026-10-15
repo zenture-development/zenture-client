@@ -114,7 +114,7 @@ def test_documented_behavior_matches_the_implemented_surface() -> None:
         "zenture auth clear",
         "Zugriff & Sicherheit",
         "Verbindungen",
-        "Python 3.14",
+        "Supported Python: CPython 3.11, 3.12, 3.13, and 3.14",
         "record_run_outcome",
     ):
         assert claim in readme, claim
@@ -268,7 +268,8 @@ def test_ci_and_python_support_wording_claims_nothing_that_was_not_run() -> None
     readme = _read(ROOT / "README.md")
     changelog = _read(ROOT / "CHANGELOG.md")
     assert "declared and tested in CI" not in readme
-    assert "Python 3.14 is declared; the CI matrix covers it but has not yet run" in readme
+    assert "Supported Python: CPython 3.11, 3.12, 3.13, and 3.14" in readme
+    assert "the CI matrix covers it but has not yet run" not in readme
     assert "run the CI matrix" not in changelog
     assert "configured" in changelog
 
