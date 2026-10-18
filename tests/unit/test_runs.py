@@ -2895,3 +2895,23 @@ async def test_async_iter_events_stops_when_the_wait_consumes_the_budget_on_a_co
 
     assert len(requests) == 1
     await client.aclose()
+
+
+def test_safe_result_decision_decodes_null_outcome_of_a_technically_failed_evaluation() -> None:
+    from zenture._contract.models import SafeResultDecision
+
+    failed = SafeResultDecision.model_validate(
+        {
+            "outcome": None,
+            "technical_status": "failed",
+            "reason_code": "execution_failed",
+            "next_action": "Retry the evaluation.",
+        }
+    )
+    assert failed.outcome is None
+    assert failed.technical_status == "failed"
+    ready = SafeResultDecision.model_validate(
+        {"outcome": "ready", "reason_code": "ok", "next_action": "Use the answer."}
+    )
+    assert ready.outcome == "ready"
+    assert ready.technical_status is None
