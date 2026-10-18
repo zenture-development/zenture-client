@@ -2913,4 +2913,5 @@ def test_safe_result_decision_decodes_null_outcome_of_a_technically_failed_evalu
     ready = SafeResultDecision.model_validate(
         {"outcome": "ready", "reason_code": "ok", "next_action": "Use the answer."}
     )
-    assert ready.outcome == "ready" and ready.technical_status is None
+    assert ready.outcome == "ready"
+    assert ready.technical_status is None
