@@ -753,7 +753,8 @@ class SafeResultLimitation(_RunResponseModel):
 
 
 class SafeResultDecision(_RunResponseModel):
-    outcome: Literal["ready", "revise", "human_review", "insufficient_evidence"]
+    outcome: Literal["ready", "revise", "human_review", "insufficient_evidence"] | None
+    technical_status: Literal["complete", "degraded", "failed"] | None = None
     reason_code: str = Field(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9_.-]{1,128}$")
     next_action: str = Field(min_length=1, max_length=256)
 
