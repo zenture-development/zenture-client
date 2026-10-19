@@ -138,12 +138,13 @@ def test_public_run_response_exposes_the_full_verdict() -> None:
     assert first.why == "The customer would be charged 119 EUR too much."
     assert first.fix_instruction == "State the total as 1,071 EUR."
     assert first.category == "arithmetic"
-    assert content.case_header.startswith("Quote for the Meyer order")
-    assert content.decisive_reason.startswith("The discounted total")
+    assert (content.case_header or "").startswith("Quote for the Meyer order")
+    assert (content.decisive_reason or "").startswith("The discounted total")
     assert (content.confirmed[0].location, content.confirmed[0].evidence_ref) == (
         "Paragraph 3",
         "evidence:claim-2",
     )
+    assert content.codes is not None
     assert content.codes.task_type == "calculation"
     assert content.codes.finding_categories == ("arithmetic", "source_support_missing")
     assert content.next_steps == (
