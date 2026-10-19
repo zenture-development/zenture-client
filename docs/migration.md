@@ -21,14 +21,14 @@ on a POSIX shell:
 ```bash
 python3 -m venv .venv-zenture
 .venv-zenture/bin/python -m pip uninstall -y zenture-sdk
-.venv-zenture/bin/python -m pip install --upgrade zenture==1.0.3
+.venv-zenture/bin/python -m pip install --upgrade zenture==1.1.0
 ```
 
 For an existing virtual environment containing `zenture-sdk`, skip creation
 and substitute its Python executable in both commands. On Windows, the
 executable inside the environment is `Scripts/python.exe` instead of
 `bin/python`. The `--upgrade` flag also updates an existing canonical
-`zenture` installation, including 1.0.2, to 1.0.3.
+`zenture` installation, including 1.0.3, to 1.1.0.
 
 Update your application imports and class references together:
 

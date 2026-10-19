@@ -6,6 +6,19 @@ The project follows semantic versioning once public releases begin. Prerelease
 versions may change while the Public API contract is still in release-candidate
 state.
 
+## 1.1.0 - 2026-10-19
+
+- Error handling: `PublicError` and `ZentureAPIError` carry `retryable`, which is
+  `True` when the gateway marks a failure as safe to retry and `False` otherwise.
+- Five new error codes: `run_input_not_processable`, `run_input_contains_contact_data`,
+  `guest_quota_exhausted`, `price_ceiling_exceeded` and `result_unavailable`.
+- New `AcceptRunRequest` starts a Run in one call: the Prepare fields plus an optional
+  `predecessor_run_id` pointing at one of your finished Runs.
+- Run responses expose `technical_status`, `phase`, `queue_expires_at`, `result` and
+  `retry_after_seconds` when the gateway reports them.
+- The bundled OpenAPI mirror matches the current gateway contract, including
+  `Retry-After` on 503 responses and on 502/504 for Run routes.
+
 ## 1.0.3 - 2026-10-15
 
 - Align current developer documentation and API-token links with the canonical

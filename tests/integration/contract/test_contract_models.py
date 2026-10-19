@@ -659,3 +659,125 @@ def test_run_deadline_requires_an_aware_timestamp() -> None:
 
     with pytest.raises(ValidationError):
         PublicRunResponse.model_validate({**run, "deadline_at": "2026-01-01T00:01:00"})
+
+
+_RUN_BASE = {
+    "run_id": "run_1234567890abcdef",
+    "generation": 1,
+    "family": "knowledge",
+    "work_type": "answer",
+    "profile": "standard",
+    "status": "queued",
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z",
+}
+
+
+def test_accept_run_request_carries_the_one_call_prepare_fields() -> None:
+    from zenture._contract import AcceptRunRequest, RunProfile
+
+    schema = _schemas()["AcceptRunRequest"]
+    assert set(AcceptRunRequest.model_fields) == set(schema["properties"])
+
+    request = AcceptRunRequest.model_validate(
+        {
+            "task": "review this",
+            "artifact": {"type": "text", "value": "answer"},
+            "predecessor_run_id": "run_abc123",
+        }
+    )
+    assert request.profile is RunProfile.STANDARD
+    assert request.predecessor_run_id == "run_abc123"
+
+    for bad in (
+        {"task": " ", "artifact": {"type": "text", "value": "a"}},
+        {"task": "t", "artifact": {"type": "text", "value": "a"}, "predecessor_run_id": "x"},
+        {"task": "t", "artifact": {"type": "text", "value": "a"}, "unknown": 1},
+    ):
+        with pytest.raises(ValidationError):
+            AcceptRunRequest.model_validate(bad)
+
+
+def test_public_error_retryable_is_only_ever_true() -> None:
+    from zenture._contract import PublicErrorEnvelope
+
+    schema = _schemas()["PublicError"]["properties"]["retryable"]
+    assert schema["const"] is True
+    envelope = {
+        "error": {"code": "capacity_unavailable", "message": "later", "retryable": True},
+        "request_id": "req_" + "a" * 32,
+    }
+    assert PublicErrorEnvelope.model_validate(envelope).error.retryable is True
+    omitted = {"error": {"code": "internal_error", "message": "x"}, "request_id": "req_" + "a" * 32}
+    assert PublicErrorEnvelope.model_validate(omitted).error.retryable is None
+    envelope["error"]["retryable"] = False  # type: ignore[index]
+    with pytest.raises(ValidationError):
+        PublicErrorEnvelope.model_validate(envelope)
+
+
+def test_api_error_exposes_retryable_and_retry_after() -> None:
+    from zenture.errors import error_from_response
+
+    payload = {
+        "error": {"code": "dependency_unavailable", "message": "later", "retryable": True},
+        "request_id": "req_" + "b" * 32,
+    }
+    error = error_from_response(status_code=503, payload=payload, headers={"Retry-After": "7"})
+    assert error.retryable is True
+    assert error.retry_after == 7.0
+
+    plain = {"error": {"code": "forbidden", "message": "no"}, "request_id": "req_" + "b" * 32}
+    assert error_from_response(status_code=403, payload=plain, headers={}).retryable is False
+
+
+def test_run_response_reads_accepted_request_and_technical_status() -> None:
+    from zenture._contract import PublicRunResponse
+
+    properties = _schemas()["PublicRunResponse"]["properties"]
+    assert set(PublicRunResponse.model_fields) >= set(properties) - {"decision"}
+
+    accepted = PublicRunResponse.model_validate(
+        {
+            **_RUN_BASE,
+            "phase": "preparing",
+            "queue_expires_at": "2026-01-01T00:10:00Z",
+            "retry_after_seconds": 5,
+        }
+    )
+    assert accepted.phase == "preparing"
+    assert accepted.queue_expires_at is not None
+    assert accepted.retry_after_seconds == 5
+
+    failed = PublicRunResponse.model_validate(
+        {**_RUN_BASE, "status": "failed", "technical_status": "failed", "result": "pending"}
+    )
+    assert failed.technical_status == "failed"
+    assert failed.result == "pending"
+    assert failed.acceptance_decision is None
+
+    for bad in ({"phase": "later"}, {"retry_after_seconds": 61}, {"result": "ready"}):
+        with pytest.raises(ValidationError):
+            PublicRunResponse.model_validate({**_RUN_BASE, **bad})
+
+
+def test_retry_after_is_declared_on_transient_gateway_failures() -> None:
+    paths = cast("dict[str, dict[str, Any]]", _contract()["paths"])
+    declared: dict[str, set[tuple[str, str]]] = {"502": set(), "503": set(), "504": set()}
+    for path, item in paths.items():
+        for method, raw_operation in item.items():
+            operation = cast("dict[str, Any]", raw_operation)
+            responses = cast("dict[str, dict[str, Any]]", operation.get("responses", {}))
+            for status, response in responses.items():
+                headers = cast("dict[str, Any]", response.get("headers", {}))
+                has_retry_after = any(name.lower() == "retry-after" for name in headers)
+                if status in declared:
+                    assert has_retry_after, (method, path, status)
+                    declared[status].add((method, path))
+                if status == "431":
+                    assert not has_retry_after, (method, path)
+
+    run_routes = {key for key in declared["503"] if key[1].startswith("/v1/run")}
+    assert len(declared["503"]) == 29
+    assert len(run_routes) == 10
+    assert declared["502"] == run_routes
+    assert declared["504"] == run_routes
