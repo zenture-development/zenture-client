@@ -721,7 +721,13 @@ SafeResultFindingCategory = Literal[
     "requirement_omitted",
 ]
 SafeResultTaskType = Literal[
-    "facts_with_sources", "calculation", "text_edit", "translation", "concept", "communication", "other"
+    "facts_with_sources",
+    "calculation",
+    "text_edit",
+    "translation",
+    "concept",
+    "communication",
+    "other",
 ]
 SafeResultNeedKind = Literal[
     "requirements_checked",
@@ -731,7 +737,13 @@ SafeResultNeedKind = Literal[
     "translation_fidelity",
     "standard_checked",
 ]
-_FINDING_TEXT_MAXIMUM = {"location": 256, "actual": 512, "expected": 512, "why": 512, "fix_instruction": 512}
+_FINDING_TEXT_MAXIMUM = {
+    "location": 256,
+    "actual": 512,
+    "expected": 512,
+    "why": 512,
+    "fix_instruction": 512,
+}
 
 
 class SafeResultFinding(_RunResponseModel):
@@ -902,7 +914,9 @@ class ComposedSafeResultContentV1(_RunResponseModel):
     further_findings_count: int | None = Field(default=None, ge=0, le=9999)
     verdict_source: Literal["model", "fallback"] | None = None
 
-    @field_validator("findings", "evidence_summaries", "limitations", "confirmed", "next_steps", mode="before")
+    @field_validator(
+        "findings", "evidence_summaries", "limitations", "confirmed", "next_steps", mode="before"
+    )
     @classmethod
     def _collections(cls, value: object) -> object:
         return _coerce_tuple(value)
@@ -917,7 +931,9 @@ class ComposedSafeResultContentV1(_RunResponseModel):
     @field_validator("next_steps")
     @classmethod
     def _safe_next_steps(cls, value: tuple[str, ...]) -> tuple[str, ...]:
-        return tuple(_safe_result_text(step, maximum=300, field_name="next_steps") for step in value)
+        return tuple(
+            _safe_result_text(step, maximum=300, field_name="next_steps") for step in value
+        )
 
     @field_validator("summary")
     @classmethod

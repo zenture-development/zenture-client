@@ -195,8 +195,12 @@ def test_openapi_run_responses_expose_nullable_deadline_at() -> None:
 
 def test_openapi_declares_every_member_of_the_full_verdict_golden() -> None:
     golden = json.loads(
-        (Path(__file__).resolve().parents[2] / "unit" / "fixtures" / "safe-result-content.full-verdict.valid.json")
-        .read_text(encoding="utf-8")
+        (
+            Path(__file__).resolve().parents[2]
+            / "unit"
+            / "fixtures"
+            / "safe-result-content.full-verdict.valid.json"
+        ).read_text(encoding="utf-8")
     )["content"]
     schemas = _load_openapi()["components"]["schemas"]
     assert set(golden) <= set(schemas["ComposedSafeResultContentV1"]["properties"])
@@ -204,4 +208,6 @@ def test_openapi_declares_every_member_of_the_full_verdict_golden() -> None:
         assert set(finding) <= set(schemas["SafeResultFinding"]["properties"])
     assert set(golden["codes"]) <= set(schemas["SafeResultCodes"]["properties"])
     assert set(golden["confirmed"][0]) <= set(schemas["SafeResultConfirmed"]["properties"])
-    assert set(golden["findings"][0]["locations"][0]) <= set(schemas["SafeResultLocation"]["properties"])
+    assert set(golden["findings"][0]["locations"][0]) <= set(
+        schemas["SafeResultLocation"]["properties"]
+    )

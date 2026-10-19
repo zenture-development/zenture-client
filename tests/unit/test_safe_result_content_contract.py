@@ -118,9 +118,9 @@ def test_prepare_and_terminal_billing_projections_use_typed_credits() -> None:
 
 def _golden_payload() -> dict[str, object]:
     golden = json.loads(
-        (Path(__file__).parent / "fixtures" / "safe-result-content.full-verdict.valid.json").read_text(
-            encoding="utf-8"
-        )
+        (
+            Path(__file__).parent / "fixtures" / "safe-result-content.full-verdict.valid.json"
+        ).read_text(encoding="utf-8")
     )
     payload = _run_payload()
     payload["safe_result_content"] = golden
@@ -140,7 +140,10 @@ def test_public_run_response_exposes_the_full_verdict() -> None:
     assert first.category == "arithmetic"
     assert content.case_header.startswith("Quote for the Meyer order")
     assert content.decisive_reason.startswith("The discounted total")
-    assert (content.confirmed[0].location, content.confirmed[0].evidence_ref) == ("Paragraph 3", "evidence:claim-2")
+    assert (content.confirmed[0].location, content.confirmed[0].evidence_ref) == (
+        "Paragraph 3",
+        "evidence:claim-2",
+    )
     assert content.codes.task_type == "calculation"
     assert content.codes.finding_categories == ("arithmetic", "source_support_missing")
     assert content.next_steps == (
@@ -153,8 +156,11 @@ def test_public_run_response_exposes_the_full_verdict() -> None:
 
 def test_result_without_verdict_fields_parses_with_empty_defaults() -> None:
     content = PublicRunResponse.model_validate(_run_payload()).safe_result_content.content  # type: ignore[union-attr]
-    assert content.verdict_source is None and content.codes is None and content.case_header is None
-    assert content.confirmed == () and content.next_steps == ()
+    assert content.verdict_source is None
+    assert content.codes is None
+    assert content.case_header is None
+    assert content.confirmed == ()
+    assert content.next_steps == ()
     assert content.further_findings_count is None
 
 
