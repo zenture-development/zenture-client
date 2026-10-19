@@ -294,6 +294,23 @@
       "ComposedSafeResultContentV1": {
         "additionalProperties": true,
         "properties": {
+          "case_header": {
+            "maxLength": 300,
+            "minLength": 1,
+            "pattern": "^(?!.*(?:https?://|www\\.))[^\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069<>`]*$",
+            "type": "string"
+          },
+          "codes": {
+            "$ref": "#/components/schemas/SafeResultCodes"
+          },
+          "confirmed": {
+            "items": {
+              "$ref": "#/components/schemas/SafeResultConfirmed"
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "type": "array"
+          },
           "coverage": {
             "$ref": "#/components/schemas/SafeResultCoverage"
           },
@@ -310,6 +327,12 @@
             "pattern": "^decision:[A-Za-z0-9_./:-]{1,246}$",
             "type": "string"
           },
+          "decisive_reason": {
+            "maxLength": 300,
+            "minLength": 1,
+            "pattern": "^(?!.*(?:https?://|www\\.))[^\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069<>`]*$",
+            "type": "string"
+          },
           "evidence_summaries": {
             "items": {
               "$ref": "#/components/schemas/SafeResultEvidenceSummary"
@@ -324,6 +347,11 @@
             "maxItems": 64,
             "type": "array"
           },
+          "further_findings_count": {
+            "maximum": 9999,
+            "minimum": 0,
+            "type": "integer"
+          },
           "insight_ref": {
             "maxLength": 256,
             "pattern": "^insight:[A-Za-z0-9_./:-]{1,247}$",
@@ -336,6 +364,31 @@
             "maxItems": 64,
             "type": "array"
           },
+          "next_action_finding_refs": {
+            "items": {
+              "maxLength": 256,
+              "pattern": "^finding:[A-Za-z0-9_./:-]{1,247}$",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "next_action_text": {
+            "maxLength": 256,
+            "minLength": 1,
+            "pattern": "^(?!.*(?:https?://|www\\.))[^\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069<>`]*$",
+            "type": "string"
+          },
+          "next_steps": {
+            "items": {
+              "maxLength": 300,
+              "minLength": 1,
+              "pattern": "^(?!.*(?:https?://|www\\.))[^\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069<>`]*$",
+              "type": "string"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "type": "array"
+          },
           "schema_version": {
             "const": "run.composed_safe_result_content.v1"
           },
@@ -343,6 +396,22 @@
             "maxLength": 4000,
             "minLength": 1,
             "pattern": "^(?!.*(?:https?://|www\\.))[^\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069<>`]*$",
+            "type": "string"
+          },
+          "summary_subject_refs": {
+            "items": {
+              "maxLength": 256,
+              "pattern": "^finding:[A-Za-z0-9_./:-]{1,247}$",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "verdict_source": {
+            "description": "fallback marks a verdict assembled without the model's final composition.",
+            "enum": [
+              "model",
+              "fallback"
+            ],
             "type": "string"
           }
         },
@@ -2448,6 +2517,87 @@
         ],
         "type": "object"
       },
+      "SafeResultCodes": {
+        "additionalProperties": true,
+        "properties": {
+          "finding_categories": {
+            "items": {
+              "enum": [
+                "task_requirement",
+                "task_constraint",
+                "task_consistency",
+                "arithmetic",
+                "source_missing",
+                "source_unavailable",
+                "source_support_missing",
+                "source_contradiction",
+                "partial_verification",
+                "prohibition_violated",
+                "commitment_unsupported",
+                "forecast_as_certain",
+                "invented_figure",
+                "internal_contradiction",
+                "requirement_omitted"
+              ],
+              "type": "string"
+            },
+            "maxItems": 10,
+            "type": "array"
+          },
+          "need_kinds": {
+            "items": {
+              "enum": [
+                "requirements_checked",
+                "claims_verified",
+                "figures_recomputed",
+                "citation_check",
+                "translation_fidelity",
+                "standard_checked"
+              ],
+              "type": "string"
+            },
+            "maxItems": 6,
+            "type": "array"
+          },
+          "task_type": {
+            "enum": [
+              "facts_with_sources",
+              "calculation",
+              "text_edit",
+              "translation",
+              "concept",
+              "communication",
+              "other"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_type"
+        ],
+        "type": "object"
+      },
+      "SafeResultConfirmed": {
+        "additionalProperties": true,
+        "properties": {
+          "evidence_ref": {
+            "maxLength": 256,
+            "pattern": "^evidence:[A-Za-z0-9_./:-]{1,246}$",
+            "type": "string"
+          },
+          "location": {
+            "maxLength": 256,
+            "minLength": 1,
+            "pattern": "^(?!.*(?:https?://|www\\.))[^\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069<>`]*$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "location",
+          "evidence_ref"
+        ],
+        "type": "object"
+      },
       "SafeResultContentAvailableV1": {
         "additionalProperties": true,
         "properties": {
@@ -2650,11 +2800,49 @@
       "SafeResultFinding": {
         "additionalProperties": true,
         "properties": {
+          "actual": {
+            "maxLength": 512,
+            "minLength": 1,
+            "pattern": "^(?!.*(?:https?://|www\\.))[^\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069<>`]*$",
+            "type": "string"
+          },
+          "category": {
+            "description": "Public finding category; left out when the finding has no public category.",
+            "enum": [
+              "task_requirement",
+              "task_constraint",
+              "task_consistency",
+              "arithmetic",
+              "source_missing",
+              "source_unavailable",
+              "source_support_missing",
+              "source_contradiction",
+              "partial_verification",
+              "prohibition_violated",
+              "commitment_unsupported",
+              "forecast_as_certain",
+              "invented_figure",
+              "internal_contradiction",
+              "requirement_omitted"
+            ],
+            "type": "string"
+          },
           "confidence": {
             "enum": [
               "low",
               "medium",
               "high"
+            ],
+            "type": "string"
+          },
+          "defect_type": {
+            "enum": [
+              "prohibition_violated",
+              "commitment_unsupported",
+              "forecast_as_certain",
+              "invented_figure",
+              "internal_contradiction",
+              "requirement_omitted"
             ],
             "type": "string"
           },
@@ -2668,6 +2856,12 @@
             "type": "array",
             "uniqueItems": true
           },
+          "expected": {
+            "maxLength": 512,
+            "minLength": 1,
+            "pattern": "^(?!.*(?:https?://|www\\.))[^\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069<>`]*$",
+            "type": "string"
+          },
           "explanation": {
             "maxLength": 4000,
             "minLength": 1,
@@ -2679,6 +2873,48 @@
             "pattern": "^finding:[A-Za-z0-9_./:-]{1,247}$",
             "type": "string"
           },
+          "fix_instruction": {
+            "maxLength": 512,
+            "minLength": 1,
+            "pattern": "^(?!.*(?:https?://|www\\.))[^\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069<>`]*$",
+            "type": "string"
+          },
+          "location": {
+            "description": "Where the finding sits, as text (for example a paragraph and sentence).",
+            "maxLength": 256,
+            "minLength": 1,
+            "pattern": "^(?!.*(?:https?://|www\\.))[^\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069<>`]*$",
+            "type": "string"
+          },
+          "locations": {
+            "items": {
+              "$ref": "#/components/schemas/SafeResultLocation"
+            },
+            "maxItems": 3,
+            "type": "array"
+          },
+          "profile": {
+            "maxLength": 32,
+            "minLength": 1,
+            "pattern": "^[a-z0-9_]+$",
+            "type": "string"
+          },
+          "reason_code": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z0-9_]+$",
+            "type": "string"
+          },
+          "subject_kind": {
+            "enum": [
+              "requirement",
+              "claim",
+              "constraint",
+              "arithmetic",
+              "defect"
+            ],
+            "type": "string"
+          },
           "summary": {
             "maxLength": 2000,
             "minLength": 1,
@@ -2687,6 +2923,18 @@
           },
           "title": {
             "maxLength": 256,
+            "minLength": 1,
+            "pattern": "^(?!.*(?:https?://|www\\.))[^\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069<>`]*$",
+            "type": "string"
+          },
+          "what": {
+            "maxLength": 512,
+            "minLength": 1,
+            "pattern": "^(?!.*(?:https?://|www\\.))[^\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069<>`]*$",
+            "type": "string"
+          },
+          "why": {
+            "maxLength": 512,
             "minLength": 1,
             "pattern": "^(?!.*(?:https?://|www\\.))[^\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069<>`]*$",
             "type": "string"
@@ -2720,6 +2968,46 @@
         "required": [
           "limitation_ref",
           "summary"
+        ],
+        "type": "object"
+      },
+      "SafeResultLocation": {
+        "additionalProperties": true,
+        "properties": {
+          "end": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "excerpt": {
+            "maxLength": 160,
+            "minLength": 1,
+            "pattern": "^(?!.*(?:https?://|www\\.))[^\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069<>`]*$",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "answer",
+              "task"
+            ],
+            "type": "string"
+          },
+          "start": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "shown",
+              "withheld"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "start",
+          "end",
+          "status"
         ],
         "type": "object"
       },
