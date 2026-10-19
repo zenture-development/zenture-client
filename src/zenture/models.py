@@ -21,6 +21,7 @@ class ForwardCompatibleError(SDKBaseModel):
     code: str
     message: str
     issues: tuple[ValidationIssue, ...] = ()
+    retryable: bool = False
 
     @field_validator("issues", mode="before")
     @classmethod
