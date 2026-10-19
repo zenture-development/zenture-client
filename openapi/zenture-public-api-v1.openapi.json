@@ -53,6 +53,41 @@
       }
     },
     "schemas": {
+      "AcceptRunRequest": {
+        "additionalProperties": false,
+        "description": "One-call form of POST /v1/runs: the Prepare fields are accepted at once and answered with 202; the Run is prepared and started when capacity is free, or expires with capacity_not_available_in_time.",
+        "properties": {
+          "artifact": {
+            "$ref": "#/components/schemas/RunArtifactDescriptor"
+          },
+          "predecessor_run_id": {
+            "description": "Optional public reference of one of your finished Runs that this Run follows; part of the request identity for the Idempotency-Key.",
+            "maxLength": 132,
+            "pattern": "^run_[A-Za-z0-9_-]{3,128}$",
+            "type": "string"
+          },
+          "profile": {
+            "default": "standard",
+            "description": "Evaluation profile; omitted means standard. fast uses a shorter execution budget; detailed uses an extended budget and additional review steps. Guest Runs admit fast or standard only; detailed requires an account.",
+            "enum": [
+              "fast",
+              "standard",
+              "detailed"
+            ],
+            "type": "string"
+          },
+          "task": {
+            "maxLength": 20000,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "task",
+          "artifact"
+        ],
+        "type": "object"
+      },
       "ApiTokenAuditEvent": {
         "additionalProperties": false,
         "properties": {
@@ -960,11 +995,16 @@
           "maintenance_active",
           "engine_unavailable_timeout",
           "capability_unavailable",
+          "run_input_not_processable",
+          "run_input_contains_contact_data",
           "run_not_found",
           "run_terminal",
           "cancel_conflict",
           "budget_ceiling_exceeded",
-          "execution_failed"
+          "execution_failed",
+          "guest_quota_exhausted",
+          "price_ceiling_exceeded",
+          "result_unavailable"
         ],
         "type": "string"
       },
@@ -1572,11 +1612,16 @@
           "maintenance_active",
           "engine_unavailable_timeout",
           "capability_unavailable",
+          "run_input_not_processable",
+          "run_input_contains_contact_data",
           "run_not_found",
           "run_terminal",
           "cancel_conflict",
           "budget_ceiling_exceeded",
-          "execution_failed"
+          "execution_failed",
+          "guest_quota_exhausted",
+          "price_ceiling_exceeded",
+          "result_unavailable"
         ],
         "type": "string"
       },
@@ -1766,7 +1811,7 @@
             ]
           },
           "decision": {
-            "description": "Acceptance decision; null while non-terminal or when the Run has no result.",
+            "description": "Acceptance decision; null while non-terminal, when the Run has no result, or when the Run failed.",
             "enum": [
               "ready",
               "revise",
@@ -1835,6 +1880,7 @@
         "additionalProperties": true,
         "properties": {
           "acceptance_decision": {
+            "description": "Acceptance decision. Null while the Run is not terminal, has no result, or when technical_status is failed.",
             "enum": [
               "ready",
               "revise",
@@ -1927,6 +1973,18 @@
               "null"
             ]
           },
+          "phase": {
+            "description": "Set while an accepted request is still being prepared or started.",
+            "enum": [
+              "preparing",
+              "starting",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "profile": {
             "enum": [
               "fast",
@@ -1945,10 +2003,37 @@
               }
             ]
           },
+          "queue_expires_at": {
+            "description": "Set with phase: the accepted request expires when no capacity is found by then.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "reason_code": {
             "maxLength": 128,
             "type": [
               "string",
+              "null"
+            ]
+          },
+          "result": {
+            "description": "pending while the terminal result is not yet readable: read again after retry_after_seconds.",
+            "enum": [
+              "pending",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "retry_after_seconds": {
+            "maximum": 60,
+            "minimum": 1,
+            "type": [
+              "integer",
               "null"
             ]
           },
@@ -2006,6 +2091,19 @@
               {
                 "type": "null"
               }
+            ]
+          },
+          "technical_status": {
+            "description": "Optional technical outcome of the Run, present only for terminal Runs; null or omitted for historical Runs. Independent of the acceptance decision.",
+            "enum": [
+              "complete",
+              "degraded",
+              "failed",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
             ]
           },
           "updated_at": {
@@ -2034,6 +2132,7 @@
         "additionalProperties": true,
         "properties": {
           "acceptance_decision": {
+            "description": "Acceptance decision. Null while the Run is not terminal, has no result, or when technical_status is failed.",
             "enum": [
               "ready",
               "revise",
@@ -2126,6 +2225,18 @@
               "null"
             ]
           },
+          "phase": {
+            "description": "Set while an accepted request is still being prepared or started.",
+            "enum": [
+              "preparing",
+              "starting",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "profile": {
             "enum": [
               "fast",
@@ -2144,10 +2255,37 @@
               }
             ]
           },
+          "queue_expires_at": {
+            "description": "Set with phase: the accepted request expires when no capacity is found by then.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "reason_code": {
             "maxLength": 128,
             "type": [
               "string",
+              "null"
+            ]
+          },
+          "result": {
+            "description": "pending while the terminal result is not yet readable: read again after retry_after_seconds.",
+            "enum": [
+              "pending",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "retry_after_seconds": {
+            "maximum": 60,
+            "minimum": 1,
+            "type": [
+              "integer",
               "null"
             ]
           },
@@ -2205,6 +2343,19 @@
               {
                 "type": "null"
               }
+            ]
+          },
+          "technical_status": {
+            "description": "Optional technical outcome of the Run, present only for terminal Runs; null or omitted for historical Runs. Independent of the acceptance decision.",
+            "enum": [
+              "complete",
+              "degraded",
+              "failed",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
             ]
           },
           "updated_at": {
@@ -2593,19 +2744,36 @@
             "type": "string"
           },
           "outcome": {
+            "description": "Acceptance decision; null for a technically failed evaluation.",
             "enum": [
               "ready",
               "revise",
               "human_review",
-              "insufficient_evidence"
+              "insufficient_evidence",
+              null
             ],
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "reason_code": {
             "maxLength": 128,
             "minLength": 1,
             "pattern": "^[A-Za-z0-9_.-]{1,128}$",
             "type": "string"
+          },
+          "technical_status": {
+            "enum": [
+              "complete",
+              "degraded",
+              "failed",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -7125,11 +7293,16 @@
           "maintenance_active",
           "engine_unavailable_timeout",
           "capability_unavailable",
+          "run_input_not_processable",
+          "run_input_contains_contact_data",
           "run_not_found",
           "run_terminal",
           "cancel_conflict",
           "budget_ceiling_exceeded",
-          "execution_failed"
+          "execution_failed",
+          "guest_quota_exhausted",
+          "price_ceiling_exceeded",
+          "result_unavailable"
         ],
         "x-zenture-idempotency-required": true,
         "x-zenture-max-body-bytes": 10485760,
@@ -7487,11 +7660,16 @@
           "maintenance_active",
           "engine_unavailable_timeout",
           "capability_unavailable",
+          "run_input_not_processable",
+          "run_input_contains_contact_data",
           "run_not_found",
           "run_terminal",
           "cancel_conflict",
           "budget_ceiling_exceeded",
-          "execution_failed"
+          "execution_failed",
+          "guest_quota_exhausted",
+          "price_ceiling_exceeded",
+          "result_unavailable"
         ],
         "x-zenture-idempotency-required": true,
         "x-zenture-max-body-bytes": 16000,
@@ -7894,11 +8072,16 @@
           "maintenance_active",
           "engine_unavailable_timeout",
           "capability_unavailable",
+          "run_input_not_processable",
+          "run_input_contains_contact_data",
           "run_not_found",
           "run_terminal",
           "cancel_conflict",
           "budget_ceiling_exceeded",
-          "execution_failed"
+          "execution_failed",
+          "guest_quota_exhausted",
+          "price_ceiling_exceeded",
+          "result_unavailable"
         ],
         "x-zenture-idempotency-required": false,
         "x-zenture-max-body-bytes": 1024,
@@ -7951,7 +8134,14 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateRunRequest"
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/AcceptRunRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CreateRunRequest"
+                  }
+                ]
               }
             }
           },
@@ -8197,7 +8387,12 @@
                 }
               }
             },
-            "description": "Public gateway error"
+            "description": "Public gateway error",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            }
           },
           "503": {
             "content": {
@@ -8288,14 +8483,19 @@
           "maintenance_active",
           "engine_unavailable_timeout",
           "capability_unavailable",
+          "run_input_not_processable",
+          "run_input_contains_contact_data",
           "run_not_found",
           "run_terminal",
           "cancel_conflict",
           "budget_ceiling_exceeded",
-          "execution_failed"
+          "execution_failed",
+          "guest_quota_exhausted",
+          "price_ceiling_exceeded",
+          "result_unavailable"
         ],
         "x-zenture-idempotency-required": true,
-        "x-zenture-max-body-bytes": 8000,
+        "x-zenture-max-body-bytes": 524288,
         "x-zenture-mcp-origin": {
           "auth_profile": "mcp.run_gateway_assertion.v1",
           "enabled": true,
@@ -8659,11 +8859,16 @@
           "maintenance_active",
           "engine_unavailable_timeout",
           "capability_unavailable",
+          "run_input_not_processable",
+          "run_input_contains_contact_data",
           "run_not_found",
           "run_terminal",
           "cancel_conflict",
           "budget_ceiling_exceeded",
-          "execution_failed"
+          "execution_failed",
+          "guest_quota_exhausted",
+          "price_ceiling_exceeded",
+          "result_unavailable"
         ],
         "x-zenture-idempotency-required": true,
         "x-zenture-max-body-bytes": 524288,
@@ -9022,11 +9227,16 @@
           "maintenance_active",
           "engine_unavailable_timeout",
           "capability_unavailable",
+          "run_input_not_processable",
+          "run_input_contains_contact_data",
           "run_not_found",
           "run_terminal",
           "cancel_conflict",
           "budget_ceiling_exceeded",
-          "execution_failed"
+          "execution_failed",
+          "guest_quota_exhausted",
+          "price_ceiling_exceeded",
+          "result_unavailable"
         ],
         "x-zenture-idempotency-required": false,
         "x-zenture-max-body-bytes": 1024,
@@ -9383,11 +9593,16 @@
           "maintenance_active",
           "engine_unavailable_timeout",
           "capability_unavailable",
+          "run_input_not_processable",
+          "run_input_contains_contact_data",
           "run_not_found",
           "run_terminal",
           "cancel_conflict",
           "budget_ceiling_exceeded",
-          "execution_failed"
+          "execution_failed",
+          "guest_quota_exhausted",
+          "price_ceiling_exceeded",
+          "result_unavailable"
         ],
         "x-zenture-idempotency-required": true,
         "x-zenture-max-body-bytes": 4000,
@@ -9754,11 +9969,16 @@
           "maintenance_active",
           "engine_unavailable_timeout",
           "capability_unavailable",
+          "run_input_not_processable",
+          "run_input_contains_contact_data",
           "run_not_found",
           "run_terminal",
           "cancel_conflict",
           "budget_ceiling_exceeded",
-          "execution_failed"
+          "execution_failed",
+          "guest_quota_exhausted",
+          "price_ceiling_exceeded",
+          "result_unavailable"
         ],
         "x-zenture-idempotency-required": false,
         "x-zenture-max-body-bytes": 1024,
@@ -10113,11 +10333,16 @@
           "maintenance_active",
           "engine_unavailable_timeout",
           "capability_unavailable",
+          "run_input_not_processable",
+          "run_input_contains_contact_data",
           "run_not_found",
           "run_terminal",
           "cancel_conflict",
           "budget_ceiling_exceeded",
-          "execution_failed"
+          "execution_failed",
+          "guest_quota_exhausted",
+          "price_ceiling_exceeded",
+          "result_unavailable"
         ],
         "x-zenture-idempotency-required": false,
         "x-zenture-max-body-bytes": 1024,
@@ -10474,11 +10699,16 @@
           "maintenance_active",
           "engine_unavailable_timeout",
           "capability_unavailable",
+          "run_input_not_processable",
+          "run_input_contains_contact_data",
           "run_not_found",
           "run_terminal",
           "cancel_conflict",
           "budget_ceiling_exceeded",
-          "execution_failed"
+          "execution_failed",
+          "guest_quota_exhausted",
+          "price_ceiling_exceeded",
+          "result_unavailable"
         ],
         "x-zenture-idempotency-required": true,
         "x-zenture-max-body-bytes": 8000,
@@ -10644,12 +10874,7 @@
                 }
               }
             },
-            "description": "Public gateway error",
-            "headers": {
-              "Retry-After": {
-                "$ref": "#/components/headers/RetryAfter"
-              }
-            }
+            "description": "Public gateway error"
           },
           "503": {
             "content": {

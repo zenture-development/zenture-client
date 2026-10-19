@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from zenture._contract.headers import RATE_LIMIT_HEADER_NAMES, parse_rate_limit_headers
 from zenture._contract.models import (
+    AcceptRunRequest,
     ArtifactUploadRequest,
     ArtifactUploadResponse,
     AvailableCreditAmount,
@@ -71,6 +72,7 @@ from zenture.rate_limits import RateLimitInfo
 
 __all__ = (
     "RATE_LIMIT_HEADER_NAMES",
+    "AcceptRunRequest",
     "ArtifactUploadRequest",
     "ArtifactUploadResponse",
     "AvailableCreditAmount",
