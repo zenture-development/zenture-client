@@ -894,6 +894,9 @@ class SafeResultCodes(_RunResponseModel):
 
 
 class ComposedSafeResultContentV1(_RunResponseModel):
+    """Composed result content. The client does not expose the keys `locations`, `next_action_text`,
+    `next_action_finding_refs` and `summary_subject_refs`; they are ignored when the response is parsed."""
+
     schema_version: Literal["run.composed_safe_result_content.v1"]
     summary: str = Field(min_length=1, max_length=4000)
     findings: tuple[SafeResultFinding, ...] = Field(default_factory=tuple, max_length=64)
