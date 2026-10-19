@@ -104,7 +104,7 @@ def test_user_docs_document_every_exit_code_and_error_with_its_next_action() -> 
 def test_documented_behavior_matches_the_implemented_surface() -> None:
     readme = _read(ROOT / "README.md")
     for claim in (
-        "pip install --upgrade zenture==1.0.3",
+        "pip install --upgrade zenture==1.1.0",
         "Keychain",
         "not yet verified",
         "one stored account",
