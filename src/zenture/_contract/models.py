@@ -81,11 +81,16 @@ class PublicErrorCode(StrEnum):
     MAINTENANCE_ACTIVE = "maintenance_active"
     ENGINE_UNAVAILABLE_TIMEOUT = "engine_unavailable_timeout"
     CAPABILITY_UNAVAILABLE = "capability_unavailable"
+    RUN_INPUT_NOT_PROCESSABLE = "run_input_not_processable"
+    RUN_INPUT_CONTAINS_CONTACT_DATA = "run_input_contains_contact_data"
     RUN_NOT_FOUND = "run_not_found"
     RUN_TERMINAL = "run_terminal"
     CANCEL_CONFLICT = "cancel_conflict"
     BUDGET_CEILING_EXCEEDED = "budget_ceiling_exceeded"
     EXECUTION_FAILED = "execution_failed"
+    GUEST_QUOTA_EXHAUSTED = "guest_quota_exhausted"
+    PRICE_CEILING_EXCEEDED = "price_ceiling_exceeded"
+    RESULT_UNAVAILABLE = "result_unavailable"
 
 
 class ModelMode(StrEnum):
@@ -124,6 +129,7 @@ class PublicError(SDKBaseModel):
     code: PublicErrorCode
     message: str = Field(min_length=1)
     issues: tuple[ValidationIssue, ...] = ()
+    retryable: Literal[True] | None = None
 
     @field_validator("issues", mode="before")
     @classmethod
@@ -595,6 +601,17 @@ class CreateRunRequest(_RunRequestModel):
         return UUID(str(value))
 
 
+class AcceptRunRequest(PrepareKnowledgeRunRequest):
+    """One-call form of the Run request: Prepare fields plus an optional predecessor."""
+
+    predecessor_run_id: str | None = Field(
+        default=None,
+        pattern=r"^run_[A-Za-z0-9_-]{3,128}$",
+        max_length=132,
+        description="Optional public reference of one of your finished Runs that this Run follows.",
+    )
+
+
 class FindingAdjudication(_RunRequestModel):
     finding_ref: str = Field(min_length=1, max_length=128)
     outcome: Literal["confirmed", "rejected", "partially_valid", "not_sure"]
@@ -994,6 +1011,11 @@ class PublicRunResponse(_RunResponseModel):
     task_contract_summary: PublicTaskContractSummary | None = None
     capability_coverage: PublicCapabilityCoverage | None = None
     acceptance_decision: PublicDecision | None = None
+    technical_status: Literal["complete", "degraded", "failed"] | None = None
+    phase: Literal["preparing", "starting"] | None = None
+    queue_expires_at: AwareDatetime | None = None
+    result: Literal["pending"] | None = None
+    retry_after_seconds: int | None = Field(default=None, ge=1, le=60)
     reason_code: str | None = Field(default=None, max_length=128)
     next_action: str | None = Field(default=None, max_length=128)
     run_insight_ref: str | None = Field(default=None, max_length=256)
@@ -1014,7 +1036,13 @@ class PublicRunResponse(_RunResponseModel):
         return validate_run_cursor(value, field="event_cursor")
 
     @field_validator(
-        "created_at", "updated_at", "started_at", "completed_at", "deadline_at", mode="before"
+        "created_at",
+        "updated_at",
+        "started_at",
+        "completed_at",
+        "deadline_at",
+        "queue_expires_at",
+        mode="before",
     )
     @classmethod
     def _timestamps(cls, value: object) -> object:

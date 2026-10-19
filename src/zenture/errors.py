@@ -30,8 +30,10 @@ class ZentureAPIError(ZentureError):
         request_id: str | None = None,
         retry_after: float | None = None,
         issues: tuple[ValidationIssue, ...] = (),
+        retryable: bool = False,
     ) -> None:
         self.message = redact_text(message)
+        self.retryable = retryable
         self.error_code = error_code
         self.status_code = status_code
         self.request_id = request_id
@@ -249,6 +251,7 @@ def error_from_response(
         request_id=envelope.request_id,
         retry_after=retry_after,
         issues=envelope.error.issues,
+        retryable=envelope.error.retryable,
     )
 
 

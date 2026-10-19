@@ -40,7 +40,7 @@ Run preparation currently rejects `zenture_ref` inputs.
 ## Installation
 
 ```bash
-python -m pip install --upgrade zenture==1.0.3
+python -m pip install --upgrade zenture==1.1.0
 ```
 
 Supported Python: CPython 3.11, 3.12, 3.13, and 3.14; there is no upper version cap.
