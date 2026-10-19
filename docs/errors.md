@@ -78,6 +78,9 @@ MCP authorization failures use the distinct exceptions in `zenture.auth`.
 | `retry_later` | Respect retry_after_seconds when present; preserve the Run ID and original key/request |
 | `reauthorize` | Explain that the human must restore authorization; do not launch login as an agent |
 | `reattach_file` | Reselect a missing source if the host supports file bytes; reselection cannot add a missing resolver |
+| `accept_legal_terms` | The account owner must sign in to the zenture web app for this environment and accept the current Terms and Privacy Policy (Account menu -> Terms update); do not retry until then |
+| `upgrade_account` | The free guest Runs are used up: tell the user to sign in or create a zenture account to continue; do not retry as a guest |
+| `retry_with_same_idempotency_key` | The outcome of the start is unknown: repeat the same `run` call unchanged with the `idempotency_key` from the error; it returns the same Run and never starts a second one |
 
 `retryable=True` does not authorize a replacement chargeable Run. After an
 uncertain start, recover with the saved original key and identical request.
