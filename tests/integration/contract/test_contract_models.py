@@ -761,24 +761,23 @@ def test_run_response_reads_accepted_request_and_technical_status() -> None:
 
 
 def test_retry_after_is_declared_on_transient_gateway_failures() -> None:
-    operations = [
-        (path, method, operation)
-        for path, item in _contract()["paths"].items()
-        for method, operation in item.items()
-        if isinstance(operation, dict) and "responses" in operation
-    ]
-    assert operations
+    paths = cast("dict[str, dict[str, Any]]", _contract()["paths"])
+    declared: dict[str, set[tuple[str, str]]] = {"502": set(), "503": set(), "504": set()}
+    for path, item in paths.items():
+        for method, raw_operation in item.items():
+            operation = cast("dict[str, Any]", raw_operation)
+            responses = cast("dict[str, dict[str, Any]]", operation.get("responses", {}))
+            for status, response in responses.items():
+                headers = cast("dict[str, Any]", response.get("headers", {}))
+                has_retry_after = any(name.lower() == "retry-after" for name in headers)
+                if status in declared:
+                    assert has_retry_after, (method, path, status)
+                    declared[status].add((method, path))
+                if status == "431":
+                    assert not has_retry_after, (method, path)
 
-    def has_retry_after(response: dict[str, Any]) -> bool:
-        return any(name.lower() == "retry-after" for name in response.get("headers", {}))
-
-    checked = 0
-    for path, method, operation in operations:
-        transient = {"503"} | ({"502", "504"} if path.startswith("/v1/runs") else set())
-        for status, response in operation["responses"].items():
-            if status in transient:
-                checked += 1
-                assert has_retry_after(response), (method, path, status)
-    assert checked >= len(operations)
-    for path, method, operation in operations:
-        assert not has_retry_after(operation["responses"].get("431", {})), (method, path)
+    run_routes = {key for key in declared["503"] if key[1].startswith("/v1/run")}
+    assert len(declared["503"]) == 29
+    assert len(run_routes) == 11
+    assert declared["502"] == run_routes
+    assert declared["504"] == run_routes
