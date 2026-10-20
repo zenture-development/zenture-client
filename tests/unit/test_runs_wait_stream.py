@@ -230,3 +230,55 @@ async def test_async_wait_honours_timeout_while_the_stream_stays_silent() -> Non
 
     assert exc_info.value.last_status == "queued"
     await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_async_wait_honours_stop_while_listening() -> None:
+    script = _Script(["queued"], lambda: _sse(_event(1, "running")))
+    client = _async(script)
+    stops = iter([False, False, False] + [True] * 1000)
+
+    with pytest.raises(ZenturePollingStoppedError):
+        await client.runs.wait(
+            RUN_ID, timeout=30.0, initial_interval=0.05, stop=lambda: next(stops)
+        )
+
+    await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_async_wait_reads_again_when_the_stream_ends_without_a_terminal_event() -> None:
+    script = _Script(["queued", "completed"], lambda: _sse(_event(1, "running")))
+    client = _async(script)
+
+    result = await client.runs.wait(RUN_ID, timeout=30.0, initial_interval=0.05, max_interval=0.05)
+
+    assert result.status.value == "completed"
+    assert script.calls[0] == "get"
+    assert script.calls[-1] == "get"
+    await client.aclose()
+
+
+def test_sync_wait_with_stop_holds_one_stream_for_at_least_a_second() -> None:
+    read_timeouts: list[float] = []
+
+    def stream() -> httpx.Response:
+        return _sse(_event(2, "completed"))
+
+    script = _Script(["queued", "completed"], stream)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == STREAM_PATH:
+            read_timeouts.append(request.extensions["timeout"]["read"])
+        return script(request)
+
+    client = ZentureClient(
+        api_key=API_KEY, http_client=httpx.Client(transport=httpx.MockTransport(handler))
+    )
+    result = client.runs.wait(
+        RUN_ID, timeout=30.0, initial_interval=8.0, max_interval=8.0, stop=lambda: False
+    )
+
+    assert result.status.value == "completed"
+    assert read_timeouts == [1.0]
+    client.close()
