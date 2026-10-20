@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import random
 import re
 import time
@@ -12,8 +11,6 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, cast
-
-import httpx
 
 from zenture._contract import (
     ArtifactUploadRequest,
@@ -24,7 +21,6 @@ from zenture._contract import (
     PrepareKnowledgeRunRequest,
     PrepareKnowledgeRunResponse,
     PublicRunEvent,
-    PublicRunHeartbeat,
     PublicRunResponse,
     PublicRunStreamError,
     PublicRunStreamMessage,
@@ -33,6 +29,12 @@ from zenture._contract import (
     SignedUploadResponse,
 )
 from zenture._contract.run_references import validate_run_cursor
+from zenture._resources._run_wait import (
+    is_stream_read_timeout,
+    is_terminal_stream_message,
+    listen_for_terminal,
+    parse_sse_events,
+)
 from zenture._resources._utils import (
     idempotency_headers,
     parse_response,
@@ -64,9 +66,6 @@ _TERMINAL_STATUSES = frozenset(
         RunStatus.BUDGET_EXHAUSTED,
     }
 )
-_TERMINAL_STREAM_STATUSES = frozenset(
-    {"completed", "failed", "cancelled", "expired", "budget_exhausted"}
-)
 _RETRYABLE_STREAM_STATUS_CODES = frozenset({408, 429, 500, 502, 503, 504})
 _RETRYABLE_STREAM_ERROR_CODES = frozenset(
     {"capacity_unavailable", "dependency_unavailable", "internal_error", "rate_limited"}
@@ -79,7 +78,6 @@ _ASYNC_STREAM_STOP_POLL_INTERVAL = 0.25
 _ASYNC_STREAM_HEARTBEAT_INTERVAL = 15.0
 _MIN_STREAM_CHECKPOINT_BACKOFF = 0.01
 _MAX_ARTIFACT_BYTES = 10 * 1024 * 1024
-MAX_STREAM_EVENT_BYTES = 512 * 1024
 ARTIFACT_CHUNK_SIZE = 64 * 1024
 _RUN_ID_RE = re.compile(r"^run_[A-Za-z0-9_-]{3,128}$")
 _DEFAULT_WAIT_TIMEOUT = 120.0
@@ -210,14 +208,6 @@ class RunEventStreamState:
         )
 
 
-def is_terminal_stream_message(message: PublicRunStreamMessage) -> bool:
-    """Return whether a stream message proves the Run stream is terminal."""
-
-    if isinstance(message, PublicRunEvent):
-        return message.status in _TERMINAL_STREAM_STATUSES
-    return isinstance(message, PublicRunStreamError) and message.terminal
-
-
 def is_retryable_stream_error(error: Exception) -> bool:
     """Return whether a stream-open/read error may be retried safely."""
 
@@ -303,14 +293,6 @@ def _sync_stream_needs_final_window_reconfigure(
     if deadline is None or callable(stop):
         return False
     return deadline - time.monotonic() <= _SYNC_STREAM_HEARTBEAT_INTERVAL
-
-
-def _is_stream_read_timeout(error: Exception) -> bool:
-    """Return whether transport wrapped an HTTPX sync read timeout."""
-
-    return isinstance(error, ZentureTransportError) and isinstance(
-        error.__cause__, httpx.ReadTimeout
-    )
 
 
 def required_artifact_size(byte_size: int | None) -> int:
@@ -692,7 +674,7 @@ class RunsResource:
                     headers=headers,
                     timeout=stream_timeout,
                 ) as response:
-                    for message in _parse_sse_events(response.iter_lines(), expected_run_id=run_id):
+                    for message in parse_sse_events(response.iter_lines(), expected_run_id=run_id):
                         emit, message_progressed = state.accept(message)
                         progressed = progressed or message_progressed
                         if not emit:
@@ -717,7 +699,7 @@ class RunsResource:
             except (ZentureAPIError, ZentureTransportError) as exc:
                 if not is_retryable_stream_error(exc):
                     raise
-                checkpoint = _is_stream_read_timeout(exc) and (
+                checkpoint = is_stream_read_timeout(exc) and (
                     deadline is not None or callable(stop)
                 )
 
@@ -768,6 +750,8 @@ class RunsResource:
         interval = initial_interval
         observed_deadline: datetime | None = None
         last_status: RunStatus | None = None
+        listening = True
+        cursor: str | None = None
         while True:
             if callable(stop) and stop():
                 raise ZenturePollingStoppedError(operation_id=run_id)
@@ -806,7 +790,14 @@ class RunsResource:
                     )
             if is_terminal_status(result.status):
                 return result
-            time.sleep(min(interval, max(0.0, deadline - time.monotonic())))
+            end = time.monotonic() + min(interval, max(0.0, deadline - time.monotonic()))
+            if listening:
+                # The terminal event is the wake; the window bounds the next safety read.
+                listening, cursor = listen_for_terminal(
+                    self._transport, run_id, end=end, cursor=cursor, stop=stop, clock=time.monotonic
+                )
+            if not listening:
+                time.sleep(max(0.0, end - time.monotonic()))
             interval = min(interval * 2, max_interval)
 
     def cancel(self, run_id: str, *, idempotency_key: str) -> PublicRunResponse:
@@ -1022,57 +1013,6 @@ def validate_run_event_replay(
     if any(event.run_id != expected_run_id for event in response.events):
         raise ValueError("public Run event run_id did not match the requested Run")
     return response
-
-
-def _parse_sse_events(
-    lines: Iterator[str], *, expected_run_id: str
-) -> Iterator[PublicRunStreamMessage]:
-    data: list[str] = []
-    event_type = ""
-    event_bytes = 0
-    for raw_line in lines:
-        line = str(raw_line)
-        event_bytes += len(line.encode("utf-8")) + 1
-        if event_bytes > MAX_STREAM_EVENT_BYTES:
-            raise ValueError("public Run event stream record is too large")
-        if not line:
-            if data:
-                try:
-                    payload = json.loads("\n".join(data))
-                except (TypeError, ValueError):
-                    raise ValueError("public Run event stream contained invalid JSON") from None
-                yield _parse_stream_message(payload, event_type, expected_run_id=expected_run_id)
-                data.clear()
-                event_type = ""
-            event_bytes = 0
-            continue
-        if line.startswith(":") or line.startswith("id:"):
-            continue
-        if line.startswith("event:"):
-            event_type = line[6:].strip()
-            continue
-        if line.startswith("data:"):
-            data.append(line[5:].lstrip())
-
-
-def _parse_stream_message(
-    payload: object, event_type: str, *, expected_run_id: str
-) -> PublicRunStreamMessage:
-    if not isinstance(payload, dict):
-        raise ValueError("public Run event payload must be an object")
-    mapping = cast("dict[str, object]", payload)
-    message_type = mapping.get("type") or event_type
-    if message_type == "run.event":
-        message: PublicRunStreamMessage = PublicRunEvent.model_validate(mapping)
-    elif message_type == "run.heartbeat":
-        message = PublicRunHeartbeat.model_validate(mapping)
-    elif message_type == "run.error":
-        message = PublicRunStreamError.model_validate(mapping)
-    else:
-        raise ValueError("public Run event type is unsupported")
-    if message.run_id != expected_run_id:
-        raise ValueError("public Run event run_id did not match the requested Run")
-    return message
 
 
 __all__ = ["RunsResource"]

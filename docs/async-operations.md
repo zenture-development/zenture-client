@@ -68,8 +68,9 @@ API returns `429`.
 The same finite wait contract applies to sync and async public Run clients:
 `runs.wait(...)` uses the first observed `deadline_at` plus the fixed 35-second
 recovery allowance and one polling interval when its timeout is omitted. An
-explicit finite timeout always wins. If stream consumption is unavailable,
-bounded Run polling is the fallback.
+explicit finite timeout always wins. `runs.wait(...)` wakes on the terminal event
+of the Run event stream and then reads the Run once; if the stream is unavailable
+or drops, bounded Run polling is the fallback.
 
 ## Async Examples
 
