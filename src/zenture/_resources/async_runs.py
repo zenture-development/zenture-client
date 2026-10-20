@@ -23,10 +23,8 @@ from zenture._contract import (
     SignedUploadResponse,
 )
 from zenture._contract.run_references import validate_run_cursor
-from zenture._resources._run_wait import (
-    listen_for_terminal_async,
-    parse_sse_events_async,
-)
+from zenture._resources._run_wait import parse_sse_events_async
+from zenture._resources._run_wait_reopen import StreamWindow, poll_window
 from zenture._resources._utils import idempotency_headers, parse_response, path_segment
 from zenture._resources.runs import (
     ARTIFACT_CHUNK_SIZE,
@@ -526,8 +524,14 @@ class AsyncRunsResource:
         interval = initial_interval
         observed_deadline: datetime | None = None
         last_status = None
-        listening = True
-        cursor: str | None = None
+        stream = StreamWindow(
+            self._transport,
+            run_id,
+            stop=stop,
+            clock=time.monotonic,
+            sleep=asyncio.sleep,
+            max_interval=max_interval,
+        )
         while True:
             if callable(stop) and stop():
                 raise ZenturePollingStoppedError(operation_id=run_id)
@@ -566,14 +570,10 @@ class AsyncRunsResource:
                     )
             if is_terminal_status(result.status):
                 return result
-            end = time.monotonic() + min(interval, max(0.0, deadline - time.monotonic()))
-            if listening:
-                # The terminal event is the wake; the window bounds the next safety read.
-                listening, cursor = await listen_for_terminal_async(
-                    self._transport, run_id, end=end, cursor=cursor, stop=stop, clock=time.monotonic
-                )
-            if not listening:
-                await asyncio.sleep(max(0.0, end - time.monotonic()))
+            window = poll_window(interval, result.retry_after_seconds)
+            end = time.monotonic() + min(window, max(0.0, deadline - time.monotonic()))
+            # The terminal event is the wake; the window bounds the next safety read.
+            await stream.wait_async(end)
             interval = min(interval * 2, max_interval)
 
     async def cancel(self, run_id: str, *, idempotency_key: str) -> PublicRunResponse:
