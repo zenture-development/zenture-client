@@ -526,6 +526,8 @@ class AsyncRunsResource:
         interval = initial_interval
         observed_deadline: datetime | None = None
         last_status = None
+        listening = True
+        cursor: str | None = None
         while True:
             if callable(stop) and stop():
                 raise ZenturePollingStoppedError(operation_id=run_id)
@@ -564,8 +566,65 @@ class AsyncRunsResource:
                     )
             if is_terminal_status(result.status):
                 return result
-            await asyncio.sleep(min(interval, max(0.0, deadline - time.monotonic())))
+            window = min(interval, max(0.0, deadline - time.monotonic()))
+            if listening:
+                # The terminal event is the wake; the window bounds the next safety read.
+                listening, cursor = await self._listen_for_terminal(
+                    run_id, window=window, cursor=cursor, stop=stop
+                )
+            else:
+                await asyncio.sleep(window)
             interval = min(interval * 2, max_interval)
+
+    async def _listen_for_terminal(
+        self, run_id: str, *, window: float, cursor: str | None, stop: Any
+    ) -> tuple[bool, str | None]:
+        """Hold the event stream open for one window; return (stream usable, resume cursor).
+
+        A terminal event or the end of the window returns True; an unavailable or
+        dropped stream returns False so the caller falls back to bounded polling.
+        """
+
+        end = time.monotonic() + window
+        try:
+            while True:
+                if callable(stop) and stop():
+                    raise ZenturePollingStoppedError(operation_id=run_id)
+                remaining = end - time.monotonic()
+                if remaining <= 0:
+                    return True, cursor
+                headers = {"Accept": "text/event-stream"}
+                if cursor is not None:
+                    headers["Last-Event-ID"] = cursor
+                chunk = min(remaining, 0.25) if callable(stop) else remaining
+                try:
+                    async with asyncio.timeout(chunk):
+                        async with self._transport.stream(
+                            "GET",
+                            f"/runs/{path_segment(run_id)}/events/stream",
+                            headers=headers,
+                            timeout=chunk,
+                        ) as response:
+                            async for message in _parse_sse_events_async(
+                                response.aiter_lines(), expected_run_id=run_id
+                            ):
+                                cursor = getattr(message, "event_cursor", None) or cursor
+                                if is_terminal_stream_message(message):
+                                    return True, cursor
+                                if callable(stop) and stop():
+                                    raise ZenturePollingStoppedError(operation_id=run_id)
+                    return await self._poll_fallback(end, cursor)
+                except TimeoutError:
+                    continue
+        except (ZentureAPIError, ZentureTransportError, ZentureResponseError):
+            return await self._poll_fallback(end, cursor)
+
+    @staticmethod
+    async def _poll_fallback(end: float, cursor: str | None) -> tuple[bool, str | None]:
+        """Finish the polling window of an unavailable stream; stop listening."""
+
+        await asyncio.sleep(max(0.0, end - time.monotonic()))
+        return False, cursor
 
     async def cancel(self, run_id: str, *, idempotency_key: str) -> PublicRunResponse:
         """Request cancellation of one owned active Run after an explicit user stop.
