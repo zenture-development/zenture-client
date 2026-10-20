@@ -729,6 +729,7 @@ async def test_async_iter_events_rejects_invalid_wait_parameters(
 def test_sync_iter_events_applies_bounded_reconnect_jitter(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    import zenture._resources._run_wait_reopen as run_wait_reopen_module
     import zenture._resources.runs as runs_module
 
     now = 0.0
@@ -742,7 +743,7 @@ def test_sync_iter_events_applies_bounded_reconnect_jitter(
 
     monkeypatch.setattr(runs_module, "time", SimpleNamespace(monotonic=lambda: now, sleep=sleep))
     monkeypatch.setattr(
-        runs_module,
+        run_wait_reopen_module,
         "random",
         SimpleNamespace(uniform=_max_jitter),
         raising=False,
@@ -779,7 +780,7 @@ def test_sync_iter_events_applies_bounded_reconnect_jitter(
 async def test_async_iter_events_applies_bounded_reconnect_jitter(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import zenture._resources.runs as runs_module
+    import zenture._resources._run_wait_reopen as run_wait_reopen_module
 
     now = 0.0
     sleeps: list[float] = []
@@ -792,7 +793,7 @@ async def test_async_iter_events_applies_bounded_reconnect_jitter(
 
     monkeypatch.setattr(asyncio, "sleep", sleep)
     monkeypatch.setattr(
-        runs_module,
+        run_wait_reopen_module,
         "random",
         SimpleNamespace(uniform=_max_jitter),
         raising=False,
