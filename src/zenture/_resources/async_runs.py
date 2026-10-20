@@ -24,8 +24,8 @@ from zenture._contract import (
 )
 from zenture._contract.run_references import validate_run_cursor
 from zenture._resources._run_wait import (
-    _parse_sse_events_async,
     listen_for_terminal_async,
+    parse_sse_events_async,
 )
 from zenture._resources._utils import idempotency_headers, parse_response, path_segment
 from zenture._resources.runs import (
@@ -447,7 +447,7 @@ class AsyncRunsResource:
                         headers=headers,
                         timeout=stream_timeout,
                     ) as response:
-                        async for message in _parse_sse_events_async(
+                        async for message in parse_sse_events_async(
                             response.aiter_lines(), expected_run_id=run_id
                         ):
                             emit, message_progressed = state.accept(message)

@@ -42,7 +42,7 @@ def is_terminal_stream_message(message: PublicRunStreamMessage) -> bool:
     return isinstance(message, PublicRunStreamError) and message.terminal
 
 
-def _is_stream_read_timeout(error: Exception) -> bool:
+def is_stream_read_timeout(error: Exception) -> bool:
     """Return whether transport wrapped an HTTPX sync read timeout."""
 
     return isinstance(error, ZentureTransportError) and isinstance(
@@ -50,7 +50,7 @@ def _is_stream_read_timeout(error: Exception) -> bool:
     )
 
 
-def _parse_sse_events(
+def parse_sse_events(
     lines: Iterator[str], *, expected_run_id: str
 ) -> Iterator[PublicRunStreamMessage]:
     data: list[str] = []
@@ -101,7 +101,7 @@ def _parse_stream_message(
     return message
 
 
-async def _parse_sse_events_async(
+async def parse_sse_events_async(
     lines: AsyncIterator[str], *, expected_run_id: str
 ) -> AsyncIterator[PublicRunStreamMessage]:
     data: list[str] = []
@@ -165,7 +165,7 @@ def listen_for_terminal(
             read_timeout = min(remaining, _STOP_CHECK_INTERVAL) if callable(stop) else remaining
             try:
                 with transport.stream("GET", path, headers=headers, timeout=read_timeout) as resp:
-                    for message in _parse_sse_events(resp.iter_lines(), expected_run_id=run_id):
+                    for message in parse_sse_events(resp.iter_lines(), expected_run_id=run_id):
                         cursor = getattr(message, "event_cursor", None) or cursor
                         if is_terminal_stream_message(message):
                             return True, cursor
@@ -175,7 +175,7 @@ def listen_for_terminal(
                             return True, cursor
                 return False, cursor
             except ZentureTransportError as exc:
-                if not _is_stream_read_timeout(exc):
+                if not is_stream_read_timeout(exc):
                     raise
     except (ZentureAPIError, ZentureTransportError, ZentureResponseError, ValueError):
         return False, cursor
@@ -206,7 +206,7 @@ async def listen_for_terminal_async(
                     async with transport.stream(
                         "GET", path, headers=headers, timeout=chunk
                     ) as resp:
-                        async for message in _parse_sse_events_async(
+                        async for message in parse_sse_events_async(
                             resp.aiter_lines(), expected_run_id=run_id
                         ):
                             cursor = getattr(message, "event_cursor", None) or cursor
@@ -217,5 +217,8 @@ async def listen_for_terminal_async(
                 return False, cursor
             except TimeoutError:
                 continue
+            except ZentureTransportError as exc:
+                if not is_stream_read_timeout(exc):
+                    raise
     except (ZentureAPIError, ZentureTransportError, ZentureResponseError, ValueError):
         return False, cursor

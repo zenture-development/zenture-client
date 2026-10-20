@@ -30,10 +30,10 @@ from zenture._contract import (
 )
 from zenture._contract.run_references import validate_run_cursor
 from zenture._resources._run_wait import (
-    _is_stream_read_timeout,
-    _parse_sse_events,
+    is_stream_read_timeout,
     is_terminal_stream_message,
     listen_for_terminal,
+    parse_sse_events,
 )
 from zenture._resources._utils import (
     idempotency_headers,
@@ -674,7 +674,7 @@ class RunsResource:
                     headers=headers,
                     timeout=stream_timeout,
                 ) as response:
-                    for message in _parse_sse_events(response.iter_lines(), expected_run_id=run_id):
+                    for message in parse_sse_events(response.iter_lines(), expected_run_id=run_id):
                         emit, message_progressed = state.accept(message)
                         progressed = progressed or message_progressed
                         if not emit:
@@ -699,7 +699,7 @@ class RunsResource:
             except (ZentureAPIError, ZentureTransportError) as exc:
                 if not is_retryable_stream_error(exc):
                     raise
-                checkpoint = _is_stream_read_timeout(exc) and (
+                checkpoint = is_stream_read_timeout(exc) and (
                     deadline is not None or callable(stop)
                 )
 
