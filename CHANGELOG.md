@@ -8,6 +8,9 @@ state.
 
 ## Unreleased
 
+- A terminal Run may carry `billing_summary.status="pending"` (valid, no `final_credits`);
+  the later `run.billing.settled` event is a valid event. Documented: re-read the Run with
+  `runs.get()` for the final Credits.
 - `runs.wait()` (sync and async) uses the server `retry_after_seconds` hint (bounded
   1 to 10 seconds) as the next poll delay and re-opens a broken event stream from its
   last cursor instead of polling for the rest of the call.
