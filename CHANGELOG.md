@@ -6,6 +6,14 @@ The project follows semantic versioning once public releases begin. Prerelease
 versions may change while the Public API contract is still in release-candidate
 state.
 
+## Unreleased
+
+- `runs.wait()` (sync and async) uses the server `retry_after_seconds` hint (bounded
+  1 to 10 seconds) as the next poll delay and re-opens a broken event stream from its
+  last cursor instead of polling for the rest of the call.
+- Finding results expose `subject_kind`, `reason_code`, `defect_type`, `profile`, `what`
+  and `locations`; composed content exposes `next_action_text`.
+
 ## 1.1.0 - 2026-10-19
 
 - Error handling: `PublicError` and `ZentureAPIError` carry `retryable`, which is

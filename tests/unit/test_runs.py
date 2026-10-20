@@ -729,6 +729,7 @@ async def test_async_iter_events_rejects_invalid_wait_parameters(
 def test_sync_iter_events_applies_bounded_reconnect_jitter(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    import zenture._resources._run_wait_reopen as run_wait_reopen_module
     import zenture._resources.runs as runs_module
 
     now = 0.0
@@ -742,7 +743,7 @@ def test_sync_iter_events_applies_bounded_reconnect_jitter(
 
     monkeypatch.setattr(runs_module, "time", SimpleNamespace(monotonic=lambda: now, sleep=sleep))
     monkeypatch.setattr(
-        runs_module,
+        run_wait_reopen_module,
         "random",
         SimpleNamespace(uniform=_max_jitter),
         raising=False,
@@ -779,7 +780,7 @@ def test_sync_iter_events_applies_bounded_reconnect_jitter(
 async def test_async_iter_events_applies_bounded_reconnect_jitter(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import zenture._resources.runs as runs_module
+    import zenture._resources._run_wait_reopen as run_wait_reopen_module
 
     now = 0.0
     sleeps: list[float] = []
@@ -792,7 +793,7 @@ async def test_async_iter_events_applies_bounded_reconnect_jitter(
 
     monkeypatch.setattr(asyncio, "sleep", sleep)
     monkeypatch.setattr(
-        runs_module,
+        run_wait_reopen_module,
         "random",
         SimpleNamespace(uniform=_max_jitter),
         raising=False,
@@ -1389,6 +1390,8 @@ def test_sync_wait_returns_when_queued_run_reaches_completed() -> None:
     seen: list[httpx.Request] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/events/stream"):
+            return httpx.Response(404, json={})  # stream unavailable: poll
         assert request.url.path == f"/v1/runs/{RUN_ID}"
         assert request.headers["X-Zenture-Error-Details"] == "issues"
         seen.append(request)
@@ -1435,7 +1438,9 @@ def test_sync_wait_uses_first_server_deadline_once_and_reports_context_on_timeou
         runs_module, "time", SimpleNamespace(monotonic=monotonic, sleep=sleep, time=lambda: 1_000.0)
     )
 
-    def handler(_request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/events/stream"):
+            return httpx.Response(404, json={})  # stream unavailable: poll
         nonlocal calls
         response = responses[min(calls, len(responses) - 1)]
         calls += 1
@@ -1606,7 +1611,9 @@ def test_sync_wait_null_deadline_keeps_the_existing_finite_default(
         SimpleNamespace(monotonic=monotonic, time=lambda: 1_000.0, sleep=sleep),
     )
 
-    def handler(_request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/events/stream"):
+            return httpx.Response(404, json={})  # stream unavailable: poll
         nonlocal calls
         calls += 1
         return httpx.Response(200, json=_run())
@@ -1671,7 +1678,9 @@ async def test_async_wait_uses_finite_default_for_null_deadline(
     )
     monkeypatch.setattr(asyncio, "sleep", sleep)
 
-    async def handler(_request: httpx.Request) -> httpx.Response:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/events/stream"):
+            return httpx.Response(404, json={})  # stream unavailable: poll
         nonlocal calls
         calls += 1
         return httpx.Response(200, json=_run())
@@ -1729,7 +1738,9 @@ async def test_async_wait_explicit_timeout_wins_over_a_server_deadline(
     )
     monkeypatch.setattr(asyncio, "sleep", sleep)
 
-    async def handler(_request: httpx.Request) -> httpx.Response:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/events/stream"):
+            return httpx.Response(404, json={})  # stream unavailable: poll
         nonlocal calls
         calls += 1
         return httpx.Response(200, json=_run(deadline_at="1970-01-01T00:33:20Z"))
@@ -1800,7 +1811,9 @@ async def test_async_wait_uses_the_first_non_null_deadline_once(
     )
     monkeypatch.setattr(asyncio, "sleep", sleep)
 
-    def handler(_request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/events/stream"):
+            return httpx.Response(404, json={})  # stream unavailable: poll
         nonlocal calls
         calls += 1
         return httpx.Response(200, json=_run(deadline_at="1970-01-01T00:16:21Z"))
@@ -1939,6 +1952,8 @@ async def test_async_wait_returns_when_queued_run_reaches_completed() -> None:
     seen: list[httpx.Request] = []
 
     async def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/events/stream"):
+            return httpx.Response(404, json={})  # stream unavailable: poll
         assert request.url.path == f"/v1/runs/{RUN_ID}"
         assert request.headers["X-Zenture-Error-Details"] == "issues"
         seen.append(request)

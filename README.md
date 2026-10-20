@@ -104,10 +104,10 @@ that also keep the budget over the final read:
 | `run_id`, `profile`, `generation` | Identity and the requested profile (`standard` by default; `fast` or `detailed` only with explicit intent) |
 | `status` | Nonterminal: `created`, `queued`, `running`, `waiting_for_dependency`, `partially_complete`, `cancel_requested`. Terminal: `completed`, `failed`, `cancelled`, `expired`, `budget_exhausted` |
 | `acceptance_decision` | `ready`, `revise`, `human_review`, `insufficient_evidence`; absent is not `ready` |
-| `safe_result_content` | `status="available"` carries `content`: `summary`, `findings`, `evidence_summaries`, `limitations`, `decision` (with `reason_code`, `next_action`) and `coverage`. `status="unavailable"` carries a `reason_code` instead |
+| `safe_result_content` | `status="available"` carries `content`: `summary`, `findings`, `evidence_summaries`, `limitations`, `decision` (with `reason_code`, `next_action`) and `coverage`. `status="unavailable"` carries a `reason_code` instead. The client exposes the composed verdict (`case_header`, `decisive_reason`, `confirmed`, `codes`, `next_steps`, `further_findings_count`, `verdict_source` `next_action_text` and the finding fields `subject_kind`, `category`, `reason_code`, `defect_type`, `profile`, `what`, `location`, `locations`, `actual`, `expected`, `why`, `fix_instruction`); it does not expose the composed keys `next_action_finding_refs` and `summary_subject_refs`, which are ignored when the response is parsed. |
 | `capability_coverage`, `limitations` | What could and could not be checked; do not assume all requested checks ran |
 | `billing_summary` | `pending`, `settled`, `released` or `unavailable`; final Credits when known. Unavailable is not zero |
-| `deadline_at`, `queue`, `next_action`, `reason_code` | Timing and service guidance |
+| `deadline_at`, `queue`, `next_action`, `reason_code` | Timing and service guidance; a resultless `failed`, `expired`, `cancelled` or `budget_exhausted` Run carries `next_action` `retry_with_new_idempotency_key`, `check_request` or `shorten_input_or_use_larger_profile` |
 | `cancellation_requested` | A cancel was requested; the actual `status` remains authoritative |
 
 `ready` is scoped to the evaluated requirements and evidence, not a universal
