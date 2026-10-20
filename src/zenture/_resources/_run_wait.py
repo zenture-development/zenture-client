@@ -23,11 +23,14 @@ from zenture.errors import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Callable, Iterator
+    from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 
 MAX_STREAM_EVENT_BYTES = 512 * 1024
 # With a stop predicate one stream is held for at most this long before stop is re-read.
 _STOP_CHECK_INTERVAL = 1.0
+
+_MIN_POLL_HINT = 1.0
+_MAX_POLL_HINT = 10.0
 
 _TERMINAL_STREAM_STATUSES = frozenset(
     {"completed", "failed", "cancelled", "expired", "budget_exhausted"}
@@ -222,3 +225,78 @@ async def listen_for_terminal_async(
                     raise
     except (ZentureAPIError, ZentureTransportError, ZentureResponseError, ValueError):
         return False, cursor
+
+
+def poll_window(interval: float, retry_after_seconds: int | None) -> float:
+    """Return the next poll delay: the server hint bounded to 1..10 s, else the backoff interval."""
+
+    if retry_after_seconds is None:
+        return interval
+    return min(max(float(retry_after_seconds), _MIN_POLL_HINT), _MAX_POLL_HINT)
+
+
+def listen_reopening(
+    transport: Any,
+    run_id: str,
+    *,
+    end: float,
+    cursor: str | None,
+    stop: Any,
+    clock: Callable[[], float],
+    sleep: Callable[[float], None],
+    reconnect_delay: Callable[[float], float],
+) -> tuple[bool, str | None]:
+    """Listen until a terminal event or `end`, re-opening a broken stream from its cursor.
+
+    A stream that delivered events and then broke is re-opened after a bounded delay. One
+    that fails without progress is left until the next window (the rest of this one is
+    slept). False is returned only for a stream that never delivered an event.
+    """
+
+    while True:
+        before = cursor
+        usable, cursor = listen_for_terminal(
+            transport, run_id, end=end, cursor=cursor, stop=stop, clock=clock
+        )
+        if usable:
+            return True, cursor
+        if cursor is None:
+            return False, None
+        remaining = max(0.0, end - clock())
+        if cursor == before:
+            sleep(remaining)
+            return True, cursor
+        sleep(min(reconnect_delay(remaining), remaining))
+        if clock() >= end:
+            return True, cursor
+
+
+async def listen_reopening_async(
+    transport: Any,
+    run_id: str,
+    *,
+    end: float,
+    cursor: str | None,
+    stop: Any,
+    clock: Callable[[], float],
+    sleep: Callable[[float], Awaitable[None]],
+    reconnect_delay: Callable[[float], float],
+) -> tuple[bool, str | None]:
+    """Async variant of listen_reopening."""
+
+    while True:
+        before = cursor
+        usable, cursor = await listen_for_terminal_async(
+            transport, run_id, end=end, cursor=cursor, stop=stop, clock=clock
+        )
+        if usable:
+            return True, cursor
+        if cursor is None:
+            return False, None
+        remaining = max(0.0, end - clock())
+        if cursor == before:
+            await sleep(remaining)
+            return True, cursor
+        await sleep(min(reconnect_delay(remaining), remaining))
+        if clock() >= end:
+            return True, cursor

@@ -760,7 +760,42 @@ _FINDING_TEXT_MAXIMUM = {
     "expected": 512,
     "why": 512,
     "fix_instruction": 512,
+    "what": 512,
 }
+
+
+SafeResultFindingSubjectKind = Literal["requirement", "claim", "constraint", "arithmetic", "defect"]
+SafeResultDefectType = Literal[
+    "prohibition_violated",
+    "commitment_unsupported",
+    "forecast_as_certain",
+    "invented_figure",
+    "internal_contradiction",
+    "requirement_omitted",
+]
+
+
+class SafeResultLocation(_RunResponseModel):
+    """Where a finding sits in the frozen answer or task (code-point offsets, end exclusive)."""
+
+    source: Literal["answer", "task"]
+    start: int = Field(ge=0)
+    end: int = Field(ge=1)
+    excerpt: str | None = Field(default=None, min_length=1, max_length=160)
+    status: Literal["shown", "withheld"]
+
+    @field_validator("excerpt")
+    @classmethod
+    def _safe_excerpt(cls, value: object) -> str | None:
+        if value is None:
+            return None
+        return _safe_result_text(value, maximum=160, field_name="excerpt")
+
+    @model_validator(mode="after")
+    def _shape(self) -> SafeResultLocation:
+        if self.end <= self.start or (self.status == "shown") != (self.excerpt is not None):
+            raise ValueError("finding location invalid")
+        return self
 
 
 class SafeResultFinding(_RunResponseModel):
@@ -770,14 +805,22 @@ class SafeResultFinding(_RunResponseModel):
     explanation: str = Field(min_length=1, max_length=4000)
     confidence: Literal["low", "medium", "high"]
     evidence_refs: tuple[str, ...] = Field(default_factory=tuple, max_length=32)
+    subject_kind: SafeResultFindingSubjectKind | None = None
     category: SafeResultFindingCategory | None = None
+    reason_code: str | None = Field(
+        default=None, min_length=1, max_length=64, pattern=r"^[a-z0-9_]+$"
+    )
+    defect_type: SafeResultDefectType | None = None
+    profile: str | None = Field(default=None, min_length=1, max_length=32, pattern=r"^[a-z0-9_]+$")
+    what: str | None = Field(default=None, min_length=1, max_length=512)
+    locations: tuple[SafeResultLocation, ...] = Field(default_factory=tuple, max_length=3)
     location: str | None = Field(default=None, min_length=1, max_length=256)
     actual: str | None = Field(default=None, min_length=1, max_length=512)
     expected: str | None = Field(default=None, min_length=1, max_length=512)
     why: str | None = Field(default=None, min_length=1, max_length=512)
     fix_instruction: str | None = Field(default=None, min_length=1, max_length=512)
 
-    @field_validator("location", "actual", "expected", "why", "fix_instruction")
+    @field_validator("location", "actual", "expected", "why", "fix_instruction", "what")
     @classmethod
     def _safe_finding_text(cls, value: object, info: Any) -> str | None:
         if value is None:
@@ -786,7 +829,7 @@ class SafeResultFinding(_RunResponseModel):
             value, maximum=_FINDING_TEXT_MAXIMUM[info.field_name], field_name=info.field_name
         )
 
-    @field_validator("evidence_refs", mode="before")
+    @field_validator("evidence_refs", "locations", mode="before")
     @classmethod
     def _refs(cls, value: object) -> object:
         return _coerce_tuple(value)
@@ -911,8 +954,8 @@ class SafeResultCodes(_RunResponseModel):
 
 
 class ComposedSafeResultContentV1(_RunResponseModel):
-    """Composed result content. The client does not expose the keys `locations`, `next_action_text`,
-    `next_action_finding_refs` and `summary_subject_refs`; they are ignored when the response is parsed."""
+    """Composed result content. The client does not expose the keys `next_action_finding_refs` and
+    `summary_subject_refs`; they are ignored when the response is parsed."""
 
     schema_version: Literal["run.composed_safe_result_content.v1"]
     summary: str = Field(min_length=1, max_length=4000)
@@ -926,6 +969,7 @@ class ComposedSafeResultContentV1(_RunResponseModel):
     decision_ref: str = Field(max_length=256, pattern=r"^decision:[A-Za-z0-9_./:-]{1,246}$")
     coverage_ref: str = Field(max_length=256, pattern=r"^coverage:[A-Za-z0-9_./:-]{1,246}$")
     insight_ref: str = Field(max_length=256, pattern=r"^insight:[A-Za-z0-9_./:-]{1,247}$")
+    next_action_text: str | None = Field(default=None, min_length=1, max_length=256)
     case_header: str | None = Field(default=None, min_length=1, max_length=300)
     decisive_reason: str | None = Field(default=None, min_length=1, max_length=300)
     confirmed: tuple[SafeResultConfirmed, ...] = Field(default_factory=tuple, max_length=5)
@@ -941,12 +985,13 @@ class ComposedSafeResultContentV1(_RunResponseModel):
     def _collections(cls, value: object) -> object:
         return _coerce_tuple(value)
 
-    @field_validator("case_header", "decisive_reason")
+    @field_validator("case_header", "decisive_reason", "next_action_text")
     @classmethod
     def _safe_verdict_text(cls, value: object, info: Any) -> str | None:
         if value is None:
             return None
-        return _safe_result_text(value, maximum=300, field_name=info.field_name)
+        maximum = 256 if info.field_name == "next_action_text" else 300
+        return _safe_result_text(value, maximum=maximum, field_name=info.field_name)
 
     @field_validator("next_steps")
     @classmethod

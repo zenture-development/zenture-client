@@ -166,6 +166,61 @@ def test_public_run_response_exposes_the_full_verdict() -> None:
     assert content.verdict_source == "model"
 
 
+def test_actionable_finding_structure_and_next_action_text_are_exposed() -> None:
+    payload = _golden_payload()
+    content = cast(
+        "dict[str, Any]", cast("dict[str, Any]", payload["safe_result_content"])["content"]
+    )
+    content["findings"][0].update(
+        subject_kind="arithmetic",
+        reason_code="total_mismatch",
+        defect_type="invented_figure",
+        profile="standard",
+        what="Total 1,190 EUR does not follow from the unit prices",
+    )
+    parsed = _available_content(payload)
+    first = parsed.findings[0]
+    assert (first.subject_kind, first.reason_code, first.defect_type, first.profile) == (
+        "arithmetic",
+        "total_mismatch",
+        "invented_figure",
+        "standard",
+    )
+    assert first.what == "Total 1,190 EUR does not follow from the unit prices"
+    location = first.locations[0]
+    assert (location.source, location.start, location.end, location.excerpt, location.status) == (
+        "answer",
+        120,
+        135,
+        "total 1,190 EUR",
+        "shown",
+    )
+    assert parsed.findings[1].locations == ()
+    assert parsed.next_action_text == "Correct the total and cite the lead time."
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("subject_kind", "opinion"),
+        ("defect_type", "typo"),
+        ("reason_code", "Not Snake"),
+        ("what", "See https://example.test/x"),
+        ("locations", [{"source": "answer", "start": 5, "end": 5, "status": "withheld"}]),
+    ],
+)
+def test_actionable_finding_structure_stays_inside_the_public_vocabulary(
+    key: str, value: object
+) -> None:
+    payload = _golden_payload()
+    content = cast(
+        "dict[str, Any]", cast("dict[str, Any]", payload["safe_result_content"])["content"]
+    )
+    content["findings"][0][key] = value
+    with pytest.raises(ValidationError):
+        PublicRunResponse.model_validate(payload)
+
+
 def test_result_without_verdict_fields_parses_with_empty_defaults() -> None:
     content = _available_content(_run_payload())
     assert content.verdict_source is None

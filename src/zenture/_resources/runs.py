@@ -32,8 +32,9 @@ from zenture._contract.run_references import validate_run_cursor
 from zenture._resources._run_wait import (
     is_stream_read_timeout,
     is_terminal_stream_message,
-    listen_for_terminal,
+    listen_reopening,
     parse_sse_events,
+    poll_window,
 )
 from zenture._resources._utils import (
     idempotency_headers,
@@ -77,6 +78,7 @@ _SYNC_STREAM_HEARTBEAT_INTERVAL = 15.0
 _ASYNC_STREAM_STOP_POLL_INTERVAL = 0.25
 _ASYNC_STREAM_HEARTBEAT_INTERVAL = 15.0
 _MIN_STREAM_CHECKPOINT_BACKOFF = 0.01
+_MIN_STREAM_RECONNECT_INTERVAL = 1.0
 _MAX_ARTIFACT_BYTES = 10 * 1024 * 1024
 ARTIFACT_CHUNK_SIZE = 64 * 1024
 _RUN_ID_RE = re.compile(r"^run_[A-Za-z0-9_-]{3,128}$")
@@ -790,11 +792,23 @@ class RunsResource:
                     )
             if is_terminal_status(result.status):
                 return result
-            end = time.monotonic() + min(interval, max(0.0, deadline - time.monotonic()))
+            window = poll_window(interval, result.retry_after_seconds)
+            end = time.monotonic() + min(window, max(0.0, deadline - time.monotonic()))
             if listening:
                 # The terminal event is the wake; the window bounds the next safety read.
-                listening, cursor = listen_for_terminal(
-                    self._transport, run_id, end=end, cursor=cursor, stop=stop, clock=time.monotonic
+                listening, cursor = listen_reopening(
+                    self._transport,
+                    run_id,
+                    end=end,
+                    cursor=cursor,
+                    stop=stop,
+                    clock=time.monotonic,
+                    sleep=time.sleep,
+                    reconnect_delay=lambda remaining: bounded_stream_retry_delay(
+                        interval=_MIN_STREAM_RECONNECT_INTERVAL,
+                        max_interval=max_interval,
+                        remaining=remaining,
+                    ),
                 )
             if not listening:
                 time.sleep(max(0.0, end - time.monotonic()))
