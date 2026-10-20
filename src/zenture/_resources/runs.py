@@ -721,9 +721,8 @@ class RunsResource:
         seconds). stop is a synchronous predicate to stop waiting without cancellation.
 
         Returns terminal states including failed/cancelled/expired/budget_exhausted,
-        not just completed. billing_summary may still be pending on a terminal Run;
-        re-read it with get() for the final Credits. Fetch get(view="full") for
-        content and inspect acceptance_decision separately. Local timeout/stop raise
+        not just completed. billing_summary may be pending: re-read with get() for
+        final Credits; get(view="full") has content, check acceptance_decision. Timeout/stop raise
         ZenturePollingTimeoutError/ZenturePollingStoppedError with the Run ID in
         operation_id; retain it and read the same Run later. Never start a replacement.
         """
