@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import random
 import re
 import time
 from collections import OrderedDict
@@ -32,8 +31,11 @@ from zenture._contract.run_references import validate_run_cursor
 from zenture._resources._run_wait import (
     is_stream_read_timeout,
     is_terminal_stream_message,
-    listen_reopening,
     parse_sse_events,
+)
+from zenture._resources._run_wait_reopen import (
+    StreamWindow,
+    bounded_stream_retry_delay,
     poll_window,
 )
 from zenture._resources._utils import (
@@ -78,13 +80,11 @@ _SYNC_STREAM_HEARTBEAT_INTERVAL = 15.0
 _ASYNC_STREAM_STOP_POLL_INTERVAL = 0.25
 _ASYNC_STREAM_HEARTBEAT_INTERVAL = 15.0
 _MIN_STREAM_CHECKPOINT_BACKOFF = 0.01
-_MIN_STREAM_RECONNECT_INTERVAL = 1.0
 _MAX_ARTIFACT_BYTES = 10 * 1024 * 1024
 ARTIFACT_CHUNK_SIZE = 64 * 1024
 _RUN_ID_RE = re.compile(r"^run_[A-Za-z0-9_-]{3,128}$")
 _DEFAULT_WAIT_TIMEOUT = 120.0
 _RUN_RECOVERY_BOUND_SECONDS = 35.0
-_STREAM_RECONNECT_JITTER_RATIO = 0.25
 
 
 def is_terminal_status(status: RunStatus) -> bool:
@@ -221,23 +221,6 @@ def is_retryable_stream_error(error: Exception) -> bool:
             or error.error_code in _RETRYABLE_STREAM_ERROR_CODES
         )
     return False
-
-
-def bounded_stream_retry_delay(
-    *, interval: float, max_interval: float, remaining: float | None = None
-) -> float:
-    """Add bounded reconnect jitter without exceeding the active wait budget."""
-
-    if interval <= 0.0:
-        return 0.0
-    jitter_limit = min(
-        interval * _STREAM_RECONNECT_JITTER_RATIO,
-        max(0.0, max_interval - interval),
-    )
-    delay = interval + random.uniform(0.0, jitter_limit)
-    if remaining is not None:
-        delay = min(delay, max(0.0, remaining))
-    return delay
 
 
 def _raise_if_stream_stopped(
@@ -752,8 +735,14 @@ class RunsResource:
         interval = initial_interval
         observed_deadline: datetime | None = None
         last_status: RunStatus | None = None
-        listening = True
-        cursor: str | None = None
+        stream = StreamWindow(
+            self._transport,
+            run_id,
+            stop=stop,
+            clock=time.monotonic,
+            sleep=time.sleep,
+            max_interval=max_interval,
+        )
         while True:
             if callable(stop) and stop():
                 raise ZenturePollingStoppedError(operation_id=run_id)
@@ -794,24 +783,8 @@ class RunsResource:
                 return result
             window = poll_window(interval, result.retry_after_seconds)
             end = time.monotonic() + min(window, max(0.0, deadline - time.monotonic()))
-            if listening:
-                # The terminal event is the wake; the window bounds the next safety read.
-                listening, cursor = listen_reopening(
-                    self._transport,
-                    run_id,
-                    end=end,
-                    cursor=cursor,
-                    stop=stop,
-                    clock=time.monotonic,
-                    sleep=time.sleep,
-                    reconnect_delay=lambda remaining: bounded_stream_retry_delay(
-                        interval=_MIN_STREAM_RECONNECT_INTERVAL,
-                        max_interval=max_interval,
-                        remaining=remaining,
-                    ),
-                )
-            if not listening:
-                time.sleep(max(0.0, end - time.monotonic()))
+            # The terminal event is the wake; the window bounds the next safety read.
+            stream.wait(end)
             interval = min(interval * 2, max_interval)
 
     def cancel(self, run_id: str, *, idempotency_key: str) -> PublicRunResponse:

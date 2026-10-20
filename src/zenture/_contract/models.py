@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-import unicodedata
 from datetime import datetime
 from enum import StrEnum
 from typing import Annotated, Any, Literal, Self, cast
@@ -17,10 +16,17 @@ from pydantic import (
     model_validator,
 )
 
+from zenture._contract.response_base import RunResponseModel as _RunResponseModel
+from zenture._contract.response_base import coerce_tuple as _coerce_tuple
+from zenture._contract.response_base import safe_result_text as _safe_result_text
 from zenture._contract.run_references import (
     RUN_CURSOR_PATTERN,
     validate_run_cursor,
     validate_terminal_refs,
+)
+from zenture._contract.safe_result_findings import (
+    SafeResultFinding,  # noqa: TC001 - pydantic resolves field types at runtime
+    SafeResultFindingCategory,  # noqa: TC001
 )
 from zenture._request_validation import SafeRunRequestModel as _RunRequestModel
 from zenture.models import SDKBaseModel
@@ -29,12 +35,6 @@ from zenture.validation_issues import ValidationIssue, safe_issues
 _ARTIFACT_REF_RE = re.compile(r"^art_[A-Za-z0-9_-]{3,128}$")
 _SAFE_ARTIFACT_REF_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_./:-]*:[A-Za-z0-9_./:-]{1,479}$")
 _UPLOAD_ID_RE = re.compile(r"^upload_[A-Za-z0-9_-]{8,128}$")
-
-
-class _RunResponseModel(SDKBaseModel):
-    """Strict known fields with tolerant additive response members."""
-
-    model_config = ConfigDict(extra="ignore", frozen=True, strict=True)
 
 
 class OperationStatus(StrEnum):
@@ -115,12 +115,6 @@ def _coerce_aware_datetime(value: object) -> object:
     if parsed.tzinfo is None or parsed.utcoffset() is None:
         raise ValueError("datetime must be timezone-aware.")
     return parsed
-
-
-def _coerce_tuple(value: object) -> object:
-    if isinstance(value, list):
-        return tuple(cast("list[object]", value))
-    return value
 
 
 class PublicError(SDKBaseModel):
@@ -697,46 +691,6 @@ class PublicCapabilityCoverage(_RunResponseModel):
         return _coerce_tuple(value)
 
 
-_SAFE_RESULT_FORBIDDEN = re.compile(
-    r"(?:https?://|www\.|```|`|system\s+prompt|developer\s+prompt|chain[- ]of[- ]thought|"
-    r"prompt\s+injection|api[_ -]?key|access[_ -]?token|bearer\s+|secret|password|private\s+key)",
-    re.IGNORECASE,
-)
-
-
-def _safe_result_text(value: object, *, maximum: int, field_name: str) -> str:
-    if not isinstance(value, str):
-        raise ValueError(f"{field_name} must be text")
-    normalized = " ".join(unicodedata.normalize("NFC", value).split())
-    if not normalized or len(normalized) > maximum:
-        raise ValueError(f"{field_name} bound invalid")
-    if (
-        _SAFE_RESULT_FORBIDDEN.search(normalized)
-        or re.search(r"[\x00-\x1f\x7f\u202a-\u202e\u2066-\u2069]", normalized)
-        or "<" in normalized
-        or ">" in normalized
-    ):
-        raise ValueError(f"{field_name} contains unsafe content")
-    return normalized
-
-
-SafeResultFindingCategory = Literal[
-    "task_requirement",
-    "task_constraint",
-    "task_consistency",
-    "arithmetic",
-    "source_missing",
-    "source_unavailable",
-    "source_support_missing",
-    "source_contradiction",
-    "partial_verification",
-    "prohibition_violated",
-    "commitment_unsupported",
-    "forecast_as_certain",
-    "invented_figure",
-    "internal_contradiction",
-    "requirement_omitted",
-]
 SafeResultTaskType = Literal[
     "facts_with_sources",
     "calculation",
@@ -754,94 +708,6 @@ SafeResultNeedKind = Literal[
     "translation_fidelity",
     "standard_checked",
 ]
-_FINDING_TEXT_MAXIMUM = {
-    "location": 256,
-    "actual": 512,
-    "expected": 512,
-    "why": 512,
-    "fix_instruction": 512,
-    "what": 512,
-}
-
-
-SafeResultFindingSubjectKind = Literal["requirement", "claim", "constraint", "arithmetic", "defect"]
-SafeResultDefectType = Literal[
-    "prohibition_violated",
-    "commitment_unsupported",
-    "forecast_as_certain",
-    "invented_figure",
-    "internal_contradiction",
-    "requirement_omitted",
-]
-
-
-class SafeResultLocation(_RunResponseModel):
-    """Where a finding sits in the frozen answer or task (code-point offsets, end exclusive)."""
-
-    source: Literal["answer", "task"]
-    start: int = Field(ge=0)
-    end: int = Field(ge=1)
-    excerpt: str | None = Field(default=None, min_length=1, max_length=160)
-    status: Literal["shown", "withheld"]
-
-    @field_validator("excerpt")
-    @classmethod
-    def _safe_excerpt(cls, value: object) -> str | None:
-        if value is None:
-            return None
-        return _safe_result_text(value, maximum=160, field_name="excerpt")
-
-    @model_validator(mode="after")
-    def _shape(self) -> SafeResultLocation:
-        if self.end <= self.start or (self.status == "shown") != (self.excerpt is not None):
-            raise ValueError("finding location invalid")
-        return self
-
-
-class SafeResultFinding(_RunResponseModel):
-    finding_ref: str = Field(max_length=256, pattern=r"^finding:[A-Za-z0-9_./:-]{1,247}$")
-    title: str = Field(min_length=1, max_length=256)
-    summary: str = Field(min_length=1, max_length=2000)
-    explanation: str = Field(min_length=1, max_length=4000)
-    confidence: Literal["low", "medium", "high"]
-    evidence_refs: tuple[str, ...] = Field(default_factory=tuple, max_length=32)
-    subject_kind: SafeResultFindingSubjectKind | None = None
-    category: SafeResultFindingCategory | None = None
-    reason_code: str | None = Field(
-        default=None, min_length=1, max_length=64, pattern=r"^[a-z0-9_]+$"
-    )
-    defect_type: SafeResultDefectType | None = None
-    profile: str | None = Field(default=None, min_length=1, max_length=32, pattern=r"^[a-z0-9_]+$")
-    what: str | None = Field(default=None, min_length=1, max_length=512)
-    locations: tuple[SafeResultLocation, ...] = Field(default_factory=tuple, max_length=3)
-    location: str | None = Field(default=None, min_length=1, max_length=256)
-    actual: str | None = Field(default=None, min_length=1, max_length=512)
-    expected: str | None = Field(default=None, min_length=1, max_length=512)
-    why: str | None = Field(default=None, min_length=1, max_length=512)
-    fix_instruction: str | None = Field(default=None, min_length=1, max_length=512)
-
-    @field_validator("location", "actual", "expected", "why", "fix_instruction", "what")
-    @classmethod
-    def _safe_finding_text(cls, value: object, info: Any) -> str | None:
-        if value is None:
-            return None
-        return _safe_result_text(
-            value, maximum=_FINDING_TEXT_MAXIMUM[info.field_name], field_name=info.field_name
-        )
-
-    @field_validator("evidence_refs", "locations", mode="before")
-    @classmethod
-    def _refs(cls, value: object) -> object:
-        return _coerce_tuple(value)
-
-    @field_validator("title", "summary", "explanation")
-    @classmethod
-    def _safe_text(cls, value: object, info: Any) -> str:
-        return _safe_result_text(
-            value,
-            maximum={"title": 256, "summary": 2000, "explanation": 4000}[info.field_name],
-            field_name=info.field_name,
-        )
 
 
 class SafeResultEvidenceSummary(_RunResponseModel):
