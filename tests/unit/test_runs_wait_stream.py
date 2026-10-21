@@ -84,10 +84,14 @@ def _no_sleep(monkeypatch: pytest.MonkeyPatch, module: str) -> list[float]:
 
     sleeps: list[float] = []
     runs_module = importlib.import_module(module)
+
+    def record_sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+
     monkeypatch.setattr(
         runs_module,
         "time",
-        SimpleNamespace(monotonic=time.monotonic, time=time.time, sleep=lambda s: sleeps.append(s)),
+        SimpleNamespace(monotonic=time.monotonic, time=time.time, sleep=record_sleep),
     )
     return sleeps
 

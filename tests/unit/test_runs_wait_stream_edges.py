@@ -12,10 +12,10 @@ from test_runs_wait_stream import (
     API_KEY,
     RUN_ID,
     STREAM_PATH,
-    _event,
-    _run,
-    _Script,
-    _terminal_stream,
+    _event,  # pyright: ignore[reportPrivateUsage] -- shared wait test helpers
+    _run,  # pyright: ignore[reportPrivateUsage] -- shared wait test helpers
+    _Script,  # pyright: ignore[reportPrivateUsage] -- shared wait test helpers
+    _terminal_stream,  # pyright: ignore[reportPrivateUsage] -- shared wait test helpers
 )
 
 import zenture._resources.async_runs as async_runs_module

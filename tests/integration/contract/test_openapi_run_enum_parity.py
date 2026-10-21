@@ -15,8 +15,12 @@ from zenture._contract.safe_result_findings import (
     SafeResultFinding,
     SafeResultFindingCategory,
 )
-from zenture._resources._run_wait import _TERMINAL_STREAM_STATUSES
-from zenture._resources.runs import _TERMINAL_STATUSES
+from zenture._resources._run_wait import (
+    _TERMINAL_STREAM_STATUSES,  # pyright: ignore[reportPrivateUsage] -- enum parity contract
+)
+from zenture._resources.runs import (
+    _TERMINAL_STATUSES,  # pyright: ignore[reportPrivateUsage] -- enum parity contract
+)
 
 OPENAPI_PATH = (
     Path(__file__).resolve().parents[3] / "openapi" / "zenture-public-api-v1.openapi.json"
