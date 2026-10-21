@@ -6,8 +6,15 @@ from typing import TYPE_CHECKING, Any
 
 import httpx
 import pytest
-from test_runs_wait_stream import API_KEY, RUN_PATH, STREAM_PATH, _event, _run, _sse
-from test_runs_wait_stream_edges import START, _call, _Clock
+from test_runs_wait_stream import (
+    API_KEY,
+    RUN_PATH,
+    STREAM_PATH,
+    _event,  # pyright: ignore[reportPrivateUsage] -- shared wait test helpers
+    _run,  # pyright: ignore[reportPrivateUsage] -- shared wait test helpers
+    _sse,  # pyright: ignore[reportPrivateUsage] -- shared wait test helpers
+)
+from test_runs_wait_stream_edges import START, _call, _Clock  # pyright: ignore[reportPrivateUsage] -- shared wait test helpers
 
 from zenture import AsyncZentureClient, ZentureClient
 
