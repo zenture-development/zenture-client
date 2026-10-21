@@ -129,7 +129,10 @@ class StreamWindow:
         max_interval: float,
     ) -> None:
         self._args = (transport, run_id)
-        self._pacing = {"stop": stop, "clock": clock, "sleep": sleep, "max_interval": max_interval}
+        self._stop = stop
+        self._clock = clock
+        self._sleep = sleep
+        self._max_interval = max_interval
         self.listening = True
         self.cursor: str | None = None
 
@@ -138,17 +141,29 @@ class StreamWindow:
 
         if self.listening:
             self.listening, self.cursor = listen_reopening(
-                *self._args, end=end, cursor=self.cursor, **self._pacing
+                *self._args,
+                end=end,
+                cursor=self.cursor,
+                stop=self._stop,
+                clock=self._clock,
+                sleep=self._sleep,
+                max_interval=self._max_interval,
             )
         if not self.listening:
-            self._pacing["sleep"](max(0.0, end - self._pacing["clock"]()))
+            self._sleep(max(0.0, end - self._clock()))
 
     async def wait_async(self, end: float) -> None:
         """Async variant of wait."""
 
         if self.listening:
             self.listening, self.cursor = await listen_reopening_async(
-                *self._args, end=end, cursor=self.cursor, **self._pacing
+                *self._args,
+                end=end,
+                cursor=self.cursor,
+                stop=self._stop,
+                clock=self._clock,
+                sleep=self._sleep,
+                max_interval=self._max_interval,
             )
         if not self.listening:
-            await self._pacing["sleep"](max(0.0, end - self._pacing["clock"]()))
+            await self._sleep(max(0.0, end - self._clock()))

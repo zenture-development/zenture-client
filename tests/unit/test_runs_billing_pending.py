@@ -7,7 +7,15 @@ from decimal import Decimal
 
 import httpx
 import pytest
-from test_runs_wait_stream import API_KEY, RUN_ID, RUN_PATH, STREAM_PATH, _event, _run, _sse
+from test_runs_wait_stream import (
+    API_KEY,
+    RUN_ID,
+    RUN_PATH,
+    STREAM_PATH,
+    _event,  # pyright: ignore[reportPrivateUsage] -- shared wait test helpers
+    _run,  # pyright: ignore[reportPrivateUsage] -- shared wait test helpers
+    _sse,  # pyright: ignore[reportPrivateUsage] -- shared wait test helpers
+)
 
 from zenture import AsyncZentureClient, ZentureClient
 from zenture._contract.models import PublicRunEvent
@@ -107,7 +115,7 @@ def test_billing_settled_event_after_the_terminal_event_is_a_valid_event() -> No
 def test_iter_events_still_ends_at_the_terminal_event_before_the_billing_event() -> None:
     client = _sync(_Server(pending_reads=1))
 
-    seen = [m.message_key for m in client.runs.iter_events(RUN_ID) if hasattr(m, "message_key")]
+    seen = [m.message_key for m in client.runs.iter_events(RUN_ID) if isinstance(m, PublicRunEvent)]
 
     assert seen == ["run.status.running", "run.status.completed"]
     client.close()
