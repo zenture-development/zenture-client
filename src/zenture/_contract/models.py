@@ -680,9 +680,13 @@ class PrepareKnowledgeRunResponse(SDKBaseModel):
         return _coerce_tuple(value)
 
 
+# One status ref per checked subject (claims and requirements): the Backend bound, not the 32 of other lists.
+_STATUS_REF_LIMIT = 256
+
+
 class PublicCapabilityCoverage(_RunResponseModel):
-    available_refs: tuple[str, ...] = Field(default_factory=tuple, max_length=32)
-    unavailable_refs: tuple[str, ...] = Field(default_factory=tuple, max_length=32)
+    available_refs: tuple[str, ...] = Field(default_factory=tuple, max_length=_STATUS_REF_LIMIT)
+    unavailable_refs: tuple[str, ...] = Field(default_factory=tuple, max_length=_STATUS_REF_LIMIT)
     limitation_refs: tuple[str, ...] = Field(default_factory=tuple, max_length=32)
 
     @field_validator("available_refs", "unavailable_refs", "limitation_refs", mode="before")

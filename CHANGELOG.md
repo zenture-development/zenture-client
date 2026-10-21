@@ -16,6 +16,8 @@ state.
   last cursor instead of polling for the rest of the call.
 - Finding results expose `subject_kind`, `reason_code`, `defect_type`, `profile`, `what`
   and `locations`; composed content exposes `next_action_text`.
+- `PublicCapabilityCoverage` accepts up to 256 `available_refs` and `unavailable_refs`
+  (Backend bound); `limitation_refs` stays at 32.
 
 ## 1.1.0 - 2026-10-19
 

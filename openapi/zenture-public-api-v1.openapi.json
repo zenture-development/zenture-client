@@ -855,7 +855,7 @@
             "items": {
               "type": "string"
             },
-            "maxItems": 32,
+            "maxItems": 256,
             "type": "array"
           },
           "limitation_refs": {
@@ -869,7 +869,7 @@
             "items": {
               "type": "string"
             },
-            "maxItems": 32,
+            "maxItems": 256,
             "type": "array"
           }
         },
