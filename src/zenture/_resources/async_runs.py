@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import inspect
-import json
 import time
 from typing import TYPE_CHECKING, Any, cast
 
@@ -17,8 +16,6 @@ from zenture._contract import (
     ListRunsResponse,
     PrepareKnowledgeRunRequest,
     PrepareKnowledgeRunResponse,
-    PublicRunEvent,
-    PublicRunHeartbeat,
     PublicRunResponse,
     PublicRunStreamError,
     PublicRunStreamMessage,
@@ -26,18 +23,21 @@ from zenture._contract import (
     SignedUploadResponse,
 )
 from zenture._contract.run_references import validate_run_cursor
+from zenture._resources._run_wait import is_terminal_stream_message, parse_sse_events_async
+from zenture._resources._run_wait_reopen import (
+    StreamWindow,
+    bounded_stream_retry_delay,
+    poll_window,
+)
 from zenture._resources._utils import idempotency_headers, parse_response, path_segment
 from zenture._resources.runs import (
     ARTIFACT_CHUNK_SIZE,
-    MAX_STREAM_EVENT_BYTES,
     RunEventStreamState,
     add_wait_header,
     async_stream_timeout,
-    bounded_stream_retry_delay,
     deadline_bound,
     is_retryable_stream_error,
     is_terminal_status,
-    is_terminal_stream_message,
     parse_run_response,
     phase_key,
     polling_timeout,
@@ -447,7 +447,7 @@ class AsyncRunsResource:
                         headers=headers,
                         timeout=stream_timeout,
                     ) as response:
-                        async for message in _parse_sse_events_async(
+                        async for message in parse_sse_events_async(
                             response.aiter_lines(), expected_run_id=run_id
                         ):
                             emit, message_progressed = state.accept(message)
@@ -510,8 +510,8 @@ class AsyncRunsResource:
         seconds). stop is a synchronous predicate to stop waiting without cancellation.
 
         Returns terminal states including failed/cancelled/expired/budget_exhausted,
-        not just completed. Fetch get(view="full") for content and inspect
-        acceptance_decision separately. Local timeout/stop raise
+        not just completed. billing_summary may be pending: re-read with get() for
+        final Credits; get(view="full") has content, check acceptance_decision. Timeout/stop raise
         ZenturePollingTimeoutError/ZenturePollingStoppedError with the Run ID in
         operation_id; retain it and read the same Run later. Never start a replacement.
 
@@ -526,6 +526,14 @@ class AsyncRunsResource:
         interval = initial_interval
         observed_deadline: datetime | None = None
         last_status = None
+        stream = StreamWindow(
+            self._transport,
+            run_id,
+            stop=stop,
+            clock=time.monotonic,
+            sleep=asyncio.sleep,
+            max_interval=max_interval,
+        )
         while True:
             if callable(stop) and stop():
                 raise ZenturePollingStoppedError(operation_id=run_id)
@@ -564,7 +572,10 @@ class AsyncRunsResource:
                     )
             if is_terminal_status(result.status):
                 return result
-            await asyncio.sleep(min(interval, max(0.0, deadline - time.monotonic())))
+            window = poll_window(interval, result.retry_after_seconds)
+            end = time.monotonic() + min(window, max(0.0, deadline - time.monotonic()))
+            # The terminal event is the wake; the window bounds the next safety read.
+            await stream.wait_async(end)
             interval = min(interval * 2, max_interval)
 
     async def cancel(self, run_id: str, *, idempotency_key: str) -> PublicRunResponse:
@@ -728,59 +739,6 @@ class AsyncRunsResource:
             replayable=replayable,
         )
         return parse_response(ArtifactUploadResponse, payload)
-
-
-async def _parse_sse_events_async(
-    lines: AsyncIterator[str],
-    *,
-    expected_run_id: str,
-) -> AsyncIterator[PublicRunStreamMessage]:
-    data: list[str] = []
-    event_type = ""
-    event_bytes = 0
-    async for raw_line in lines:
-        line = str(raw_line)
-        event_bytes += len(line.encode("utf-8")) + 1
-        if event_bytes > MAX_STREAM_EVENT_BYTES:
-            raise ValueError("public Run event stream record is too large")
-        if not line:
-            if data:
-                try:
-                    payload = json.loads("\n".join(data))
-                except (TypeError, ValueError):
-                    raise ValueError("public Run event stream contained invalid JSON") from None
-                yield _parse_stream_message(payload, event_type, expected_run_id=expected_run_id)
-                data.clear()
-                event_type = ""
-            event_bytes = 0
-            continue
-        if line.startswith(":") or line.startswith("id:"):
-            continue
-        if line.startswith("event:"):
-            event_type = line[6:].strip()
-            continue
-        if line.startswith("data:"):
-            data.append(line[5:].lstrip())
-
-
-def _parse_stream_message(
-    payload: object, event_type: str, *, expected_run_id: str
-) -> PublicRunStreamMessage:
-    if not isinstance(payload, dict):
-        raise ValueError("public Run event payload must be an object")
-    mapping = cast("dict[str, object]", payload)
-    message_type = mapping.get("type") or event_type
-    if message_type == "run.event":
-        message: PublicRunStreamMessage = PublicRunEvent.model_validate(mapping)
-    elif message_type == "run.heartbeat":
-        message = PublicRunHeartbeat.model_validate(mapping)
-    elif message_type == "run.error":
-        message = PublicRunStreamError.model_validate(mapping)
-    else:
-        raise ValueError("public Run event type is unsupported")
-    if message.run_id != expected_run_id:
-        raise ValueError("public Run event run_id did not match the requested Run")
-    return message
 
 
 __all__ = ["AsyncRunsResource"]

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-import unicodedata
 from datetime import datetime
 from enum import StrEnum
 from typing import Annotated, Any, Literal, Self, cast
@@ -17,10 +16,17 @@ from pydantic import (
     model_validator,
 )
 
+from zenture._contract.response_base import RunResponseModel as _RunResponseModel
+from zenture._contract.response_base import coerce_tuple as _coerce_tuple
+from zenture._contract.response_base import safe_result_text as _safe_result_text
 from zenture._contract.run_references import (
     RUN_CURSOR_PATTERN,
     validate_run_cursor,
     validate_terminal_refs,
+)
+from zenture._contract.safe_result_findings import (
+    SafeResultFinding,  # noqa: TC001 - pydantic resolves field types at runtime
+    SafeResultFindingCategory,  # noqa: TC001
 )
 from zenture._request_validation import SafeRunRequestModel as _RunRequestModel
 from zenture.models import SDKBaseModel
@@ -29,12 +35,6 @@ from zenture.validation_issues import ValidationIssue, safe_issues
 _ARTIFACT_REF_RE = re.compile(r"^art_[A-Za-z0-9_-]{3,128}$")
 _SAFE_ARTIFACT_REF_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_./:-]*:[A-Za-z0-9_./:-]{1,479}$")
 _UPLOAD_ID_RE = re.compile(r"^upload_[A-Za-z0-9_-]{8,128}$")
-
-
-class _RunResponseModel(SDKBaseModel):
-    """Strict known fields with tolerant additive response members."""
-
-    model_config = ConfigDict(extra="ignore", frozen=True, strict=True)
 
 
 class OperationStatus(StrEnum):
@@ -115,12 +115,6 @@ def _coerce_aware_datetime(value: object) -> object:
     if parsed.tzinfo is None or parsed.utcoffset() is None:
         raise ValueError("datetime must be timezone-aware.")
     return parsed
-
-
-def _coerce_tuple(value: object) -> object:
-    if isinstance(value, list):
-        return tuple(cast("list[object]", value))
-    return value
 
 
 class PublicError(SDKBaseModel):
@@ -686,9 +680,13 @@ class PrepareKnowledgeRunResponse(SDKBaseModel):
         return _coerce_tuple(value)
 
 
+# One status ref per checked subject (claims and requirements): the Backend bound, not the 32 of other lists.
+_STATUS_REF_LIMIT = 256
+
+
 class PublicCapabilityCoverage(_RunResponseModel):
-    available_refs: tuple[str, ...] = Field(default_factory=tuple, max_length=32)
-    unavailable_refs: tuple[str, ...] = Field(default_factory=tuple, max_length=32)
+    available_refs: tuple[str, ...] = Field(default_factory=tuple, max_length=_STATUS_REF_LIMIT)
+    unavailable_refs: tuple[str, ...] = Field(default_factory=tuple, max_length=_STATUS_REF_LIMIT)
     limitation_refs: tuple[str, ...] = Field(default_factory=tuple, max_length=32)
 
     @field_validator("available_refs", "unavailable_refs", "limitation_refs", mode="before")
@@ -697,50 +695,23 @@ class PublicCapabilityCoverage(_RunResponseModel):
         return _coerce_tuple(value)
 
 
-_SAFE_RESULT_FORBIDDEN = re.compile(
-    r"(?:https?://|www\.|```|`|system\s+prompt|developer\s+prompt|chain[- ]of[- ]thought|"
-    r"prompt\s+injection|api[_ -]?key|access[_ -]?token|bearer\s+|secret|password|private\s+key)",
-    re.IGNORECASE,
-)
-
-
-def _safe_result_text(value: object, *, maximum: int, field_name: str) -> str:
-    if not isinstance(value, str):
-        raise ValueError(f"{field_name} must be text")
-    normalized = " ".join(unicodedata.normalize("NFC", value).split())
-    if not normalized or len(normalized) > maximum:
-        raise ValueError(f"{field_name} bound invalid")
-    if (
-        _SAFE_RESULT_FORBIDDEN.search(normalized)
-        or re.search(r"[\x00-\x1f\x7f\u202a-\u202e\u2066-\u2069]", normalized)
-        or "<" in normalized
-        or ">" in normalized
-    ):
-        raise ValueError(f"{field_name} contains unsafe content")
-    return normalized
-
-
-class SafeResultFinding(_RunResponseModel):
-    finding_ref: str = Field(max_length=256, pattern=r"^finding:[A-Za-z0-9_./:-]{1,247}$")
-    title: str = Field(min_length=1, max_length=256)
-    summary: str = Field(min_length=1, max_length=2000)
-    explanation: str = Field(min_length=1, max_length=4000)
-    confidence: Literal["low", "medium", "high"]
-    evidence_refs: tuple[str, ...] = Field(default_factory=tuple, max_length=32)
-
-    @field_validator("evidence_refs", mode="before")
-    @classmethod
-    def _refs(cls, value: object) -> object:
-        return _coerce_tuple(value)
-
-    @field_validator("title", "summary", "explanation")
-    @classmethod
-    def _safe_text(cls, value: object, info: Any) -> str:
-        return _safe_result_text(
-            value,
-            maximum={"title": 256, "summary": 2000, "explanation": 4000}[info.field_name],
-            field_name=info.field_name,
-        )
+SafeResultTaskType = Literal[
+    "facts_with_sources",
+    "calculation",
+    "text_edit",
+    "translation",
+    "concept",
+    "communication",
+    "other",
+]
+SafeResultNeedKind = Literal[
+    "requirements_checked",
+    "claims_verified",
+    "figures_recomputed",
+    "citation_check",
+    "translation_fidelity",
+    "standard_checked",
+]
 
 
 class SafeResultEvidenceSummary(_RunResponseModel):
@@ -825,7 +796,37 @@ class SafeResultCoverage(_RunResponseModel):
         return _coerce_tuple(value)
 
 
+class SafeResultConfirmed(_RunResponseModel):
+    """A part of the answer the review confirmed, with the evidence that confirms it."""
+
+    location: str = Field(min_length=1, max_length=256)
+    evidence_ref: str = Field(max_length=256, pattern=r"^evidence:[A-Za-z0-9_./:-]{1,246}$")
+
+    @field_validator("location")
+    @classmethod
+    def _safe_location(cls, value: object) -> str:
+        return _safe_result_text(value, maximum=256, field_name="location")
+
+
+class SafeResultCodes(_RunResponseModel):
+    """Closed code lists of the case; the finding categories are the public vocabulary."""
+
+    task_type: SafeResultTaskType
+    need_kinds: tuple[SafeResultNeedKind, ...] = Field(default_factory=tuple, max_length=6)
+    finding_categories: tuple[SafeResultFindingCategory, ...] = Field(
+        default_factory=tuple, max_length=10
+    )
+
+    @field_validator("need_kinds", "finding_categories", mode="before")
+    @classmethod
+    def _codes(cls, value: object) -> object:
+        return _coerce_tuple(value)
+
+
 class ComposedSafeResultContentV1(_RunResponseModel):
+    """Composed result content. The client does not expose the keys `next_action_finding_refs` and
+    `summary_subject_refs`; they are ignored when the response is parsed."""
+
     schema_version: Literal["run.composed_safe_result_content.v1"]
     summary: str = Field(min_length=1, max_length=4000)
     findings: tuple[SafeResultFinding, ...] = Field(default_factory=tuple, max_length=64)
@@ -838,11 +839,36 @@ class ComposedSafeResultContentV1(_RunResponseModel):
     decision_ref: str = Field(max_length=256, pattern=r"^decision:[A-Za-z0-9_./:-]{1,246}$")
     coverage_ref: str = Field(max_length=256, pattern=r"^coverage:[A-Za-z0-9_./:-]{1,246}$")
     insight_ref: str = Field(max_length=256, pattern=r"^insight:[A-Za-z0-9_./:-]{1,247}$")
+    next_action_text: str | None = Field(default=None, min_length=1, max_length=256)
+    case_header: str | None = Field(default=None, min_length=1, max_length=300)
+    decisive_reason: str | None = Field(default=None, min_length=1, max_length=300)
+    confirmed: tuple[SafeResultConfirmed, ...] = Field(default_factory=tuple, max_length=5)
+    codes: SafeResultCodes | None = None
+    next_steps: tuple[str, ...] = Field(default_factory=tuple, max_length=3)
+    further_findings_count: int | None = Field(default=None, ge=0, le=9999)
+    verdict_source: Literal["model", "fallback"] | None = None
 
-    @field_validator("findings", "evidence_summaries", "limitations", mode="before")
+    @field_validator(
+        "findings", "evidence_summaries", "limitations", "confirmed", "next_steps", mode="before"
+    )
     @classmethod
     def _collections(cls, value: object) -> object:
         return _coerce_tuple(value)
+
+    @field_validator("case_header", "decisive_reason", "next_action_text")
+    @classmethod
+    def _safe_verdict_text(cls, value: object, info: Any) -> str | None:
+        if value is None:
+            return None
+        maximum = 256 if info.field_name == "next_action_text" else 300
+        return _safe_result_text(value, maximum=maximum, field_name=info.field_name)
+
+    @field_validator("next_steps")
+    @classmethod
+    def _safe_next_steps(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        return tuple(
+            _safe_result_text(step, maximum=300, field_name="next_steps") for step in value
+        )
 
     @field_validator("summary")
     @classmethod

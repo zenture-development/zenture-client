@@ -1,0 +1,124 @@
+{
+  "status": "available",
+  "content": {
+    "schema_version": "run.composed_safe_result_content.v1",
+    "summary": "The quote for the Meyer order is checked against the pricing brief: the discounted total is wrong and the delivery date lacks a source. Revise the total before it is sent.",
+    "findings": [
+      {
+        "finding_ref": "finding:calc-1",
+        "title": "Discounted total does not follow from the unit prices",
+        "summary": "Paragraph 2, sentence 1: total 1,190 EUR (expected: 1,071 EUR after the 10 percent discount).",
+        "explanation": "A customer would be charged 119 EUR too much. Fix: state 1,071 EUR.",
+        "confidence": "high",
+        "evidence_refs": [
+          "evidence:calc-1"
+        ],
+        "category": "arithmetic",
+        "location": "Paragraph 2, sentence 1",
+        "actual": "Total 1,190 EUR",
+        "expected": "1,071 EUR after the 10 percent discount",
+        "why": "The customer would be charged 119 EUR too much.",
+        "fix_instruction": "State the total as 1,071 EUR.",
+        "locations": [
+          {
+            "source": "answer",
+            "start": 120,
+            "end": 135,
+            "excerpt": "total 1,190 EUR",
+            "status": "shown"
+          }
+        ]
+      },
+      {
+        "finding_ref": "finding:claim-4",
+        "title": "Delivery date has no source",
+        "summary": "Paragraph 4: delivery in 5 days (expected: a cited lead time).",
+        "explanation": "The promise cannot be verified. Fix: cite the lead time or drop the date.",
+        "confidence": "medium",
+        "evidence_refs": [],
+        "category": "source_support_missing",
+        "location": "Paragraph 4",
+        "actual": "Delivery in 5 days",
+        "expected": "A lead time taken from the pricing brief",
+        "why": "A date without a source can be missed unnoticed.",
+        "fix_instruction": "Cite the lead time from the brief or remove the date."
+      }
+    ],
+    "evidence_summaries": [
+      {
+        "evidence_ref": "evidence:calc-1",
+        "summary": "Recomputing 1,190 EUR minus 10 percent gives 1,071 EUR.",
+        "assessment": "contradicted",
+        "source_label": "Pricing brief"
+      }
+    ],
+    "limitations": [
+      {
+        "limitation_ref": "limitation:aggregate-scope-1",
+        "summary": "The shipping costs were not part of the brief and are not checked."
+      }
+    ],
+    "decision": {
+      "outcome": "revise",
+      "reason_code": "hard_criterion_failed",
+      "next_action": "Correct the total and cite the lead time."
+    },
+    "coverage": {
+      "coverage_ref": "coverage:result-001",
+      "items": [
+        {
+          "check_intent_ref": "check-intent:primary-claim",
+          "status": "performed",
+          "reason_code": "evidence_supported",
+          "blocks_ready": false,
+          "artifact_refs": [
+            "artifact:reviewed-input-001"
+          ]
+        },
+        {
+          "requirement_ref": "review-requirement:freshness",
+          "status": "degraded",
+          "reason_code": "freshness_window_not_met",
+          "blocks_ready": true,
+          "artifact_refs": []
+        }
+      ]
+    },
+    "decision_ref": "decision:result-002",
+    "coverage_ref": "coverage:result-001",
+    "insight_ref": "insight:result-002",
+    "next_action_text": "Correct the total and cite the lead time.",
+    "next_action_finding_refs": [
+      "finding:calc-1",
+      "finding:claim-4"
+    ],
+    "summary_subject_refs": [
+      "finding:calc-1"
+    ],
+    "case_header": "Quote for the Meyer order checked against the pricing brief: totals, discount and delivery promise.",
+    "decisive_reason": "The discounted total contradicts the unit prices and would overcharge the customer.",
+    "confirmed": [
+      {
+        "location": "Paragraph 3",
+        "evidence_ref": "evidence:claim-2"
+      }
+    ],
+    "codes": {
+      "task_type": "calculation",
+      "need_kinds": [
+        "figures_recomputed",
+        "requirements_checked"
+      ],
+      "finding_categories": [
+        "arithmetic",
+        "source_support_missing"
+      ]
+    },
+    "next_steps": [
+      "Correct the total to 1,071 EUR.",
+      "Cite the lead time or remove the delivery date."
+    ],
+    "further_findings_count": 2,
+    "verdict_source": "model"
+  }
+}
