@@ -9,9 +9,11 @@ from typing import Any, cast, get_args
 from zenture._contract.models import (
     PublicRunEvent,
     RunStatus,
+    TerminalBillingSummaryV1,
+)
+from zenture._contract.safe_result_findings import (
     SafeResultFinding,
     SafeResultFindingCategory,
-    TerminalBillingSummaryV1,
 )
 from zenture._resources._run_wait import _TERMINAL_STREAM_STATUSES
 from zenture._resources.runs import _TERMINAL_STATUSES

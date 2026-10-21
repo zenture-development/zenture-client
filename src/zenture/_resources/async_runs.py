@@ -23,19 +23,21 @@ from zenture._contract import (
     SignedUploadResponse,
 )
 from zenture._contract.run_references import validate_run_cursor
-from zenture._resources._run_wait import parse_sse_events_async
-from zenture._resources._run_wait_reopen import StreamWindow, poll_window
+from zenture._resources._run_wait import is_terminal_stream_message, parse_sse_events_async
+from zenture._resources._run_wait_reopen import (
+    StreamWindow,
+    bounded_stream_retry_delay,
+    poll_window,
+)
 from zenture._resources._utils import idempotency_headers, parse_response, path_segment
 from zenture._resources.runs import (
     ARTIFACT_CHUNK_SIZE,
     RunEventStreamState,
     add_wait_header,
     async_stream_timeout,
-    bounded_stream_retry_delay,
     deadline_bound,
     is_retryable_stream_error,
     is_terminal_status,
-    is_terminal_stream_message,
     parse_run_response,
     phase_key,
     polling_timeout,
