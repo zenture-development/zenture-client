@@ -211,7 +211,19 @@ it does **not** have the Python wrapper's extra `run` level.
 | `artifact_refs`, `run_insight_ref`, result references | Opaque identifiers to preserve; do not synthesize URLs or decode them |
 | `cancellation_requested` | Requested cancellation; the actual `status` remains authoritative |
 | `event_cursor` | Opaque event checkpoint, usable for supported replay/stream resumption; distinct from `event_id` and the Run-list cursor |
-| `billing_summary` | `pending`, `settled`, `released` or `unavailable`. `final_credits.status="available"` carries decimal-string `amount` and `unit="credits"`; unavailable/null is not zero |
+| `billing_summary` | `pending`, `settled`, `released` or `unavailable`. `final_credits.status="available"` carries decimal-string `amount` and `unit="credits"`; unavailable/null is not zero. A terminal Run can still be `pending` while its Credits are settled (see below) |
+
+A terminal Run is final even while `billing_summary.status` is `pending`: the
+result, `status` and `acceptance_decision` do not change when the Credits settle,
+and `final_credits` is absent until then (do not show a charge, and absent is not
+zero). `runs.wait()` returns on the terminal status and may still show `pending`.
+To obtain the final Credits, re-read the Run (`runs.get(run_id)`) every few seconds
+until `billing_summary.status` is no longer `pending`; settlement normally takes
+seconds and is bounded to about five minutes, after which a still-pending Run is
+a support matter, not a reason to start a new Run. The server keeps the stream open after the terminal event until the
+`run.billing.settled` event (same terminal `status`) or about five minutes;
+`runs.iter_events()` and `runs.wait()` stop listening at the terminal event, so
+re-read the Run for the amount.
 
 Report technical status, acceptance decision, relevant findings and limitations
 separately. `ready` is scoped to the evaluated requirements and evidence, not a
