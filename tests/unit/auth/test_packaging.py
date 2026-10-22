@@ -32,7 +32,7 @@ def test_base_dependencies_carry_the_native_auth_stack() -> None:
         "httpx>=0.27,<1",
         "httpx2>=2.5,<3",
         "pydantic>=2.7,<3",
-        "mcp>=2.0.0,<2.1",
+        "mcp>=2.2.0,<2.3",
         "keyring>=25.6,<26",
         "pyjwt[crypto]>=2.10,<3",
     } <= dependencies
@@ -56,7 +56,7 @@ def test_built_wheel_declares_the_dependencies_and_imports_in_a_fresh_environmen
         metadata = email.message_from_bytes(archive.read(metadata_name))
         names = set(archive.namelist())
     required = metadata.get_all("Requires-Dist") or []
-    assert any(r.startswith("mcp") and "2.0.0" in r and "extra" not in r for r in required)
+    assert any(r.startswith("mcp") and "2.2.0" in r and "extra" not in r for r in required)
     assert any(r.startswith("keyring") for r in required)
     assert any(r.lower().startswith("pyjwt") and "crypto" in r for r in required)
     assert "zenture/auth/__init__.py" in names
