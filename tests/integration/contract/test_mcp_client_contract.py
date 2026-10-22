@@ -10,8 +10,8 @@ ROOT = Path(__file__).parents[3]
 
 def test_mcp_transport_is_optional_and_not_a_default_runtime_dependency() -> None:
     project = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-    assert 'mcp = [\n  "mcp==2.0.0",\n]' in project
-    assert '"mcp==2.0.0",\n]' not in project.split("[project.optional-dependencies]")[0]
+    assert 'mcp = [\n  "mcp==2.2.0",\n]' in project
+    assert '"mcp==2.2.0",\n]' not in project.split("[project.optional-dependencies]")[0]
 
 
 def test_mcp_contract_docs_do_not_contain_credentials_or_private_routes() -> None:

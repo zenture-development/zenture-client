@@ -17,7 +17,7 @@ for the versions listed below; dependency ranges remain as declared in
 | `httpx` | BSD-3-Clause | Required direct HTTP client dependency (`>=0.27,<1`); verified at `0.28.1`, shipped `LICENSE.md`. [Upstream](https://github.com/encode/httpx). |
 | `httpx2` | BSD-3-Clause | Required direct HTTP client dependency (`>=2.5,<3`); verified at `2.13.1`, shipped `LICENSE.md`. [Upstream](https://github.com/pydantic/httpx2). |
 | `pydantic` | MIT | Required direct data validation/model dependency (`>=2.7,<3`); verified at `2.13.5`, shipped `LICENSE`. [Upstream](https://github.com/pydantic/pydantic). |
-| `mcp` | MIT | Required direct Model Context Protocol client transport dependency (`>=2.0.0,<2.1`); verified at `2.0.1`, shipped `LICENSE`. [Upstream](https://github.com/modelcontextprotocol/python-sdk). |
+| `mcp` | MIT | Required direct Model Context Protocol client transport dependency (`>=2.2.0,<2.3`); verified at `2.2.0`, shipped `LICENSE`. [Upstream](https://github.com/modelcontextprotocol/python-sdk). |
 | `keyring` | MIT | Required direct protected credential-store dependency (`>=25.6,<26`); verified at `25.7.0`, shipped `LICENSE`. [Upstream](https://github.com/jaraco/keyring). |
 | `PyJWT` (`pyjwt[crypto]`) | MIT | Required direct JWT dependency with the `crypto` extra (`>=2.10,<3`); verified at `2.15.1`, shipped `LICENSE`. [Upstream](https://github.com/jpadilla/pyjwt). |
 | `cryptography` | Apache-2.0 OR BSD-3-Clause | Required through the mandatory PyJWT `crypto` extra (`cryptography>=3.4.0` in the verified PyJWT metadata); verified at `50.0.2`, shipped `LICENSE`, `LICENSE.APACHE` and `LICENSE.BSD`. [Upstream](https://github.com/pyca/cryptography). |
@@ -40,7 +40,7 @@ This document is not a complete transitive dependency or SBOM inventory.
 ## MCP Extra
 
 MCP is already a required base dependency. The optional `mcp` extra remains
-available in `pyproject.toml` and declares `mcp==2.0.0`, narrowing the base range
+available in `pyproject.toml` and declares `mcp==2.2.0`, narrowing the base range
 to that exact version. Selecting this extra does not make MCP installation
 optional in the base client.
 

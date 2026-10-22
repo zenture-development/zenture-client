@@ -1,4 +1,4 @@
-# input-sha256: pyproject.toml 3b45578185797ba4b669eade74279960eaf46bcd50e140dafc6e44b10bb4f6d0
+# input-sha256: pyproject.toml a456ba9776541233a0bdcab1ccae9823a359d5ebfd64df4e69374cf13a85685c
 annotated-types==0.8.0 \
     --hash=sha256:13b2beaad985e05e2d6407ee4c4f35590b11f8d693a258a561055cac8f64cab7 \
     --hash=sha256:f072f4d804ea359e4eaf198b1af7a8b0943881a87f31bb764f8bf219bb9419e0
@@ -780,13 +780,13 @@ markdown-it-py==4.2.0 \
     --hash=sha256:04a21681d6fbb623de53f6f364d352309d4094dd4194040a10fd51833e418d49 \
     --hash=sha256:9f7ebbcd14fe59494226453aed97c1070d83f8d24b6fc3a3bcf9a38092641c4a
     # via rich
-mcp==2.0.1 \
-    --hash=sha256:a4672c8bf3f5101d0b2203c52f4a39577f68bfa5ce76d5783f0ed6d8620641a0 \
-    --hash=sha256:eed51bff816bdb26fc89ad9e643609db2a59fb66c3e1a4c5724de4fbb13b34b2
+mcp==2.2.0 \
+    --hash=sha256:2dc37ecb1974becdcebdbf7561e7c15a07dbbf20ba21ba16c3593b3038b3afbd \
+    --hash=sha256:bde982589473a060ae145e3406e9a5333fe538c97229ba841f5a7f92be004f81
     # via zenture (pyproject.toml)
-mcp-types==2.0.1 \
-    --hash=sha256:d009ecb80e074f66fd5d4b8ca1e72169a974732733b9ce01978aafb70d2dd27a \
-    --hash=sha256:ed30cb67e7a5cf6979c4befa451f363fe2d8a72b17ad405a5b95e777ad206646
+mcp-types==2.2.0 \
+    --hash=sha256:d3ed53703ddd10d9c6399f29d322bb66f3f67ab41348ac8556ba23e07fedefad \
+    --hash=sha256:ea476b73ee86709ab5abc9452385ed36cc05907e582355622e294595c9a04f13
     # via mcp
 mdurl==0.1.2 \
     --hash=sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8 \
