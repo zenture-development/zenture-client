@@ -8,6 +8,7 @@ state.
 
 ## Unreleased
 
+- The committed OpenAPI mirror follows the Gateway public contract: API token management routes are no longer listed. Token management stays in the web app and is not part of the SDK surface.
 - A terminal Run may carry `billing_summary.status="pending"` (valid, no `final_credits`);
   the later `run.billing.settled` event is a valid event. Documented: re-read the Run with
   `runs.get()` for the final Credits.

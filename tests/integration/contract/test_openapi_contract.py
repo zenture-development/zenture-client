@@ -72,10 +72,8 @@ def test_openapi_api_token_management_routes_are_not_in_sdk_surface() -> None:
     contract = _load_openapi()
     api_token_paths = [path for path in contract["paths"] if path.startswith("/v1/api-tokens")]
 
-    assert api_token_paths
-    for path in api_token_paths:
-        for operation in contract["paths"][path].values():
-            assert operation["x-zenture-auth-mode"] == "user_session"
+    assert api_token_paths == []
+    assert "UserSessionAuth" not in contract["components"]["securitySchemes"]
 
 
 def test_openapi_operation_statuses_match_sdk_enum() -> None:
