@@ -28,6 +28,9 @@ from zenture._contract.safe_result_findings import (
     SafeResultFinding,  # noqa: TC001 - pydantic resolves field types at runtime
     SafeResultFindingCategory,  # noqa: TC001
 )
+from zenture._contract.standards_checked import (
+    StandardsChecked,  # noqa: TC001 - pydantic resolves field types at runtime
+)
 from zenture._request_validation import SafeRunRequestModel as _RunRequestModel
 from zenture.models import SDKBaseModel
 from zenture.validation_issues import ValidationIssue, safe_issues
@@ -91,6 +94,15 @@ class PublicErrorCode(StrEnum):
     GUEST_QUOTA_EXHAUSTED = "guest_quota_exhausted"
     PRICE_CEILING_EXCEEDED = "price_ceiling_exceeded"
     RESULT_UNAVAILABLE = "result_unavailable"
+    STANDARDS_DISABLED = "standards_disabled"
+    STANDARD_NOT_FOUND = "standard_not_found"
+    STANDARD_FORBIDDEN = "standard_forbidden"
+    STANDARD_VERSION_CONFLICT = "standard_version_conflict"
+    STANDARD_DUPLICATE = "standard_duplicate"
+    STANDARD_INVALID = "standard_invalid"
+    STANDARD_LIMIT = "standard_limit"
+    STANDARD_NOT_CHECKABLE = "standard_not_checkable"
+    STANDARDS_UNAVAILABLE = "standards_unavailable"
 
 
 class ModelMode(StrEnum):
@@ -939,6 +951,10 @@ class PublicRunResponse(_RunResponseModel):
     limitations: tuple[str, ...] = Field(default_factory=tuple, max_length=32)
     safe_result_content: SafeResultContentProjectionV1 | None = None
     cancellation_requested: bool = False
+    learning_applied: bool | None = None
+    essence_version: str | None = Field(default=None, min_length=1, max_length=64)
+    essence: str | None = Field(default=None, min_length=1, max_length=600)
+    standards_checked: StandardsChecked | None = None
     event_cursor: str | None = Field(
         default=None, max_length=512, pattern=r"^[A-Za-z0-9._~-]{1,512}$"
     )

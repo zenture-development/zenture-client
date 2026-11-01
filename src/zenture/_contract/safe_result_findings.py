@@ -6,6 +6,7 @@ from typing import Any, Literal
 
 from pydantic import Field, field_validator, model_validator
 
+from zenture._contract.learnings import ESSENCE_FOCUS_LABEL
 from zenture._contract.response_base import RunResponseModel, coerce_tuple, safe_result_text
 
 SafeResultFindingCategory = Literal[
@@ -91,6 +92,16 @@ class SafeResultFinding(RunResponseModel):
     expected: str | None = Field(default=None, min_length=1, max_length=512)
     why: str | None = Field(default=None, min_length=1, max_length=512)
     fix_instruction: str | None = Field(default=None, min_length=1, max_length=512)
+    essence_focus: bool = False
+
+    @field_validator("essence_focus", mode="before")
+    @classmethod
+    def _essence_focus(cls, value: object) -> object:
+        """REST sends `true`; the MCP full view sends its label. Both mean: focus from the Essenz."""
+
+        if value is None:
+            return False
+        return True if value == ESSENCE_FOCUS_LABEL else value
 
     @field_validator("location", "actual", "expected", "why", "fix_instruction", "what")
     @classmethod

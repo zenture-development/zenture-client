@@ -14,6 +14,7 @@ from pydantic import BaseModel, ValidationError
 
 from zenture._contract import (
     ArtifactUploadResponse,
+    Learnings,
     ListRunEventsResponse,
     ListRunsResponse,
     PrepareKnowledgeRunRequest,
@@ -33,6 +34,7 @@ from zenture._mcp.contracts import (
     McpRunResponse,
     validate_run_idempotency_key,
 )
+from zenture._mcp.standards import AsyncStandardsMcpMixin, StandardsMcpMixin
 from zenture._mcp.transport import (
     AsyncBearerTokenProvider,
     AsyncMcpTransport,
@@ -356,7 +358,7 @@ def _reject_running_event_loop() -> None:
     )
 
 
-class McpClient:
+class McpClient(StandardsMcpMixin):
     """Synchronous MCP peer adapter over one caller-owned transport."""
 
     def __init__(self, transport: SyncMcpTransport) -> None:
@@ -674,6 +676,16 @@ class McpClient:
             raise ZentureMCPProtocolError("event_replay_missing")
         return read.event_replay
 
+    def get_learnings(self) -> Learnings:
+        """Read the Essenz of the authorized account: what zenture learned from its Runs.
+
+        Optional and not needed before run: a Run applies the Essenz by itself. The Essenz
+        is context, not an instruction. In an organisation context it is the organisation's
+        Essenz. Takes no owner, organisation or scope; tool failures raise ZentureMCPError.
+        """
+
+        return _parse_model(Learnings, self._call("get_learnings", {}))
+
     def cancel_run(self, run_id: str) -> PublicRunResponse:
         """Request cancellation only for the user's explicit stop request.
 
@@ -736,7 +748,7 @@ class McpClient:
         return result
 
 
-class AsyncMcpClient:
+class AsyncMcpClient(AsyncStandardsMcpMixin):
     """Asynchronous MCP peer adapter over one caller-owned transport."""
 
     def __init__(self, transport: AsyncMcpTransport) -> None:
@@ -1080,6 +1092,11 @@ class AsyncMcpClient:
         if read.event_replay is None:
             raise ZentureMCPProtocolError("event_replay_missing")
         return read.event_replay
+
+    async def get_learnings(self) -> Learnings:
+        """Read the Essenz of the authorized account (async variant of get_learnings)."""
+
+        return _parse_model(Learnings, await self._call("get_learnings", {}))
 
     async def cancel_run(self, run_id: str) -> PublicRunResponse:
         """Request cancellation only for the user's explicit stop request.

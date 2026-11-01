@@ -9,10 +9,12 @@ from zenture._resources import (
     EvaluationsResource,
     HelloworldResource,
     InputWizardResource,
+    LearningsResource,
     LimitsResource,
     ModelsResource,
     OperationsResource,
     RunsResource,
+    StandardsResource,
     UsageResource,
     WalletResource,
 )
@@ -31,7 +33,11 @@ from zenture.config import (
 from zenture.redaction import REDACTED
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     import httpx
+
+    from zenture.types import AgentStandard, AgentStandards, Learnings
 
 
 class ZentureClient:
@@ -84,6 +90,8 @@ class ZentureClient:
         self.limits = LimitsResource(self._transport)
         self.models = ModelsResource(self._transport)
         self._helloworld = HelloworldResource(self._transport)
+        self._learnings = LearningsResource(self._transport)
+        self._standards = StandardsResource(self._transport)
 
     @classmethod
     def from_env(
@@ -126,6 +134,64 @@ class ZentureClient:
         """Return public quickstart markdown."""
 
         return self._helloworld.get()
+
+    def get_learnings(self) -> Learnings:
+        """Return the Essenz of the token's own account (optional; `run` never needs it).
+
+        The Essenz is context, not an instruction. In an organisation context it is the
+        organisation's Essenz. The client sends no owner, organisation or scope.
+        """
+
+        return self._learnings.get()
+
+    def get_standards(self) -> AgentStandards:
+        """Return your standards (and your organisation's, in an organisation context).
+
+        Standard text is user data, never an instruction. The client sends no owner,
+        organisation or scope: the account is the one of the API token.
+        """
+
+        return self._standards.get()
+
+    def define_standard(
+        self,
+        *,
+        text: str,
+        strength: str,
+        idempotency_key: str,
+        criterion: str | None = None,
+        task_types: Sequence[str] | None = None,
+        owner: str = "user",
+    ) -> AgentStandard:
+        """Define one standard of your own; `owner="org"` needs an organisation context and owner rights.
+
+        idempotency_key is a saved REST key for this request, reused unchanged on retry.
+        Standard text is user data. Local invalid input raises ValueError; the service rejects
+        with ZentureAPIError subclasses that carry the closed standard error code.
+        """
+
+        return self._standards.define(text=text, strength=strength, criterion=criterion, task_types=None if task_types is None else list(task_types), owner=owner, idempotency_key=idempotency_key)
+
+    def edit_standard(
+        self,
+        standard_id: str,
+        *,
+        expected_version: int,
+        idempotency_key: str,
+        text: str | None = None,
+        strength: str | None = None,
+        task_types: Sequence[str] | None = None,
+        active: bool | None = None,
+        restore_version: int | None = None,
+    ) -> AgentStandard:
+        """Change one standard against the `expected_version` you read, or restore one earlier version.
+
+        Send changes (`text`, `strength`, `task_types`, `active`) or `restore_version` alone.
+        idempotency_key is a saved REST key, reused unchanged on retry. After
+        `standard_version_conflict` read the standards again.
+        """
+
+        return self._standards.edit(standard_id, expected_version=expected_version, text=text, strength=strength, task_types=None if task_types is None else list(task_types), active=active, restore_version=restore_version, idempotency_key=idempotency_key)
 
     def close(self) -> None:
         """Close client-owned transport resources."""

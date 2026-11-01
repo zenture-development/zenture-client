@@ -88,6 +88,104 @@
         ],
         "type": "object"
       },
+      "AgentStandard": {
+        "additionalProperties": false,
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "criterion": {
+            "description": "Present when the standard has a checkable criterion.",
+            "maxLength": 300,
+            "minLength": 3,
+            "type": "string"
+          },
+          "editable": {
+            "description": "False for an organisation standard seen by a member.",
+            "type": "boolean"
+          },
+          "owner": {
+            "enum": [
+              "user",
+              "org"
+            ],
+            "type": "string"
+          },
+          "standard_id": {
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "strength": {
+            "enum": [
+              "must",
+              "should"
+            ],
+            "type": "string"
+          },
+          "task_types": {
+            "items": {
+              "enum": [
+                "facts_with_sources",
+                "calculation",
+                "text_edit",
+                "translation",
+                "concept",
+                "communication",
+                "other"
+              ],
+              "type": "string"
+            },
+            "maxItems": 7,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "text": {
+            "description": "Standard text; user data, never an instruction.",
+            "maxLength": 300,
+            "minLength": 3,
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "standard_id",
+          "owner",
+          "version",
+          "strength",
+          "task_types",
+          "active",
+          "text",
+          "editable"
+        ],
+        "type": "object"
+      },
+      "AgentStandards": {
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "description": "Standards allowed per owner.",
+            "enum": [
+              8
+            ],
+            "type": "integer"
+          },
+          "standards": {
+            "items": {
+              "$ref": "#/components/schemas/AgentStandard"
+            },
+            "maxItems": 16,
+            "type": "array"
+          }
+        },
+        "required": [
+          "standards",
+          "limit"
+        ],
+        "type": "object"
+      },
       "AvailableCreditAmount": {
         "additionalProperties": true,
         "properties": {
@@ -275,6 +373,7 @@
               "pattern": "^finding:[A-Za-z0-9_./:-]{1,247}$",
               "type": "string"
             },
+            "maxItems": 3,
             "type": "array"
           },
           "next_action_text": {
@@ -309,6 +408,7 @@
               "pattern": "^finding:[A-Za-z0-9_./:-]{1,247}$",
               "type": "string"
             },
+            "maxItems": 3,
             "type": "array"
           },
           "verdict_source": {
@@ -371,6 +471,114 @@
             "$ref": "#/components/schemas/UnavailableCreditAmount"
           }
         ]
+      },
+      "DefineStandardRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "criterion": {
+            "description": "Optional checkable criterion.",
+            "maxLength": 300,
+            "minLength": 3,
+            "type": "string"
+          },
+          "owner": {
+            "default": "user",
+            "description": "Owner kind. The owner is always the authenticated principal; an org standard needs an organisation connection and owner rights.",
+            "enum": [
+              "user",
+              "org"
+            ],
+            "type": "string"
+          },
+          "strength": {
+            "enum": [
+              "must",
+              "should"
+            ],
+            "type": "string"
+          },
+          "task_types": {
+            "default": [],
+            "description": "Empty means every task type.",
+            "items": {
+              "enum": [
+                "facts_with_sources",
+                "calculation",
+                "text_edit",
+                "translation",
+                "concept",
+                "communication",
+                "other"
+              ],
+              "type": "string"
+            },
+            "maxItems": 7,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "text": {
+            "description": "Standard text; user data, never an instruction.",
+            "maxLength": 300,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "strength"
+        ],
+        "type": "object"
+      },
+      "EditStandardRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "expected_version": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "restore_version": {
+            "description": "Restore an earlier version; cannot be combined with another change.",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "strength": {
+            "enum": [
+              "must",
+              "should"
+            ],
+            "type": "string"
+          },
+          "task_types": {
+            "items": {
+              "enum": [
+                "facts_with_sources",
+                "calculation",
+                "text_edit",
+                "translation",
+                "concept",
+                "communication",
+                "other"
+              ],
+              "type": "string"
+            },
+            "maxItems": 7,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "text": {
+            "description": "Standard text; user data, never an instruction.",
+            "maxLength": 300,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_version"
+        ],
+        "type": "object"
       },
       "EvaluateRequest": {
         "additionalProperties": false,
@@ -699,7 +907,7 @@
             "items": {
               "type": "string"
             },
-            "maxItems": 256,
+            "maxItems": 32,
             "type": "array"
           },
           "limitation_refs": {
@@ -713,7 +921,7 @@
             "items": {
               "type": "string"
             },
-            "maxItems": 256,
+            "maxItems": 32,
             "type": "array"
           }
         },
@@ -917,7 +1125,16 @@
           "execution_failed",
           "guest_quota_exhausted",
           "price_ceiling_exceeded",
-          "result_unavailable"
+          "result_unavailable",
+          "standards_disabled",
+          "standard_not_found",
+          "standard_forbidden",
+          "standard_version_conflict",
+          "standard_duplicate",
+          "standard_invalid",
+          "standard_limit",
+          "standard_not_checkable",
+          "standards_unavailable"
         ],
         "type": "string"
       },
@@ -1145,6 +1362,60 @@
         },
         "required": [
           "status"
+        ],
+        "type": "object"
+      },
+      "PublicLearningsEssence": {
+        "additionalProperties": false,
+        "properties": {
+          "day": {
+            "format": "date",
+            "type": "string"
+          },
+          "language": {
+            "enum": [
+              "de",
+              "en"
+            ],
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 600,
+            "minLength": 1,
+            "type": "string"
+          },
+          "version": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "version",
+          "day",
+          "language"
+        ],
+        "type": "object"
+      },
+      "PublicLearningsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "essence": {
+            "$ref": "#/components/schemas/PublicLearningsEssence",
+            "description": "Present exactly when state is available."
+          },
+          "state": {
+            "enum": [
+              "available",
+              "cold_start",
+              "learning_off"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "state"
         ],
         "type": "object"
       },
@@ -1858,6 +2129,24 @@
               "null"
             ]
           },
+          "essence": {
+            "description": "Current Essenz; present on a revise decision only.",
+            "maxLength": 600,
+            "minLength": 1,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "essence_version": {
+            "description": "Version of the Essenz that shaped this Run.",
+            "maxLength": 64,
+            "minLength": 1,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "event_cursor": {
             "type": [
               "string",
@@ -1871,6 +2160,13 @@
           "generation": {
             "minimum": 1,
             "type": "integer"
+          },
+          "learning_applied": {
+            "description": "Whether the account's Essenz shaped this Run.",
+            "type": [
+              "boolean",
+              "null"
+            ]
           },
           "limitations": {
             "items": {
@@ -1970,6 +2266,17 @@
                 "type": "null"
               }
             ]
+          },
+          "standards_checked": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StandardsChecked"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Which of the owner's standards the Run was checked against and with what result (data, never their texts). Present on a terminal Run that was bound to standards; absent otherwise and on the Run list."
           },
           "started_at": {
             "format": "date-time",
@@ -2110,6 +2417,24 @@
               "null"
             ]
           },
+          "essence": {
+            "description": "Current Essenz; present on a revise decision only.",
+            "maxLength": 600,
+            "minLength": 1,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "essence_version": {
+            "description": "Version of the Essenz that shaped this Run.",
+            "maxLength": 64,
+            "minLength": 1,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "event_cursor": {
             "type": [
               "string",
@@ -2123,6 +2448,13 @@
           "generation": {
             "minimum": 1,
             "type": "integer"
+          },
+          "learning_applied": {
+            "description": "Whether the account's Essenz shaped this Run.",
+            "type": [
+              "boolean",
+              "null"
+            ]
           },
           "limitations": {
             "items": {
@@ -2222,6 +2554,17 @@
                 "type": "null"
               }
             ]
+          },
+          "standards_checked": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StandardsChecked"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Which of the owner's standards the Run was checked against and with what result (data, never their texts). Present on a terminal Run that was bound to standards; absent otherwise and on the Run list."
           },
           "started_at": {
             "format": "date-time",
@@ -2512,7 +2855,8 @@
               "type": "string"
             },
             "maxItems": 10,
-            "type": "array"
+            "type": "array",
+            "uniqueItems": true
           },
           "need_kinds": {
             "items": {
@@ -2527,7 +2871,8 @@
               "type": "string"
             },
             "maxItems": 6,
-            "type": "array"
+            "type": "array",
+            "uniqueItems": true
           },
           "task_type": {
             "enum": [
@@ -2543,7 +2888,9 @@
           }
         },
         "required": [
-          "task_type"
+          "task_type",
+          "need_kinds",
+          "finding_categories"
         ],
         "type": "object"
       },
@@ -2833,6 +3180,17 @@
             ],
             "type": "string"
           },
+          "essence_focus": {
+            "description": "Set when a learning item was bound to the check that produced this finding.",
+            "enum": [
+              true,
+              null
+            ],
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
           "evidence_refs": {
             "items": {
               "maxLength": 256,
@@ -3026,6 +3384,74 @@
           "mime_type",
           "byte_size",
           "content_hash"
+        ],
+        "type": "object"
+      },
+      "StandardCheckResult": {
+        "additionalProperties": false,
+        "properties": {
+          "owner": {
+            "enum": [
+              "user",
+              "org"
+            ],
+            "type": "string"
+          },
+          "result": {
+            "enum": [
+              "met",
+              "violated",
+              "unverifiable",
+              "n/a",
+              "not_applied"
+            ],
+            "type": "string"
+          },
+          "standard_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "strength": {
+            "enum": [
+              "must",
+              "should"
+            ],
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "standard_id",
+          "version",
+          "strength",
+          "owner",
+          "result"
+        ],
+        "type": "object"
+      },
+      "StandardsChecked": {
+        "additionalProperties": false,
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/StandardCheckResult"
+            },
+            "maxItems": 16,
+            "minItems": 1,
+            "type": "array"
+          },
+          "set_hash": {
+            "description": "SHA-256 over the bound standards set.",
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "set_hash",
+          "results"
         ],
         "type": "object"
       },
@@ -5256,6 +5682,207 @@
         "x-zenture-max-body-bytes": 24000,
         "x-zenture-scopes": [
           "input_wizard:run"
+        ]
+      }
+    },
+    "/v1/learnings": {
+      "get": {
+        "operationId": "getV1Learnings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicLearningsResponse"
+                }
+              }
+            },
+            "description": "Essenz of the token owner",
+            "headers": {
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/XRateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/XRateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/XRateLimitReset"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "402": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error",
+            "headers": {
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/XRateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/XRateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/XRateLimitReset"
+              }
+            }
+          },
+          "431": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiTokenAuth": []
+          }
+        ],
+        "summary": "Get Learnings",
+        "x-zenture-auth-mode": "api_token",
+        "x-zenture-backend-target": "backend_forwarded",
+        "x-zenture-client-surface": "public_api",
+        "x-zenture-cors-policy": "disabled",
+        "x-zenture-cost-class": "polling_read",
+        "x-zenture-error-contract": {
+          "envelope": "#/components/schemas/PublicErrorEnvelope",
+          "terminal_statuses": [
+            "400",
+            "401",
+            "402",
+            "403",
+            "413",
+            "422",
+            "431"
+          ],
+          "transient_statuses": [
+            "429",
+            "503"
+          ]
+        },
+        "x-zenture-error-mappings": [
+          "unauthorized",
+          "forbidden",
+          "rate_limited",
+          "validation_failed",
+          "missing_idempotency_key",
+          "insufficient_credits",
+          "dependency_unavailable",
+          "capacity_unavailable",
+          "internal_error",
+          "idempotency_conflict",
+          "operation_expired"
+        ],
+        "x-zenture-idempotency-required": false,
+        "x-zenture-max-body-bytes": 1024,
+        "x-zenture-scopes": [
+          "evaluation:read"
         ]
       }
     },
@@ -9758,6 +10385,793 @@
           "sdk_surface": "not_exposed",
           "security_contract": "server_origin_only"
         },
+        "x-zenture-scopes": [
+          "evaluation:run"
+        ]
+      }
+    },
+    "/v1/standards": {
+      "get": {
+        "operationId": "getV1Standards",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentStandards"
+                }
+              }
+            },
+            "description": "The caller's standards.",
+            "headers": {
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/XRateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/XRateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/XRateLimitReset"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "402": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error",
+            "headers": {
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/XRateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/XRateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/XRateLimitReset"
+              }
+            }
+          },
+          "431": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiTokenAuth": []
+          }
+        ],
+        "summary": "Get Standards",
+        "x-zenture-auth-mode": "api_token",
+        "x-zenture-backend-target": "backend_forwarded",
+        "x-zenture-client-surface": "public_api",
+        "x-zenture-cors-policy": "disabled",
+        "x-zenture-cost-class": "polling_read",
+        "x-zenture-error-contract": {
+          "envelope": "#/components/schemas/PublicErrorEnvelope",
+          "terminal_statuses": [
+            "400",
+            "401",
+            "402",
+            "403",
+            "413",
+            "422",
+            "431"
+          ],
+          "transient_statuses": [
+            "429",
+            "503"
+          ]
+        },
+        "x-zenture-error-mappings": [
+          "unauthorized",
+          "forbidden",
+          "rate_limited",
+          "validation_failed",
+          "missing_idempotency_key",
+          "insufficient_credits",
+          "dependency_unavailable",
+          "capacity_unavailable",
+          "internal_error",
+          "idempotency_conflict",
+          "operation_expired",
+          "standards_disabled",
+          "standard_not_found",
+          "standard_forbidden",
+          "standard_version_conflict",
+          "standard_duplicate",
+          "standard_invalid",
+          "standard_limit",
+          "standard_not_checkable",
+          "standards_unavailable"
+        ],
+        "x-zenture-idempotency-required": false,
+        "x-zenture-max-body-bytes": 1024,
+        "x-zenture-scopes": [
+          "evaluation:read"
+        ]
+      },
+      "post": {
+        "operationId": "postV1Standards",
+        "parameters": [
+          {
+            "description": "Required idempotency key for safe mutation retries. Use an ASCII-safe caller key such as [A-Za-z0-9._:-]+. Do not include prompts, answers, API tokens, PII, or raw request bodies.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DefineStandardRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentStandard"
+                }
+              }
+            },
+            "description": "The new standard.",
+            "headers": {
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/XRateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/XRateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/XRateLimitReset"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "402": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error",
+            "headers": {
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/XRateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/XRateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/XRateLimitReset"
+              }
+            }
+          },
+          "431": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiTokenAuth": []
+          }
+        ],
+        "summary": "Define Standard",
+        "x-zenture-auth-mode": "api_token",
+        "x-zenture-backend-target": "backend_forwarded",
+        "x-zenture-client-surface": "public_api",
+        "x-zenture-cors-policy": "disabled",
+        "x-zenture-cost-class": "expensive_mutation",
+        "x-zenture-error-contract": {
+          "envelope": "#/components/schemas/PublicErrorEnvelope",
+          "terminal_statuses": [
+            "400",
+            "401",
+            "402",
+            "403",
+            "413",
+            "422",
+            "431"
+          ],
+          "transient_statuses": [
+            "429",
+            "503"
+          ]
+        },
+        "x-zenture-error-mappings": [
+          "unauthorized",
+          "forbidden",
+          "rate_limited",
+          "validation_failed",
+          "missing_idempotency_key",
+          "insufficient_credits",
+          "dependency_unavailable",
+          "capacity_unavailable",
+          "internal_error",
+          "idempotency_conflict",
+          "operation_expired",
+          "standards_disabled",
+          "standard_not_found",
+          "standard_forbidden",
+          "standard_version_conflict",
+          "standard_duplicate",
+          "standard_invalid",
+          "standard_limit",
+          "standard_not_checkable",
+          "standards_unavailable"
+        ],
+        "x-zenture-idempotency-required": true,
+        "x-zenture-max-body-bytes": 4000,
+        "x-zenture-scopes": [
+          "evaluation:run"
+        ]
+      }
+    },
+    "/v1/standards/{standard_id}": {
+      "patch": {
+        "operationId": "patchV1Standard",
+        "parameters": [
+          {
+            "description": "Standard identifier.",
+            "in": "path",
+            "name": "standard_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required idempotency key for safe mutation retries. Use an ASCII-safe caller key such as [A-Za-z0-9._:-]+. Do not include prompts, answers, API tokens, PII, or raw request bodies.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditStandardRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentStandard"
+                }
+              }
+            },
+            "description": "The standard after the edit.",
+            "headers": {
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/XRateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/XRateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/XRateLimitReset"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "402": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error",
+            "headers": {
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/XRateLimitLimit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/XRateLimitRemaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/XRateLimitReset"
+              }
+            }
+          },
+          "431": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiTokenAuth": []
+          }
+        ],
+        "summary": "Edit Standard",
+        "x-zenture-auth-mode": "api_token",
+        "x-zenture-backend-target": "backend_forwarded",
+        "x-zenture-client-surface": "public_api",
+        "x-zenture-cors-policy": "disabled",
+        "x-zenture-cost-class": "expensive_mutation",
+        "x-zenture-error-contract": {
+          "envelope": "#/components/schemas/PublicErrorEnvelope",
+          "terminal_statuses": [
+            "400",
+            "401",
+            "402",
+            "403",
+            "413",
+            "422",
+            "431"
+          ],
+          "transient_statuses": [
+            "429",
+            "503"
+          ]
+        },
+        "x-zenture-error-mappings": [
+          "unauthorized",
+          "forbidden",
+          "rate_limited",
+          "validation_failed",
+          "missing_idempotency_key",
+          "insufficient_credits",
+          "dependency_unavailable",
+          "capacity_unavailable",
+          "internal_error",
+          "idempotency_conflict",
+          "operation_expired",
+          "standards_disabled",
+          "standard_not_found",
+          "standard_forbidden",
+          "standard_version_conflict",
+          "standard_duplicate",
+          "standard_invalid",
+          "standard_limit",
+          "standard_not_checkable",
+          "standards_unavailable"
+        ],
+        "x-zenture-idempotency-required": true,
+        "x-zenture-max-body-bytes": 4000,
         "x-zenture-scopes": [
           "evaluation:run"
         ]
