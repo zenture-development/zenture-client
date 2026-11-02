@@ -94,7 +94,6 @@ class PublicErrorCode(StrEnum):
     GUEST_QUOTA_EXHAUSTED = "guest_quota_exhausted"
     PRICE_CEILING_EXCEEDED = "price_ceiling_exceeded"
     RESULT_UNAVAILABLE = "result_unavailable"
-    STANDARDS_DISABLED = "standards_disabled"
     STANDARD_NOT_FOUND = "standard_not_found"
     STANDARD_FORBIDDEN = "standard_forbidden"
     STANDARD_VERSION_CONFLICT = "standard_version_conflict"

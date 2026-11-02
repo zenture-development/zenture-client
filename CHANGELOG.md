@@ -16,7 +16,7 @@ state.
   organisation context and the organisation owner's rights. REST writes take a saved `idempotency_key`; the
   MCP tools derive theirs. Closed error codes (`standard_version_conflict`, `standard_not_found`,
   `standard_forbidden`, `standard_duplicate`, `standard_invalid`, `standard_limit`, `standard_not_checkable`,
-  `standards_unavailable`, `standards_disabled`) arrive as `ZentureAPIError.error_code`. The OpenAPI mirror
+  `standards_unavailable`) arrive as `ZentureAPIError.error_code`. The OpenAPI mirror
   follows the Gateway.
 - `PublicRunResponse` exposes the optional `standards_checked` (closed models `StandardsChecked` and `StandardCheckResult`): which of your standards a terminal Run was checked against and with what result, ids and codes only, never their texts. Runs without standards parse as before. The OpenAPI mirror is resynced from the Gateway artefact (production server only).
 - `get_learnings()` on `ZentureClient`, `AsyncZentureClient`, `McpClient` and

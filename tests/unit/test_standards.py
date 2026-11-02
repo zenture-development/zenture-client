@@ -283,7 +283,6 @@ def test_rest_writes_require_a_saved_idempotency_key() -> None:
         (409, "standard_limit", ZentureAPIError),
         (422, "standard_invalid", ZentureAPIError),
         (422, "standard_not_checkable", ZentureAPIError),
-        (404, "standards_disabled", ZentureAPIError),
         (503, "standards_unavailable", ZentureAPIError),
         (400, "missing_idempotency_key", ZentureMissingIdempotencyKeyError),
         (422, "validation_failed", ZentureValidationError),
