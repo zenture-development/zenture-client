@@ -40,6 +40,11 @@ exception (all carry `error_code`, `status_code`, `request_id`):
 | `artifact_not_found` (404) | `ZentureArtifactNotFoundError` | No; unknown, expired and foreign references look the same |
 | `artifact_quota_exceeded` (429) | `ZentureArtifactQuotaExceededError` | No until the allowance renews; the client does not retry it |
 
+`length_required` (411, `ZentureLengthRequiredError`): the upload needs a `Content-Length` equal
+to the declared size; chunked or missing lengths are refused. `attach_artifact` always sends the
+declared length (also for streams and files) and raises `ValueError` before finishing when a
+source is shorter or longer than declared, so this error signals a proxy or a changed source.
+
 A rejected upload token (replay, wrong size, hash or type, expired link) raises
 `ZentureAuthenticationError`; the message never contains the token.
 

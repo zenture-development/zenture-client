@@ -78,6 +78,7 @@ class PublicErrorCode(StrEnum):
     ARTIFACT_TOO_LARGE = "artifact_too_large"
     ARTIFACT_EXTRACT_FAILED = "artifact_extract_failed"
     ARTIFACT_QUOTA_EXCEEDED = "artifact_quota_exceeded"
+    LENGTH_REQUIRED = "length_required"
     PREPARE_RATE_LIMITED = "prepare_rate_limited"
     PREPARE_CAPACITY_UNAVAILABLE = "prepare_capacity_unavailable"
     TOO_MANY_OUTSTANDING_RUNS = "too_many_outstanding_runs"

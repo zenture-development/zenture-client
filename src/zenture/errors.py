@@ -128,6 +128,10 @@ class ZentureArtifactQuotaExceededError(ZentureAPIError):
     """Raised when the account's file upload quota is used up."""
 
 
+class ZentureLengthRequiredError(ZentureAPIError):
+    """Raised when an upload arrives without a Content-Length equal to the declared size."""
+
+
 class ZentureTransportError(ZentureError):
     """Raised for client-side network and timeout failures."""
 
@@ -249,6 +253,7 @@ _ERROR_TYPES: dict[str, type[ZentureAPIError]] = {
     "artifact_extract_failed": ZentureArtifactExtractFailedError,
     "artifact_not_found": ZentureArtifactNotFoundError,
     "artifact_quota_exceeded": ZentureArtifactQuotaExceededError,
+    "length_required": ZentureLengthRequiredError,
 }
 
 

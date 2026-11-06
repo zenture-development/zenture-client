@@ -27,6 +27,9 @@ state.
   `signed-upload` answer and the new error codes `artifact_not_ready`,
   `artifact_too_large`, `artifact_extract_failed` and `artifact_quota_exceeded` (HTTP 429,
   never retried by the client).
+- The upload `PUT` always carries `Content-Length` equal to the declared size (bytes, streams
+  and files, sync and async), never chunked; new error code `length_required` (411,
+  `ZentureLengthRequiredError`, not retried).
 - MCP `attach_artifact` mirrors the tool and sends no bytes: `ArtifactUploadResponse` is now an
   upload link (`upload_url`, `upload_id`, `upload_token` hidden in repr, `expires_at`) or a
   registered host-bytes file (`content_hash`, `byte_size`, `content_type`, `status`,

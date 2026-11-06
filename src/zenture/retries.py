@@ -20,6 +20,7 @@ _NON_RETRYABLE_ERROR_CODES = {
     "idempotency_conflict",
     "operation_expired",
     "artifact_quota_exceeded",
+    "length_required",
 }
 
 

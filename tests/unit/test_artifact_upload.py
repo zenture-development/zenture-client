@@ -19,13 +19,14 @@ from zenture.errors import (
     ZentureArtifactQuotaExceededError,
     ZentureArtifactTooLargeError,
     ZentureArtifactTypeUnsupportedError,
+    ZentureLengthRequiredError,
     ZentureResponseError,
     ZentureTransportError,
     error_from_response,
 )
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Callable
+    from collections.abc import AsyncIterator, Callable, Iterator
 
 API_KEY = f"zt_live_{UUID(int=0).hex}"
 BASE = "https://api.zenture.app"
@@ -499,3 +500,135 @@ def test_artifact_not_ready_carries_retry_after_seconds() -> None:
     )
     assert isinstance(error, ZentureArtifactNotReadyError)
     assert error.retry_after_seconds == 7
+
+
+class _Wire:
+    """A loopback server that records what actually arrives, to prove the length header."""
+
+    def __init__(self) -> None:
+        import http.server
+        import threading
+
+        seen: list[dict[str, object]] = []
+        outer = self
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *_args: object) -> None:
+                return
+
+            def _json(self, status: int, body: dict[str, object]) -> None:
+                data = json.dumps(body).encode()
+                self.send_response(status)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+
+            def do_POST(self) -> None:
+                self.rfile.read(int(self.headers["Content-Length"]))
+                self._json(
+                    200,
+                    {
+                        "upload_id": "upload_abcdefgh",
+                        "upload_url": f"{outer.origin}{UPLOAD_PATH}",
+                        "upload_token": TOKEN,
+                        "artifact_ref": "art_abcdefgh",
+                        "expires_at": "2026-11-06T10:10:00Z",
+                    },
+                )
+
+            def do_PUT(self) -> None:
+                length = self.headers.get("Content-Length")
+                seen.append(
+                    {
+                        "length": length,
+                        "chunked": "chunked" in (self.headers.get("Transfer-Encoding") or ""),
+                        "body": self.rfile.read(int(length)) if length else b"",
+                    }
+                )
+                self._json(
+                    202,
+                    {
+                        "artifact_ref": "art_abcdefgh",
+                        "status": "pending",
+                        "retry_after_seconds": 3,
+                        "next_step": "start_run",
+                    },
+                )
+
+        self.seen = seen
+        self.server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.origin = f"http://127.0.0.1:{self.server.server_address[1]}"
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+
+    def close(self) -> None:
+        self.server.shutdown()
+        self.server.server_close()
+
+
+@pytest.fixture
+def wire(monkeypatch: pytest.MonkeyPatch) -> Iterator[_Wire]:
+    monkeypatch.setenv("ZENTURE_SDK_ALLOW_NON_PROD_BASE_URL", "1")
+    server = _Wire()
+    yield server
+    server.close()
+
+
+def _local_kwargs(wire: _Wire) -> dict[str, object]:
+    return {"api_key": "zt_test_" + UUID(int=0).hex, "base_url": wire.origin}
+
+
+def _sources() -> list[tuple[str, Callable[[], object]]]:
+    return [
+        ("bytes", lambda: CONTENT),
+        ("iterable", lambda: iter((CONTENT[:5], CONTENT[5:]))),
+        ("file", lambda: io.BytesIO(CONTENT)),
+    ]
+
+
+@pytest.mark.parametrize("make", [m for _, m in _sources()], ids=[n for n, _ in _sources()])
+def test_sync_put_carries_declared_content_length_for_every_source(
+    wire: _Wire, make: Callable[[], object]
+) -> None:
+    client = ZentureClient(**_local_kwargs(wire))  # type: ignore[arg-type]
+    client.runs.attach_artifact(**_args(make(), byte_size=len(CONTENT)))  # type: ignore[arg-type]
+    client.close()
+
+    assert wire.seen == [{"length": str(len(CONTENT)), "chunked": False, "body": CONTENT}]
+
+
+@pytest.mark.asyncio
+async def test_async_put_carries_declared_content_length_for_stream_and_file(
+    wire: _Wire,
+) -> None:
+    async def chunks() -> AsyncIterator[bytes]:
+        yield CONTENT[:5]
+        yield CONTENT[5:]
+
+    client = AsyncZentureClient(**_local_kwargs(wire))  # type: ignore[arg-type]
+    for source in (chunks(), io.BytesIO(CONTENT), CONTENT):
+        await client.runs.attach_artifact(**_args(source, byte_size=len(CONTENT)))  # type: ignore[arg-type]
+    await client.aclose()
+
+    assert wire.seen == [{"length": str(len(CONTENT)), "chunked": False, "body": CONTENT}] * 3
+
+
+def test_sync_source_shorter_than_declared_is_refused_not_sent_chunked(wire: _Wire) -> None:
+    client = ZentureClient(**_local_kwargs(wire))  # type: ignore[arg-type]
+    with pytest.raises((ValueError, ZentureTransportError)):
+        client.runs.attach_artifact(
+            **_args(iter((CONTENT[:-3],)), byte_size=len(CONTENT))  # type: ignore[arg-type]
+        )
+    client.close()
+
+    assert all(not item["chunked"] for item in wire.seen)
+
+
+def test_length_required_maps_to_typed_error_without_retry() -> None:
+    error = error_from_response(
+        status_code=411,
+        payload={"error": {"code": "length_required", "message": "Length required."}},
+        headers={},
+    )
+    assert type(error) is ZentureLengthRequiredError
+    assert error.status_code == 411
