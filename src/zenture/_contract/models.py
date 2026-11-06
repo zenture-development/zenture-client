@@ -74,6 +74,9 @@ class PublicErrorCode(StrEnum):
     ARTIFACT_EXPIRED = "artifact_expired"
     ARTIFACT_TYPE_UNSUPPORTED = "artifact_type_unsupported"
     ARTIFACT_PROCESSING_UNAVAILABLE = "artifact_processing_unavailable"
+    ARTIFACT_NOT_READY = "artifact_not_ready"
+    ARTIFACT_TOO_LARGE = "artifact_too_large"
+    ARTIFACT_EXTRACT_FAILED = "artifact_extract_failed"
     PREPARE_RATE_LIMITED = "prepare_rate_limited"
     PREPARE_CAPACITY_UNAVAILABLE = "prepare_capacity_unavailable"
     TOO_MANY_OUTSTANDING_RUNS = "too_many_outstanding_runs"
@@ -461,16 +464,8 @@ class RunHeaderSchema(SDKBaseModel):
     """Declared public header facts for sanitation; never used for local admission."""
 
     idempotency_key: str = Field(alias="Idempotency-Key", min_length=1, max_length=255)
-    content_length: int = Field(
-        alias="Content-Length",
-        ge=0,
-        le=10 * 1024 * 1024,
-        json_schema_extra={"x-validation-unit": "bytes"},
-    )
     last_event_id: str = Field(alias="Last-Event-ID", min_length=1, max_length=512)
     prefer: str = Field(alias="Prefer")
-    content_type: str = Field(alias="Content-Type")
-    upload_id: str = Field(alias="X-Upload-ID")
 
 
 class RunStatus(StrEnum):
@@ -522,9 +517,6 @@ class ArtifactUploadRequest(_RunRequestModel):
         ge=1, le=10 * 1024 * 1024, json_schema_extra={"x-validation-unit": "bytes"}
     )
     content_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
-    upload_id: str | None = Field(
-        default=None, min_length=8, max_length=128, pattern=r"^upload_[A-Za-z0-9_-]{8,128}$"
-    )
 
 
 class ArtifactUploadResponse(SDKBaseModel):
@@ -549,14 +541,27 @@ class ArtifactUploadResponse(SDKBaseModel):
 
 
 class SignedUploadResponse(SDKBaseModel):
+    """Upload intent; the single-use token is never shown in repr, str or errors."""
+
     upload_id: str = Field(min_length=8, max_length=128, pattern=r"^upload_[A-Za-z0-9_-]{8,128}$")
     expires_at: AwareDatetime
-    upload_url: str | None = Field(default=None, max_length=2048)
+    upload_url: str = Field(min_length=1, max_length=2048)
+    upload_token: str = Field(repr=False, pattern=r"^[A-Za-z0-9_-]{16,256}$")
+    artifact_ref: str = Field(min_length=7, max_length=132, pattern=r"^art_[A-Za-z0-9_-]{3,128}$")
 
     @field_validator("expires_at", mode="before")
     @classmethod
     def _expires_at(cls, value: object) -> object:
         return _coerce_aware_datetime(value)
+
+
+class ArtifactUploadAccepted(SDKBaseModel):
+    """Answer to the token-authenticated upload: extraction continues asynchronously."""
+
+    artifact_ref: str = Field(min_length=7, max_length=132, pattern=r"^art_[A-Za-z0-9_-]{3,128}$")
+    status: Literal["pending"]
+    retry_after_seconds: int = Field(ge=1, le=60)
+    next_step: Literal["start_run"]
 
 
 class PrepareKnowledgeRunRequest(_RunRequestModel):

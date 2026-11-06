@@ -11,9 +11,8 @@ original task and stated requirements. Keep the selected content intact,
 including relevant citations. Ask for the selection or criteria when ambiguous;
 do not invent requirements or select an answer from conversation history.
 
-Current execution supports inline text. The request schema also defines
-`zenture_ref`, but Run preparation currently rejects all registered-file inputs.
-File registration is available; it does not enable file evaluation.
+Execution takes inline text or an uploaded file. Upload with `runs.attach_artifact(...)`
+and pass the returned `artifact_ref` as `{"type": "zenture_ref", "value": artifact_ref}`.
 
 ## Choose the interface
 
@@ -98,8 +97,16 @@ See [REST idempotency](idempotency.md) for automatic transport retry rules.
 | `runs.iter_events(run_id, last_event_id=None, timeout=None, initial_interval=1.0, max_interval=8.0, stop=None)` | SSE with reconnection; `last_event_id` takes a saved **event_cursor**. Set timeout for bounded listening. `stop` is a synchronous predicate | Typed events, heartbeats and stream-error variants |
 | `runs.cancel(run_id, idempotency_key=...)` | Explicit user stop request only | Current Run; cancellation can be pending |
 | `runs.record_outcome(run_id, outcome=..., idempotency_key=..., finding_adjudications=None, edited_artifact_ref=None)` | Explicit feedback; fields below | Updated Run, original decision preserved |
-| `runs.signed_upload(file_name=..., mime_type=..., byte_size=..., content_hash=..., idempotency_key=...)` | Authorize matching file metadata | `upload_id`, `expires_at`, optional `upload_url` |
-| `runs.attach_artifact(upload_id=..., file_name=..., mime_type=..., content=..., content_hash=..., idempotency_key=..., byte_size=None)` | Send actual bytes before upload expiry; not a model-facing MCP call | Registered `artifact_ref` and file metadata |
+| `runs.attach_artifact(file_name=..., mime_type=..., content=..., content_hash=..., idempotency_key=..., byte_size=None)` | Two steps in one call: issue an upload link (bearer, `idempotency_key`), then `PUT` the bytes to it with the single-use `X-Upload-Token` (no bearer, no redirects, never retried). The client refuses a link that is not https or not on its API origin under `/v1/run-artifacts/uploads/`. Not a model-facing MCP call | `ArtifactUploadAccepted`: `artifact_ref`, `status="pending"`, `retry_after_seconds`, `next_step="start_run"` |
+
+After `attach_artifact`, extraction is asynchronous. Start the Run with
+`artifact={"type": "zenture_ref", "value": artifact_ref}`. While the file is still being
+read the Run answers `ZentureArtifactNotReadyError` (HTTP 409) with `retry_after_seconds`:
+wait that long and send the same request again. Closed refusals are not retryable:
+`ZentureArtifactTooLargeError`, `ZentureArtifactTypeUnsupportedError`,
+`ZentureArtifactExtractFailedError`; an unknown, expired or foreign reference is always
+`ZentureArtifactNotFoundError`; a used-up upload allowance is
+`ZentureArtifactQuotaExceededError`.
 
 Use the returned `run_id` after starting. A local wait timeout or stop does not
 cancel the server Run: retain that ID and read it later. `wait()` returns a
@@ -125,7 +132,7 @@ to link a predecessor. Do not pass it as an unsupported wrapper argument.
 | Method | Inputs and behavior | Python return |
 |---|---|---|
 | `run(task=..., artifact=..., profile="standard", idempotency_key=...)` | Prepare and start. Save key before dispatch; never automatically replace an uncertain attempt | Run response with `.run_id`, `.status`, and `.idempotency_key` (key excluded from model serialization) |
-| `attach_artifact(file_name=..., mime_type=..., byte_size=..., content_hash=...)` | Metadata only; host resolver must supply selected bytes. No local Python path or bytes parameter | Registered `.artifact_ref`; does not enable file evaluation |
+| `attach_artifact(file_name=..., mime_type=..., byte_size=..., content_hash=...)` | Metadata only; host resolver must supply selected bytes. No local Python path or bytes parameter | Registered `.artifact_ref` |
 | `list_runs(...)` | Same filters below; timestamps are ISO-8601 **strings** | `.runs`, `.has_more`, `.next_cursor` |
 | `get_run(run_id, view="summary", replay_cursor=None, replay_limit=50, include_event_replay=False)` | `full` for available content; replay requires explicit `True`, even with a cursor | Wrapper with **`.run`** and optional **`.event_replay`** |
 | `replay_events(run_id, cursor=None, limit=50)` | Convenience method for one replay page, not another advertised tool | Events response |
@@ -169,14 +176,13 @@ bytes. The service validates file support and content, not just the extension.
 REST `content` accepts nonempty `bytes`, a binary file, or an iterable of byte
 chunks (an **async iterable** with the async client). For streams, provide the
 exact `byte_size`; for bytes, it can be inferred. Byte count/hash are checked;
-streams are not automatically replayable. After success, check `artifact_ref`
-is present. MCP callers instead rely on the host's selected-file resolver;
-reselection cannot add a missing host capability.
+streams are not automatically replayable, and the upload `PUT` is never retried
+because its token works once. After success, check `artifact_ref` is present.
+MCP callers instead rely on the host's selected-file resolver; reselection cannot add
+a missing host capability.
 
-These methods register files; they do not enable their evaluation. Run preparation
-currently rejects `zenture_ref`: textual references return `artifact_unavailable`,
-and other media types return `artifact_type_unsupported`. Do not promise a
-registered-file evaluation or keep retrying an unavailable evaluation path.
+Only `artifact_not_ready` is retryable (after `retry_after_seconds`); `artifact_too_large`,
+`artifact_type_unsupported` and `artifact_extract_failed` are final for that file.
 
 | Feedback field | Meaning / rules |
 |---|---|

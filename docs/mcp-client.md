@@ -76,9 +76,8 @@ refresh, store or log it.
 
 ## Supported tools
 
-Run execution currently supports inline text. The schema retains `zenture_ref`,
-but Run preparation rejects registered-file inputs; registration does not enable
-file evaluation. Raw MCP `run` also supports `predecessor_run_id`; these Python
+Run execution takes inline text or a `zenture_ref` from an uploaded file
+(`artifact_not_ready` carries `retry_after_seconds`). Raw MCP `run` also supports `predecessor_run_id`; these Python
 MCP wrappers do not expose it yet. Use REST `runs.create()` / `runs.run()` for
 linked follow-ups from Python, preserving the predecessor on idempotent recovery.
 

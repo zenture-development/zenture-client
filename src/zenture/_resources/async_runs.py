@@ -9,8 +9,8 @@ import time
 from typing import TYPE_CHECKING, Any, cast
 
 from zenture._contract import (
+    ArtifactUploadAccepted,
     ArtifactUploadRequest,
-    ArtifactUploadResponse,
     CreateRunRequest,
     ListRunEventsResponse,
     ListRunsResponse,
@@ -23,6 +23,7 @@ from zenture._contract import (
     SignedUploadResponse,
 )
 from zenture._contract.run_references import validate_run_cursor
+from zenture._resources._artifact_upload import validated_upload_url
 from zenture._resources._run_wait import is_terminal_stream_message, parse_sse_events_async
 from zenture._resources._run_wait_reopen import (
     StreamWindow,
@@ -107,7 +108,6 @@ def _prepare_async_artifact_content(
     byte_size: int | None,
     file_name: str,
     mime_type: str,
-    upload_id: str,
     content_hash: str,
 ) -> tuple[bytes | AsyncIterable[bytes], int, bool]:
     if isinstance(content, bytes):
@@ -117,7 +117,6 @@ def _prepare_async_artifact_content(
         if byte_size is not None and (type(byte_size) is not int or byte_size != upload_size):
             raise ValueError("byte_size does not match content")
         ArtifactUploadRequest(
-            upload_id=upload_id,
             file_name=file_name,
             mime_type=mime_type,
             byte_size=upload_size,
@@ -131,7 +130,6 @@ def _prepare_async_artifact_content(
         raise ValueError("content must be bytes, an async iterable, or a binary file")
     upload_size = required_artifact_size(byte_size)
     ArtifactUploadRequest(
-        upload_id=upload_id,
         file_name=file_name,
         mime_type=mime_type,
         byte_size=upload_size,
@@ -168,9 +166,10 @@ class AsyncRunsResource:
             task: Original user task and explicit evaluation criteria; non-blank,
                 at most 20,000 Unicode code points. Do not invent requirements.
             artifact: Selected content as {"type": "text", "value": "..."} (1-50,000
-                code points). A bare URL is not selected text. The schema retains
-                zenture_ref, but Run preparation currently rejects registered-file
-                inputs; registration does not enable file evaluation.
+                code points). A bare URL is not selected text. A file uploaded with
+                attach_artifact is referenced as {"type": "zenture_ref", "value":
+                artifact_ref}; while it is still being read the call raises
+                ZentureArtifactNotReadyError (retry after retry_after_seconds).
             profile: "standard" by default; "fast" and "detailed" require explicit
                 user intent. Actual capabilities and costs remain service-defined.
             idempotency_key: Caller-owned key saved before dispatch. Reuse the same
@@ -259,9 +258,10 @@ class AsyncRunsResource:
             task: Original user task and explicit evaluation criteria; non-blank,
                 at most 20,000 Unicode code points. Do not invent requirements.
             artifact: Selected content as {"type": "text", "value": "..."} (1-50,000
-                code points). A bare URL is not selected text. The schema retains
-                zenture_ref, but Run preparation currently rejects registered-file
-                inputs; registration does not enable file evaluation.
+                code points). A bare URL is not selected text. A file uploaded with
+                attach_artifact is referenced as {"type": "zenture_ref", "value":
+                artifact_ref}; while it is still being read the call raises
+                ZentureArtifactNotReadyError (retry after retry_after_seconds).
             profile: "standard" by default; "fast" and "detailed" require explicit
                 user intent. Actual capabilities and costs remain service-defined.
             idempotency_key: Caller-owned key saved before dispatch. Reuse the same
@@ -645,100 +645,83 @@ class AsyncRunsResource:
         )
         return parse_run_response(payload, expected_run_id=run_id)
 
-    async def signed_upload(
-        self,
-        *,
-        file_name: str,
-        mime_type: str,
-        byte_size: int,
-        content_hash: str,
-        idempotency_key: str,
-    ) -> SignedUploadResponse:
-        """Issue temporary upload authorization for one selected file; no Run starts.
-
-        file_name (1-255 chars), mime_type (1-127 chars), byte_size (1 byte to 10 MiB) and
-        content_hash (64 lowercase SHA-256 hex chars) must describe the actual bytes.
-        idempotency_key is a saved REST key for this authorization request.
-
-        Returns SignedUploadResponse: preserve upload_id and expires_at, then send
-        bytes with attach_artifact before expiry. upload_url may be absent; the client
-        attach_artifact method uses the public artifact route. Do not treat upload_id
-        or upload_url as an artifact_ref. Invalid inputs raise ValidationError;
-        API errors raise ZentureAPIError subclasses.
-
-        Async variant: await this call.
-        """
-
-        body = ArtifactUploadRequest(
-            file_name=file_name,
-            mime_type=mime_type,
-            byte_size=byte_size,
-            content_hash=content_hash,
-        )
-        payload = await self._transport.request_json(
-            "POST",
-            "/run-artifacts/signed-upload",
-            headers=idempotency_headers(idempotency_key),
-            json=body.model_dump(mode="json", exclude_none=True),
-        )
-        return parse_response(SignedUploadResponse, payload)
-
     async def attach_artifact(
         self,
         *,
-        upload_id: str,
         file_name: str,
         mime_type: str,
         content: bytes | AsyncIterable[bytes] | BinaryIO,
         byte_size: int | None = None,
         content_hash: str,
         idempotency_key: str,
-    ) -> ArtifactUploadResponse:
-        """Upload selected bytes using authorization from signed_upload; no Run starts.
+    ) -> ArtifactUploadAccepted:
+        """Upload one selected file in two steps; no Run starts.
+
+        Step 1 issues an upload link (`POST /v1/run-artifacts/signed-upload`, bearer,
+        `idempotency_key`). Step 2 sends the bytes with `PUT` to that link, authorized
+        only by the single-use `X-Upload-Token` header: no bearer, no redirects, never
+        retried (the token works once). The token is never put in a URL, log, repr or
+        exception text. A link that is not https (loopback http only for a loopback
+        client origin) or not on the client's API origin under
+        `/v1/run-artifacts/uploads/` raises ZentureResponseError before any byte or
+        token leaves.
 
         Args:
-            upload_id: Copy from signed_upload, before its expires_at.
-            file_name, mime_type: Match the selected file's authorized metadata.
+            file_name, mime_type: Describe the selected file (type must be supported).
             content: Nonempty bytes, an async iterable of bytes, or a binary file.
             byte_size: May be omitted for bytes; required exact size for streams.
                 Maximum is 10 MiB. Streams are not automatically replayable.
             content_hash: SHA-256 of the complete bytes as 64 lowercase hex chars.
-            idempotency_key: Saved REST key for this upload, distinct from issuance.
+            idempotency_key: Saved REST key for the link issuance.
 
-        Returns ArtifactUploadResponse with the registered artifact_ref. Registration
-        does not enable evaluation: Run preparation currently rejects zenture_ref.
-        The client validates
-        byte count/hash; mismatch raises ValueError (stream validation occurs while
-        sending). Other local validation/API failures use typed client errors.
-        Unlike MCP attach_artifact, this method receives and sends real bytes.
+        Returns ArtifactUploadAccepted: `artifact_ref`, `status == "pending"`,
+        `retry_after_seconds` and `next_step == "start_run"`. Reading the file continues
+        asynchronously; start the Run with `zenture_ref` = artifact_ref. While it is
+        still being read the Run answers ZentureArtifactNotReadyError with
+        `retry_after_seconds`. Byte count/hash mismatch raises ValueError (stream
+        validation occurs while sending); API failures raise ZentureAPIError subclasses.
 
         Async variant: await this call.
         """
 
-        upload_content, upload_size, replayable = _prepare_async_artifact_content(
+        upload_content, upload_size, _ = _prepare_async_artifact_content(
             content,
             byte_size=byte_size,
             file_name=file_name,
             mime_type=mime_type,
-            upload_id=upload_id,
             content_hash=content_hash,
         )
-        headers = idempotency_headers(idempotency_key)
-        headers.update(
-            {
-                "Content-Type": mime_type,
-                "X-Upload-ID": upload_id,
-                "Content-Length": str(upload_size),
-            }
+        body = ArtifactUploadRequest(
+            file_name=file_name,
+            mime_type=mime_type,
+            byte_size=upload_size,
+            content_hash=content_hash,
         )
+        issued = parse_response(
+            SignedUploadResponse,
+            await self._transport.request_json(
+                "POST",
+                "/run-artifacts/signed-upload",
+                headers=idempotency_headers(idempotency_key),
+                json=body.model_dump(mode="json"),
+            ),
+        )
+        url = validated_upload_url(issued.upload_url, base_url=self._transport.base_url)
         payload = await self._transport.request_json(
-            "POST",
-            "/run-artifacts",
-            headers=headers,
+            "PUT",
+            f"/run-artifacts/uploads/{issued.upload_id}",
+            auth=False,
+            headers={
+                "Content-Type": mime_type,
+                "X-Upload-Token": issued.upload_token,
+                "Content-Length": str(upload_size),
+            },
             content=upload_content,
-            replayable=replayable,
+            replayable=False,
+            url=url,
+            follow_redirects=False,
         )
-        return parse_response(ArtifactUploadResponse, payload)
+        return parse_response(ArtifactUploadAccepted, payload)
 
 
 __all__ = ["AsyncRunsResource"]

@@ -8,6 +8,24 @@ state.
 
 ## Unreleased
 
+- File upload moves to the two-step flow. `runs.attach_artifact(...)` (sync and async) now
+  issues an upload link and then sends the bytes with `PUT` and the single-use
+  `X-Upload-Token` (no bearer, no redirects, never retried). It no longer takes
+  `upload_id` and returns `ArtifactUploadAccepted` (`artifact_ref`, `status="pending"`,
+  `retry_after_seconds`, `next_step`). The token never appears in a URL, log, repr or
+  exception text, and an upload link that is not https or not on the client's API origin
+  under `/v1/run-artifacts/uploads/` is refused before any byte leaves.
+- Removed: `runs.signed_upload(...)` and `SignedUploadResponse` (issuing is part of
+  `attach_artifact`), the bearer `POST /v1/run-artifacts` route and its
+  `PublicRunArtifactResponse`, and the `X-Upload-ID`, `Content-Type` and `Content-Length`
+  upload header declarations.
+- New typed errors for file references: `ZentureArtifactNotReadyError` (with
+  `retry_after_seconds`), `ZentureArtifactTooLargeError`, `ZentureArtifactTypeUnsupportedError`,
+  `ZentureArtifactExtractFailedError`, `ZentureArtifactNotFoundError` and
+  `ZentureArtifactQuotaExceededError`. `ZentureAPIError` carries `retry_after_seconds`.
+- The OpenAPI mirror lists `PUT /v1/run-artifacts/uploads/{upload_id}`, the new
+  `signed-upload` answer and the three new error codes `artifact_not_ready`,
+  `artifact_too_large`, `artifact_extract_failed`.
 - The committed OpenAPI mirror follows the Gateway public contract: API token management routes are no longer listed. Token management stays in the web app and is not part of the SDK surface.
 - A terminal Run may carry `billing_summary.status="pending"` (valid, no `final_credits`);
   the later `run.billing.settled` event is a valid event. Documented: re-read the Run with

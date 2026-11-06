@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from zenture._contract.models import (
+    ArtifactUploadAccepted,
     ArtifactUploadResponse,
     LimitsResponse,
     ListRunEventsResponse,
@@ -35,10 +36,10 @@ from zenture._contract.models import (
     RouteLimitProjection,
     RunProfile,
     RunStatus,
-    SignedUploadResponse,
 )
 
 __all__ = (
+    "ArtifactUploadAccepted",
     "ArtifactUploadResponse",
     "LimitsResponse",
     "ListRunEventsResponse",
@@ -71,5 +72,4 @@ __all__ = (
     "RouteLimitProjection",
     "RunProfile",
     "RunStatus",
-    "SignedUploadResponse",
 )

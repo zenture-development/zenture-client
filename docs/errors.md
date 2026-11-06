@@ -18,10 +18,30 @@ Common exception types:
 - `ZentureDependencyUnavailableError`
 - `ZentureInternalServerError`
 - `ZentureOperationExpiredError`
+- `ZentureArtifactNotReadyError`, `ZentureArtifactTooLargeError`,
+  `ZentureArtifactTypeUnsupportedError`, `ZentureArtifactExtractFailedError`,
+  `ZentureArtifactNotFoundError`, `ZentureArtifactQuotaExceededError`
 - `ZentureTransportError`
 - `ZentureResponseError`
 - `ZenturePollingTimeoutError`
 - `ZenturePollingStoppedError`
+
+## File errors
+
+Uploads and Runs that start from a `zenture_ref` answer closed codes, each with its own
+exception (all carry `error_code`, `status_code`, `request_id`):
+
+| Code | Exception | Retry |
+|---|---|---|
+| `artifact_not_ready` (409) | `ZentureArtifactNotReadyError` | Yes: wait `retry_after_seconds` (an integer attribute of the exception), then send the same request again |
+| `artifact_too_large` (422) | `ZentureArtifactTooLargeError` | No; the text read from the file exceeds the supported maximum |
+| `artifact_type_unsupported` (415) | `ZentureArtifactTypeUnsupportedError` | No |
+| `artifact_extract_failed` (422) | `ZentureArtifactExtractFailedError` | No; the file could not be read |
+| `artifact_not_found` (404) | `ZentureArtifactNotFoundError` | No; unknown, expired and foreign references look the same |
+| `artifact_quota_exceeded` | `ZentureArtifactQuotaExceededError` | No until the allowance renews |
+
+A rejected upload token (replay, wrong size, hash or type, expired link) raises
+`ZentureAuthenticationError`; the message never contains the token.
 
 ## Polling Errors
 

@@ -536,12 +536,18 @@ def test_run_success_models_enforce_gateway_upload_and_cursor_constraints() -> N
         byte_size=1,
         content_type="text/plain",
     )
-    SignedUploadResponse.model_validate({"upload_id": upload, "expires_at": "2026-01-01T00:00:00Z"})
+    issued = {
+        "expires_at": "2026-01-01T00:00:00Z",
+        "upload_url": "https://api.zenture.app/v1/run-artifacts/uploads/" + upload,
+        "upload_token": "t" * 24,
+        "artifact_ref": "art_abcdefgh",
+    }
+    SignedUploadResponse.model_validate({"upload_id": upload, **issued})
     for invalid in ("short", "upload_bad value", "upload_abc"):
         with pytest.raises(ValidationError):
-            SignedUploadResponse.model_validate(
-                {"upload_id": invalid, "expires_at": "2026-01-01T00:00:00Z"}
-            )
+            SignedUploadResponse.model_validate({"upload_id": invalid, **issued})
+    with pytest.raises(ValidationError):
+        SignedUploadResponse.model_validate({"upload_id": upload, **issued, "upload_token": "t"})
     for response_type in (ListRunsResponse, ListRunEventsResponse):
         for invalid in (
             "x" * 513,
