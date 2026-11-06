@@ -38,7 +38,7 @@ exception (all carry `error_code`, `status_code`, `request_id`):
 | `artifact_type_unsupported` (415) | `ZentureArtifactTypeUnsupportedError` | No |
 | `artifact_extract_failed` (422) | `ZentureArtifactExtractFailedError` | No; the file could not be read |
 | `artifact_not_found` (404) | `ZentureArtifactNotFoundError` | No; unknown, expired and foreign references look the same |
-| `artifact_quota_exceeded` | `ZentureArtifactQuotaExceededError` | No until the allowance renews |
+| `artifact_quota_exceeded` (429) | `ZentureArtifactQuotaExceededError` | No until the allowance renews; the client does not retry it |
 
 A rejected upload token (replay, wrong size, hash or type, expired link) raises
 `ZentureAuthenticationError`; the message never contains the token.

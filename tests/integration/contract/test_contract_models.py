@@ -530,11 +530,12 @@ def test_run_success_models_enforce_gateway_upload_and_cursor_constraints() -> N
 
     upload = "upload_abcdefgh"
     ArtifactUploadResponse(
-        upload_id=upload,
         artifact_ref="art_abcdefgh",
+        next_steps="Start the run with the artifact_ref.",
         content_hash="a" * 64,
         byte_size=1,
         content_type="text/plain",
+        status="pending",
     )
     issued = {
         "expires_at": "2026-01-01T00:00:00Z",

@@ -132,7 +132,7 @@ to link a predecessor. Do not pass it as an unsupported wrapper argument.
 | Method | Inputs and behavior | Python return |
 |---|---|---|
 | `run(task=..., artifact=..., profile="standard", idempotency_key=...)` | Prepare and start. Save key before dispatch; never automatically replace an uncertain attempt | Run response with `.run_id`, `.status`, and `.idempotency_key` (key excluded from model serialization) |
-| `attach_artifact(file_name=..., mime_type=..., byte_size=..., content_hash=...)` | Metadata only; host resolver must supply selected bytes. No local Python path or bytes parameter | Registered `.artifact_ref` |
+| `attach_artifact(file_name=..., mime_type=..., byte_size=..., content_hash=...)` | Mirrors the tool and sends no bytes: without a host resolver it returns an upload link (PUT the bytes to `.upload_url` with header `X-Upload-Token` = `.upload_token`, no bearer); with one, the host supplies the bytes. `.next_steps` says what to do. No local Python path or bytes parameter | `.artifact_ref` plus either the link (`.upload_url`, `.upload_id`, `.upload_token` hidden in repr, `.expires_at`) or the registered file (`.content_hash`, `.byte_size`, `.content_type`, `.status="pending"`, optional `.retry_after_seconds`) |
 | `list_runs(...)` | Same filters below; timestamps are ISO-8601 **strings** | `.runs`, `.has_more`, `.next_cursor` |
 | `get_run(run_id, view="summary", replay_cursor=None, replay_limit=50, include_event_replay=False)` | `full` for available content; replay requires explicit `True`, even with a cursor | Wrapper with **`.run`** and optional **`.event_replay`** |
 | `replay_events(run_id, cursor=None, limit=50)` | Convenience method for one replay page, not another advertised tool | Events response |

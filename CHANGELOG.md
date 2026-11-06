@@ -24,8 +24,13 @@ state.
   `ZentureArtifactExtractFailedError`, `ZentureArtifactNotFoundError` and
   `ZentureArtifactQuotaExceededError`. `ZentureAPIError` carries `retry_after_seconds`.
 - The OpenAPI mirror lists `PUT /v1/run-artifacts/uploads/{upload_id}`, the new
-  `signed-upload` answer and the three new error codes `artifact_not_ready`,
-  `artifact_too_large`, `artifact_extract_failed`.
+  `signed-upload` answer and the new error codes `artifact_not_ready`,
+  `artifact_too_large`, `artifact_extract_failed` and `artifact_quota_exceeded` (HTTP 429,
+  never retried by the client).
+- MCP `attach_artifact` mirrors the tool and sends no bytes: `ArtifactUploadResponse` is now an
+  upload link (`upload_url`, `upload_id`, `upload_token` hidden in repr, `expires_at`) or a
+  registered host-bytes file (`content_hash`, `byte_size`, `content_type`, `status`,
+  `retry_after_seconds`), each with `next_steps`.
 - The committed OpenAPI mirror follows the Gateway public contract: API token management routes are no longer listed. Token management stays in the web app and is not part of the SDK surface.
 - A terminal Run may carry `billing_summary.status="pending"` (valid, no `final_credits`);
   the later `run.billing.settled` event is a valid event. Documented: re-read the Run with

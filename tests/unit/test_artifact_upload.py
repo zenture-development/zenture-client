@@ -424,8 +424,12 @@ def test_sync_rejected_token_raises_without_leaking_it() -> None:
     client.close()
 
 
-def test_sync_quota_refusal_at_issue_maps_to_closed_error() -> None:
+def test_sync_quota_refusal_at_issue_maps_to_closed_error_without_retry() -> None:
+    attempts = 0
+
     def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
         return httpx.Response(
             429,
             json={
@@ -435,11 +439,16 @@ def test_sync_quota_refusal_at_issue_maps_to_closed_error() -> None:
         )
 
     client = ZentureClient(
-        api_key=API_KEY, http_client=httpx.Client(transport=httpx.MockTransport(handler))
+        api_key=API_KEY,
+        max_retries=2,
+        initial_retry_backoff=0.0,
+        max_retry_backoff=0.0,
+        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
     )
 
     with pytest.raises(ZentureArtifactQuotaExceededError):
         client.runs.attach_artifact(**_args())  # type: ignore[arg-type]
+    assert attempts == 1
     client.close()
 
 

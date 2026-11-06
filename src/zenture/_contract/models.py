@@ -77,6 +77,7 @@ class PublicErrorCode(StrEnum):
     ARTIFACT_NOT_READY = "artifact_not_ready"
     ARTIFACT_TOO_LARGE = "artifact_too_large"
     ARTIFACT_EXTRACT_FAILED = "artifact_extract_failed"
+    ARTIFACT_QUOTA_EXCEEDED = "artifact_quota_exceeded"
     PREPARE_RATE_LIMITED = "prepare_rate_limited"
     PREPARE_CAPACITY_UNAVAILABLE = "prepare_capacity_unavailable"
     TOO_MANY_OUTSTANDING_RUNS = "too_many_outstanding_runs"
@@ -520,24 +521,42 @@ class ArtifactUploadRequest(_RunRequestModel):
 
 
 class ArtifactUploadResponse(SDKBaseModel):
+    """MCP `attach_artifact` answer: an upload link, or a registered host-bytes file.
+
+    Link: `upload_url`, `upload_id`, `upload_token` (single use, hidden in repr),
+    `expires_at`. Host bytes: `content_hash`, `byte_size`, `content_type`, `status`
+    (`pending`) and optional `retry_after_seconds`. `next_steps` says what to do next.
+    The Python MCP client does not send the bytes; the host or caller does.
+    """
+
+    artifact_ref: str = Field(min_length=7, max_length=132, pattern=r"^art_[A-Za-z0-9_-]{3,128}$")
+    next_steps: str = Field(max_length=1024)
+    upload_url: str | None = Field(default=None, max_length=2048)
     upload_id: str | None = Field(
         default=None, min_length=8, max_length=128, pattern=r"^upload_[A-Za-z0-9_-]{8,128}$"
     )
-    artifact_ref: str | None = Field(
-        default=None,
-        min_length=7,
-        max_length=132,
-        pattern=r"^art_[A-Za-z0-9_-]{3,128}$",
-    )
-    content_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
-    byte_size: int = Field(ge=1, le=10 * 1024 * 1024)
-    content_type: str = Field(min_length=1, max_length=127)
+    upload_token: str | None = Field(default=None, repr=False, pattern=r"^[A-Za-z0-9_-]{16,256}$")
     expires_at: AwareDatetime | None = None
+    content_hash: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+    byte_size: int | None = Field(default=None, ge=1, le=10 * 1024 * 1024)
+    content_type: str | None = Field(default=None, min_length=1, max_length=127)
+    status: Literal["pending"] | None = None
+    retry_after_seconds: int | None = Field(default=None, ge=0, le=3600)
 
     @field_validator("expires_at", mode="before")
     @classmethod
     def _expires_at(cls, value: object) -> object:
         return _coerce_aware_datetime(value)
+
+    @model_validator(mode="after")
+    def _one_complete_shape(self) -> ArtifactUploadResponse:
+        link = (self.upload_url, self.upload_id, self.upload_token, self.expires_at)
+        host = (self.content_hash, self.byte_size, self.content_type, self.status)
+        if all(v is not None for v in link) and all(v is None for v in host):
+            return self
+        if all(v is not None for v in host) and all(v is None for v in link):
+            return self
+        raise ValueError("attach_artifact answer is neither a complete link nor a registered file")
 
 
 class SignedUploadResponse(SDKBaseModel):
