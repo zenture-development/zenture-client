@@ -8,6 +8,30 @@ state.
 
 ## Unreleased
 
+### Breaking
+
+The next release is a **major** version (this change removes public methods and changes a
+return type). The version is not bumped here; release publication is a separate owner step.
+
+- `runs.signed_upload(...)` is removed.
+  - Before: `up = client.runs.signed_upload(file_name=..., mime_type=..., byte_size=...,
+    content_hash=..., idempotency_key=...)` returned `SignedUploadResponse` (`upload_id`,
+    `expires_at`, optional `upload_url`).
+  - After: there is no such method; `attach_artifact` issues the upload link itself.
+    `SignedUploadResponse` is no longer in `zenture.types`.
+- `runs.attach_artifact(...)` changes signature and result (sync and async).
+  - Before: `client.runs.attach_artifact(upload_id=up.upload_id, file_name=..., mime_type=...,
+    content=..., content_hash=..., idempotency_key=...)` sent the bytes with a bearer `POST
+    /v1/run-artifacts` and returned `ArtifactUploadResponse` (`artifact_ref`, `content_hash`,
+    `byte_size`, `content_type`).
+  - After: `client.runs.attach_artifact(file_name=..., mime_type=..., content=...,
+    content_hash=..., idempotency_key=...)` (no `upload_id`) issues the link and sends the
+    bytes with `PUT` and `X-Upload-Token` (no bearer). It returns `ArtifactUploadAccepted`
+    (`artifact_ref`, `status="pending"`, `retry_after_seconds`, `next_step`). Start the Run
+    with the `artifact_ref` and handle `ZentureArtifactNotReadyError`.
+- MCP `McpClient.attach_artifact(...)` returns `ArtifactUploadResponse` in a new shape (see
+  below).
+
 - File upload moves to the two-step flow. `runs.attach_artifact(...)` (sync and async) now
   issues an upload link and then sends the bytes with `PUT` and the single-use
   `X-Upload-Token` (no bearer, no redirects, never retried). It no longer takes

@@ -678,3 +678,37 @@ def test_status_mirror_declares_optional_skipped_images() -> None:
     assert schema["properties"]["skipped_images"]["minimum"] == 0
     assert schema["properties"]["skipped_images"]["type"] == "integer"
     assert "skipped_images" not in schema["required"]
+
+
+def test_sync_attach_accepts_explicit_default_port_on_the_client_origin() -> None:
+    flow = Flow(upload_url="https://api.zenture.app:443/v1/run-artifacts/uploads/upload_abcdefgh")
+    client = _sync(flow)
+
+    client.runs.attach_artifact(**_args())  # type: ignore[arg-type]
+
+    assert [r.method for r in flow.requests] == ["POST", "PUT"]
+    client.close()
+
+
+def test_sync_attach_refuses_a_link_whose_id_differs_from_the_issued_upload_id() -> None:
+    flow = Flow(upload_url=BASE + "/v1/run-artifacts/uploads/upload_zzzzzzzz")
+    client = _sync(flow)
+
+    with pytest.raises(ZentureResponseError) as caught:
+        client.runs.attach_artifact(**_args())  # type: ignore[arg-type]
+
+    assert [r.method for r in flow.requests] == ["POST"]
+    assert TOKEN not in str(caught.value) + repr(caught.value)
+    client.close()
+
+
+@pytest.mark.asyncio
+async def test_async_attach_refuses_a_link_whose_id_differs_from_the_issued_upload_id() -> None:
+    flow = Flow(upload_url=BASE + "/v1/run-artifacts/uploads/upload_zzzzzzzz")
+    client = _async(flow)
+
+    with pytest.raises(ZentureResponseError):
+        await client.runs.attach_artifact(**_args())  # type: ignore[arg-type]
+
+    assert [r.method for r in flow.requests] == ["POST"]
+    await client.aclose()

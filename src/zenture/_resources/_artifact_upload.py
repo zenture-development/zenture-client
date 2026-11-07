@@ -13,7 +13,10 @@ _LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 _REFUSED = "Upload link was refused: it is not an https link on the client's API origin."
 
 
-def validated_upload_url(upload_url: str, *, base_url: str) -> str:
+_DEFAULT_PORTS = {"https": 443, "http": 80}
+
+
+def validated_upload_url(upload_url: str, *, base_url: str, upload_id: str) -> str:
     """Return the upload link only if it is safe to send the single-use token to.
 
     The link must sit on the client's own API origin (scheme, host, port) under
@@ -30,12 +33,16 @@ def validated_upload_url(upload_url: str, *, base_url: str) -> str:
         same_origin = (
             link.scheme == base.scheme
             and (host or "") == (base.hostname or "")
-            and link.port == base.port
+            and (link.port or _DEFAULT_PORTS.get(link.scheme))
+            == (base.port or _DEFAULT_PORTS.get(base.scheme))
         )
         scheme_ok = link.scheme == "https" or (link.scheme == "http" and host in _LOCAL_HOSTS)
         plain = not (link.username or link.password or link.query or link.fragment)
-        upload_id = link.path.removeprefix(UPLOAD_PATH_PREFIX)
-        path_ok = link.path.startswith(UPLOAD_PATH_PREFIX) and bool(_UPLOAD_ID_RE.match(upload_id))
+        path_ok = (
+            link.path.startswith(UPLOAD_PATH_PREFIX)
+            and link.path.removeprefix(UPLOAD_PATH_PREFIX) == upload_id
+            and bool(_UPLOAD_ID_RE.match(upload_id))
+        )
         if not (same_origin and scheme_ok and plain and path_ok and "\\" not in upload_url):
             refusal = ZentureResponseError(_REFUSED)
     except ValueError:

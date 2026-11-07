@@ -909,7 +909,9 @@ class RunsResource:
                 json=body.model_dump(mode="json"),
             ),
         )
-        url = validated_upload_url(issued.upload_url, base_url=self._transport.base_url)
+        url = validated_upload_url(
+            issued.upload_url, base_url=self._transport.base_url, upload_id=issued.upload_id
+        )
         payload = self._transport.request_json(
             "PUT",
             f"/run-artifacts/uploads/{issued.upload_id}",

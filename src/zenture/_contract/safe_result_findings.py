@@ -50,11 +50,15 @@ SafeResultDefectType = Literal[
 class SafeResultLocation(RunResponseModel):
     """Where a finding sits in the frozen answer or task (code-point offsets, end exclusive)."""
 
-    source: Literal["answer", "task"]
+    source: Literal["answer", "task", "file"]
     start: int = Field(ge=0)
     end: int = Field(ge=1)
     excerpt: str | None = Field(default=None, min_length=1, max_length=160)
     status: Literal["shown", "withheld"]
+    page: int | None = Field(default=None, ge=1, le=100_000)
+    sheet: str | None = Field(default=None, min_length=1, max_length=128)
+    cell: str | None = Field(default=None, pattern=r"^[A-Z]{1,3}[1-9][0-9]{0,6}$")
+    from_image: bool | None = None
 
     @field_validator("excerpt")
     @classmethod
