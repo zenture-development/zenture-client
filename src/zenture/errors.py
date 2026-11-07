@@ -128,6 +128,10 @@ class ZentureArtifactQuotaExceededError(ZentureAPIError):
     """Raised when the account's file upload quota is used up."""
 
 
+class ZentureArtifactUnavailableError(ZentureAPIError):
+    """Raised when a file is unavailable, e.g. its single-use upload token was already used."""
+
+
 class ZentureLengthRequiredError(ZentureAPIError):
     """Raised when an upload arrives without a Content-Length equal to the declared size."""
 
@@ -253,6 +257,7 @@ _ERROR_TYPES: dict[str, type[ZentureAPIError]] = {
     "artifact_extract_failed": ZentureArtifactExtractFailedError,
     "artifact_not_found": ZentureArtifactNotFoundError,
     "artifact_quota_exceeded": ZentureArtifactQuotaExceededError,
+    "artifact_unavailable": ZentureArtifactUnavailableError,
     "length_required": ZentureLengthRequiredError,
 }
 

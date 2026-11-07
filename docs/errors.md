@@ -45,6 +45,13 @@ to the declared size; chunked or missing lengths are refused. `attach_artifact` 
 declared length (also for streams and files) and raises `ValueError` before finishing when a
 source is shorter or longer than declared, so this error signals a proxy or a changed source.
 
+`artifact_unavailable` (422, `retryable: false`, `ZentureArtifactUnavailableError`): the file is
+not available, for example after its single-use upload token was already used. Request a new
+upload with `attach_artifact`; the client never retries it.
+
+The artifact status route (direct API use) reports `skipped_images`, the number of embedded
+images that were not read; the text is complete (default 0).
+
 A rejected upload token (replay, wrong size, hash or type, expired link) raises
 `ZentureAuthenticationError`; the message never contains the token.
 

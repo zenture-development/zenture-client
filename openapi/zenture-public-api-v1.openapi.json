@@ -1443,6 +1443,11 @@
             "minimum": 1,
             "type": "integer"
           },
+          "skipped_images": {
+            "description": "Embedded images of the file that were not read; the text itself is complete.",
+            "minimum": 0,
+            "type": "integer"
+          },
           "status": {
             "enum": [
               "pending",

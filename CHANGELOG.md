@@ -30,6 +30,9 @@ state.
 - The upload `PUT` always carries `Content-Length` equal to the declared size (bytes, streams
   and files, sync and async), never chunked; new error code `length_required` (411,
   `ZentureLengthRequiredError`, not retried).
+- `artifact_unavailable` (422, `retryable: false`, after a used upload token) raises
+  `ZentureArtifactUnavailableError` and is not retried. The OpenAPI mirror's artifact status
+  gains optional `skipped_images` (integer, at least 0).
 - MCP `attach_artifact` mirrors the tool and sends no bytes: `ArtifactUploadResponse` is now an
   upload link (`upload_url`, `upload_id`, `upload_token` hidden in repr, `expires_at`) or a
   registered host-bytes file (`content_hash`, `byte_size`, `content_type`, `status`,

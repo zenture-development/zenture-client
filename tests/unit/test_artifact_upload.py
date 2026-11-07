@@ -19,6 +19,7 @@ from zenture.errors import (
     ZentureArtifactQuotaExceededError,
     ZentureArtifactTooLargeError,
     ZentureArtifactTypeUnsupportedError,
+    ZentureArtifactUnavailableError,
     ZentureLengthRequiredError,
     ZentureResponseError,
     ZentureTransportError,
@@ -632,3 +633,48 @@ def test_length_required_maps_to_typed_error_without_retry() -> None:
     )
     assert type(error) is ZentureLengthRequiredError
     assert error.status_code == 411
+
+
+def test_burnt_token_artifact_unavailable_is_typed_and_not_retryable() -> None:
+    attempts = 0
+
+    def burnt(_request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        return httpx.Response(
+            422,
+            json={
+                "error": {
+                    "code": "artifact_unavailable",
+                    "message": "The selected artifact is unavailable.",
+                    "retryable": False,
+                },
+                "request_id": "req_1",
+            },
+        )
+
+    flow = Flow(put_response=burnt)
+    client = _sync(flow, max_retries=2, initial_retry_backoff=0.0, max_retry_backoff=0.0)
+
+    with pytest.raises(ZentureArtifactUnavailableError) as caught:
+        client.runs.attach_artifact(**_args())  # type: ignore[arg-type]
+
+    assert attempts == 1
+    assert caught.value.retryable is False
+    assert caught.value.status_code == 422
+    assert TOKEN not in str(caught.value) + repr(caught.value)
+    client.close()
+
+
+def test_status_mirror_declares_optional_skipped_images() -> None:
+    from pathlib import Path
+
+    contract = json.loads(
+        (
+            Path(__file__).resolve().parents[2] / "openapi/zenture-public-api-v1.openapi.json"
+        ).read_text()
+    )
+    schema = contract["components"]["schemas"]["PublicArtifactStatusResponse"]
+    assert schema["properties"]["skipped_images"]["minimum"] == 0
+    assert schema["properties"]["skipped_images"]["type"] == "integer"
+    assert "skipped_images" not in schema["required"]
