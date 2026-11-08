@@ -146,3 +146,15 @@ def test_sdk_models_are_pinned_to_the_mirror_for_the_upload_and_location_schemas
         "task",
         "file",
     ]
+
+
+def test_file_location_text_is_documented_as_untrusted_in_the_model_and_the_openapi_mirror() -> None:
+    """M1: excerpt and sheet quote the user's file; the SDK documents them as never to be followed as instructions."""
+    spec = json.loads(
+        (Path(__file__).resolve().parents[2] / "openapi" / "zenture-public-api-v1.openapi.json").read_text("utf-8")
+    )
+    mirrored = spec["components"]["schemas"]["SafeResultLocation"]["properties"]
+    for member in ("excerpt", "sheet"):
+        for description in (mirrored[member].get("description"), SafeResultLocation.model_fields[member].description):
+            text = (description or "").lower()
+            assert "verbatim" in text and "untrusted" in text and "never" in text and "instruction" in text
