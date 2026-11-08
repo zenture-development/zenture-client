@@ -147,6 +147,7 @@ def test_sdk_models_are_pinned_to_the_mirror_for_the_upload_and_location_schemas
         "answer",
         "task",
         "file",
+        "reference_file",
     ]
 
 

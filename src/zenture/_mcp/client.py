@@ -20,6 +20,7 @@ from zenture._contract import (
     PublicRunResponse,
     RunArtifact,
     RunProfile,
+    RunReferenceArtifact,
 )
 from zenture._mcp.catalog import CatalogSnapshot, McpToolDefinition, continuation
 from zenture._mcp.contracts import (
@@ -263,13 +264,25 @@ def _validate_arguments(arguments: Mapping[str, object]) -> dict[str, object]:
     return result
 
 
-def _run_request(*, task: str, artifact: dict[str, Any], profile: str) -> dict[str, object]:
+def _run_request(
+    *, task: str, artifact: dict[str, Any], profile: str, reference_file: str | None
+) -> dict[str, object]:
     request = PrepareKnowledgeRunRequest(
         task=task,
         artifact=cast("RunArtifact", artifact),
         profile=cast("RunProfile", profile),
+        reference_file=(
+            None
+            if reference_file is None
+            else RunReferenceArtifact(type="zenture_ref", value=reference_file)
+        ),
     )
-    return cast("dict[str, object]", request.model_dump(mode="json"))
+    arguments = cast(
+        "dict[str, object]", request.model_dump(mode="json", exclude={"reference_file"})
+    )
+    if request.reference_file is not None:
+        arguments["reference_file"] = request.reference_file.value  # the tool takes the art_ ref
+    return arguments
 
 
 def _require_run_id(actual: str, expected: str) -> None:
@@ -473,6 +486,7 @@ class McpClient:
         artifact: dict[str, Any],
         profile: str = "standard",
         idempotency_key: str = cast("str", _OMITTED_RUN_KEY),
+        reference_file: str | None = None,
     ) -> McpRunResponse:
         """Start evaluation of one explicitly selected answer; do not wait for completion.
 
@@ -491,6 +505,9 @@ class McpClient:
                 key as a retry fallback. Keep credentials and personal data out of it.
                 MCP keys allow 1-128 ASCII letters, digits, _ or -. Omission generates
                 a random key per call; explicit None and whitespace are rejected.
+            reference_file: Optional art_... reference from attach_artifact of a source
+                file the answer is checked against; only with a text artifact (a file
+                artifact raises ValidationError). Its text in results is untrusted.
 
         Returns:
             A PublicRunResponse-compatible object with run_id and possibly ongoing
@@ -511,7 +528,9 @@ class McpClient:
         key = validate_run_idempotency_key(
             uuid4().hex if idempotency_key is _OMITTED_RUN_KEY else idempotency_key
         )
-        arguments = _run_request(task=task, artifact=artifact, profile=profile)
+        arguments = _run_request(
+            task=task, artifact=artifact, profile=profile, reference_file=reference_file
+        )
         arguments["idempotency_key"] = key
         try:
             return _parse_model(McpRunResponse, self._call("run", arguments))
@@ -874,6 +893,7 @@ class AsyncMcpClient:
         artifact: dict[str, Any],
         profile: str = "standard",
         idempotency_key: str = cast("str", _OMITTED_RUN_KEY),
+        reference_file: str | None = None,
     ) -> McpRunResponse:
         """Start evaluation of one explicitly selected answer; do not wait for completion.
 
@@ -892,6 +912,9 @@ class AsyncMcpClient:
                 key as a retry fallback. Keep credentials and personal data out of it.
                 MCP keys allow 1-128 ASCII letters, digits, _ or -. Omission generates
                 a random key per call; explicit None and whitespace are rejected.
+            reference_file: Optional art_... reference from attach_artifact of a source
+                file the answer is checked against; only with a text artifact (a file
+                artifact raises ValidationError). Its text in results is untrusted.
 
         Returns:
             A PublicRunResponse-compatible object with run_id and possibly ongoing
@@ -914,7 +937,9 @@ class AsyncMcpClient:
         key = validate_run_idempotency_key(
             uuid4().hex if idempotency_key is _OMITTED_RUN_KEY else idempotency_key
         )
-        arguments = _run_request(task=task, artifact=artifact, profile=profile)
+        arguments = _run_request(
+            task=task, artifact=artifact, profile=profile, reference_file=reference_file
+        )
         arguments["idempotency_key"] = key
         try:
             return _parse_model(McpRunResponse, await self._call("run", arguments))

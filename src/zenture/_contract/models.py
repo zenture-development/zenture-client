@@ -588,6 +588,13 @@ class PrepareKnowledgeRunRequest(_RunRequestModel):
     task: str = Field(min_length=1, max_length=20_000)
     artifact: RunArtifact
     profile: RunProfile = RunProfile.STANDARD
+    reference_file: RunReferenceArtifact | None = Field(
+        default=None,
+        description=(
+            "Optional uploaded reference file the answer is checked against; only with an "
+            "inline text artifact."
+        ),
+    )
 
     @field_validator("task")
     @classmethod
@@ -595,6 +602,12 @@ class PrepareKnowledgeRunRequest(_RunRequestModel):
         if not value.strip():
             raise ValueError("task must not be blank")
         return value
+
+    @model_validator(mode="after")
+    def _reference_file_needs_a_text_answer(self) -> Self:
+        if self.reference_file is not None and self.artifact.type != "text":
+            raise ValueError("reference_file requires an inline text artifact")
+        return self
 
     @field_validator("profile", mode="before")
     @classmethod
@@ -941,6 +954,7 @@ class PublicRunResponse(_RunResponseModel):
     family: Literal["knowledge"] = "knowledge"
     work_type: str = Field(min_length=1, max_length=64)
     input_kind: Literal["text", "file"] | None = None
+    reference_file_attached: bool = False
     profile: RunProfile
     status: RunStatus
     created_at: AwareDatetime
@@ -1029,6 +1043,7 @@ class PublicRunListItem(_RunResponseModel):
     error_code: str | None = Field(default=None, max_length=128)
     task_summary_ref: str | None = None
     input_kind: Literal["text", "file"] | None = None
+    reference_file_attached: bool = False
     profile: RunProfile
     created_at: AwareDatetime
     updated_at: AwareDatetime

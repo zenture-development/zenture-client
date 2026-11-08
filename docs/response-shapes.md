@@ -691,6 +691,7 @@ Schema: `PublicRunCollectionResponse`
       "error_code": "example",
       "input_kind": "text",
       "profile": "fast",
+      "reference_file_attached": false,
       "run_id": "example",
       "status": "active",
       "task_summary_ref": "example",
@@ -772,6 +773,7 @@ Schema: `PublicRunResponse`
     "queue_reason": "example"
   },
   "reason_code": "example",
+  "reference_file_attached": false,
   "run_id": "example",
   "run_insight_ref": "example",
   "safe_result_content": "example",
@@ -834,6 +836,7 @@ Schema: `PublicRunResponse`
     "queue_reason": "example"
   },
   "reason_code": "example",
+  "reference_file_attached": false,
   "run_id": "example",
   "run_insight_ref": "example",
   "safe_result_content": "example",
@@ -972,6 +975,7 @@ Schema: `PublicRunResponse`
     "queue_reason": "example"
   },
   "reason_code": "example",
+  "reference_file_attached": false,
   "run_id": "example",
   "run_insight_ref": "example",
   "safe_result_content": "example",
@@ -1056,6 +1060,7 @@ Schema: `PublicRunResponse`
     "queue_reason": "example"
   },
   "reason_code": "example",
+  "reference_file_attached": false,
   "run_id": "example",
   "run_insight_ref": "example",
   "safe_result_content": "example",
@@ -1218,6 +1223,7 @@ Schema: `PublicRunOutcomeResponse`
     "queue_reason": "example"
   },
   "reason_code": "example",
+  "reference_file_attached": false,
   "run_id": "example",
   "run_insight_ref": "example",
   "safe_result_content": "example",
