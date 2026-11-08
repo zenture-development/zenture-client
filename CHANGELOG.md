@@ -51,6 +51,9 @@ return type). The version is not bumped here; release publication is a separate 
   `signed-upload` answer and the new error codes `artifact_not_ready`,
   `artifact_too_large`, `artifact_extract_failed` and `artifact_quota_exceeded` (HTTP 429,
   never retried by the client).
+- The OpenAPI mirror follows the final Gateway contract: the upload `PUT` documents 408 and
+  415, `GET /v1/run-artifacts/{artifact_id}` names its path parameter `artifact_id`, and the
+  `zenture_ref` descriptor is described as an accepted reference.
 - The upload `PUT` always carries `Content-Length` equal to the declared size (bytes, streams
   and files, sync and async), never chunked; new error code `length_required` (411,
   `ZentureLengthRequiredError`, not retried).

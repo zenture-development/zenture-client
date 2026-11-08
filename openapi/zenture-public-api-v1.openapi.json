@@ -1472,38 +1472,6 @@
         ],
         "type": "object"
       },
-      "PublicRunArtifactResponse": {
-        "additionalProperties": false,
-        "properties": {
-          "artifact_ref": {
-            "maxLength": 132,
-            "minLength": 7,
-            "pattern": "^art_[A-Za-z0-9_-]{3,128}$",
-            "type": "string"
-          },
-          "byte_size": {
-            "maximum": 10485760,
-            "minimum": 1,
-            "type": "integer"
-          },
-          "content_hash": {
-            "pattern": "^[a-f0-9]{64}$",
-            "type": "string"
-          },
-          "content_type": {
-            "maxLength": 127,
-            "minLength": 1,
-            "type": "string"
-          }
-        },
-        "required": [
-          "artifact_ref",
-          "content_hash",
-          "byte_size",
-          "content_type"
-        ],
-        "type": "object"
-      },
       "PublicRunCollectionResponse": {
         "additionalProperties": true,
         "properties": {
@@ -3444,7 +3412,7 @@
       },
       "ZentureRefRunArtifact": {
         "additionalProperties": false,
-        "description": "Registered-file reference retained in the schema; currently rejected during Run preparation. Registration does not enable evaluation: textual references return artifact_unavailable; other media types return artifact_type_unsupported.",
+        "description": "Reference to an uploaded file that belongs to the caller. A file that is still being read answers artifact_not_ready (409, retry after retry_after_seconds); an unknown, expired or foreign reference answers artifact_not_found (404); a file that cannot be read answers artifact_too_large, artifact_type_unsupported or artifact_extract_failed.",
         "properties": {
           "type": {
             "const": "zenture_ref"
@@ -6730,6 +6698,16 @@
             },
             "description": "Public gateway error"
           },
+          "408": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
           "409": {
             "content": {
               "application/json": {
@@ -6761,6 +6739,16 @@
             "description": "Public gateway error"
           },
           "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicErrorEnvelope"
+                }
+              }
+            },
+            "description": "Public gateway error"
+          },
+          "415": {
             "content": {
               "application/json": {
                 "schema": {
@@ -7003,25 +6991,12 @@
             }
           },
           {
-            "description": "Canonical public Run identifier.",
+            "description": "Artifact identifier from signed-upload.",
             "in": "path",
-            "name": "run_id",
+            "name": "artifact_id",
             "required": true,
             "schema": {
-              "pattern": "^run_[A-Za-z0-9_-]{3,128}$",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "view",
-            "required": false,
-            "schema": {
-              "default": "summary",
-              "enum": [
-                "summary",
-                "full"
-              ],
+              "pattern": "^art_[A-Za-z0-9_-]{3,128}$",
               "type": "string"
             }
           }
