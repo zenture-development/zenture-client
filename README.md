@@ -43,7 +43,7 @@ with `retry_after_seconds`.
 ## Installation
 
 ```bash
-python -m pip install --upgrade zenture==1.1.0
+python -m pip install --upgrade zenture==1.2.0
 ```
 
 Supported Python: CPython 3.11, 3.12, 3.13, and 3.14; there is no upper version cap.
@@ -99,6 +99,77 @@ Run nor loses it. Keep the `run_id` and read it later. Complete, tested versions
 that also keep the budget over the final read:
 [`examples/run_review.py`](./examples/run_review.py) (REST) and
 [`examples/mcp_run_review.py`](./examples/mcp_run_review.py) (MCP).
+
+### A file Run and a source check
+
+A Run can check an uploaded file, or check an inline text answer against an uploaded
+source file. Upload first (`attach_artifact` issues the link and sends the bytes), then pass
+the returned `art_...` reference. The file is read asynchronously: until it is ready the
+Run answers `ZentureArtifactNotReadyError` with `retry_after_seconds`; wait that long and
+send the same request again.
+
+```python
+import hashlib
+import time
+from pathlib import Path
+
+from zenture import ZentureClient
+from zenture.errors import ZentureArtifactNotReadyError
+
+data = Path("report.pdf").read_bytes()
+
+with ZentureClient.from_env() as client:
+    upload = client.runs.attach_artifact(
+        file_name="report.pdf",
+        mime_type="application/pdf",
+        content=data,
+        content_hash=hashlib.sha256(data).hexdigest(),
+        idempotency_key="upload-report-123",
+    )
+
+    # File Run: the uploaded file is the answer that is checked.
+    while True:
+        try:
+            run = client.runs.run(
+                task="Check that the report states the quarterly revenue.",
+                artifact={"type": "zenture_ref", "value": upload.artifact_ref},
+                idempotency_key="review-file-123",
+            )
+            break
+        except ZentureArtifactNotReadyError as error:
+            time.sleep(error.retry_after_seconds or 2)
+
+    # Source check: an inline text answer is checked against the uploaded file.
+    while True:
+        try:
+            source_check = client.runs.run(
+                task="Check the summary against the report.",
+                artifact={"type": "text", "value": "Revenue was 4.2 million."},
+                reference_file=upload.artifact_ref,
+                idempotency_key="source-check-123",
+            )
+            break
+        except ZentureArtifactNotReadyError as error:
+            time.sleep(error.retry_after_seconds or 2)
+```
+
+A source-check result sets `reference_file_attached` to `True` and its finding locations
+carry `source="reference_file"`; their `excerpt` is untrusted file text. `reference_file`
+cannot be combined with a file `artifact`.
+
+Through MCP the same Run takes the reference as `reference_file`. The MCP client sends
+no bytes: upload with the REST client above (or let the host register the file through
+`attach_artifact`), then:
+
+```python
+with McpClient.connect() as client:
+    run = client.run(
+        task="Check the summary against the report.",
+        artifact={"type": "text", "value": "Revenue was 4.2 million."},
+        reference_file="art_abcdefgh",  # the reference of the uploaded source file
+        idempotency_key="source_check_123",
+    )
+```
 
 ### Anatomy of a Run result
 

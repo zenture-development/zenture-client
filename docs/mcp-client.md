@@ -83,7 +83,7 @@ linked follow-ups from Python, preserving the predecessor on idempotent recovery
 
 | Tool | Method | Purpose |
 |---|---|---|
-| `run` | `run(task=..., artifact=..., profile="standard", idempotency_key=...)` | Start a Run |
+| `run` | `run(task=..., artifact=..., profile="standard", reference_file=None, idempotency_key=...)` | Start a Run; `reference_file` is the optional `art_...` reference of an uploaded source file an inline text answer is checked against (source check) |
 | `attach_artifact` | `attach_artifact(file_name=..., mime_type=..., byte_size=..., content_hash=...)` | Returns an upload link (PUT with `X-Upload-Token`) or, when the host provides an approved artifact resolver, registers the host's bytes; no bytes are sent by this client |
 | `list_runs` | `list_runs(status=..., limit=5, cursor=...)` | List Runs, one bounded page |
 | `get_run` | `get_run(run_id, view="summary" or "full", replay_cursor=...)` | Read a Run, optionally with one replay page |
