@@ -57,8 +57,8 @@ return type). The version is not bumped here; release publication is a separate 
 - The upload `PUT` always carries `Content-Length` equal to the declared size (bytes, streams
   and files, sync and async), never chunked; new error code `length_required` (411,
   `ZentureLengthRequiredError`, not retried).
-- `artifact_unavailable` (422, `retryable: false`, after a used upload token) raises
-  `ZentureArtifactUnavailableError` and is not retried. The OpenAPI mirror's artifact status
+- `artifact_unavailable` raises `ZentureArtifactUnavailableError`. The upload `PUT` never
+  answers it; Run prepare answers it as a 503 for a transient file-read failure. The OpenAPI mirror's artifact status
   gains optional `skipped_images` (integer, at least 0).
 - MCP `attach_artifact` mirrors the tool and sends no bytes: `ArtifactUploadResponse` is now an
   upload link (`upload_url`, `upload_id`, `upload_token` hidden in repr, `expires_at`) or a
@@ -75,9 +75,10 @@ return type). The version is not bumped here; release publication is a separate 
   and `locations`; composed content exposes `next_action_text`.
 - `PublicCapabilityCoverage` accepts up to 256 `available_refs` and `unavailable_refs`
   (Backend bound); `limitation_refs` stays at 32.
-- `PublicRunResponse.input_kind` (`"text"` or `"file"`, required) says whether the Run checks a
-  submitted text or an uploaded file; it is set at Run creation and present on every Run,
-  including failed ones.
+- `PublicRunResponse.input_kind` and `PublicRunListItem.input_kind` (`"text"` or `"file"`) say
+  whether the Run checks a submitted text or an uploaded file; the server sets it at Run
+  creation and sends it on every Run, including failed ones. The models accept an absent value
+  (`None`) so a new client still works against a server that does not send it yet.
 
 ## 1.1.0 - 2026-10-19
 

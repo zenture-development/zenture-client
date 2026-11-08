@@ -16,7 +16,7 @@ import pytest
 from pydantic import ValidationError
 
 from zenture import AsyncZentureClient, ZentureClient
-from zenture._contract import PublicRunEvent, PublicRunHeartbeat, PublicRunResponse
+from zenture._contract import PublicRunEvent, PublicRunHeartbeat, PublicRunListItem, PublicRunResponse
 from zenture._contract.run_references import validate_run_cursor
 from zenture._resources.runs import RunEventStreamState
 from zenture.errors import (
@@ -2393,12 +2393,17 @@ def test_safe_result_decision_decodes_null_outcome_of_a_technically_failed_evalu
     assert ready.technical_status is None
 
 
-def test_public_run_response_requires_its_input_kind_text_or_file() -> None:
-    """The Run payload says whether the Run checks a text or an uploaded file; every Run carries it."""
+def test_public_run_input_kind_is_text_or_file_and_tolerates_a_server_that_does_not_send_it() -> None:
+    """The Run payload says whether the Run checks a text or an uploaded file; an older server may omit it."""
     for kind in ("text", "file"):
         assert PublicRunResponse.model_validate({**_run(), "input_kind": kind}).input_kind == kind
     with pytest.raises(ValidationError):
         PublicRunResponse.model_validate({**_run(), "input_kind": "image"})
     without = {key: value for key, value in _run().items() if key != "input_kind"}
+    assert PublicRunResponse.model_validate(without).input_kind is None
+    item = {"run_id": RUN_ID, "status": "queued", "profile": "standard",
+            "created_at": "2026-08-30T12:00:00Z", "updated_at": "2026-08-30T12:00:00Z"}
+    assert PublicRunListItem.model_validate(item).input_kind is None
+    assert PublicRunListItem.model_validate({**item, "input_kind": "file"}).input_kind == "file"
     with pytest.raises(ValidationError):
-        PublicRunResponse.model_validate(without)
+        PublicRunListItem.model_validate({**item, "input_kind": "image"})

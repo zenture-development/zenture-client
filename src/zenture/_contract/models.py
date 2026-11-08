@@ -940,7 +940,7 @@ class PublicRunResponse(_RunResponseModel):
     generation: int = Field(ge=1)
     family: Literal["knowledge"] = "knowledge"
     work_type: str = Field(min_length=1, max_length=64)
-    input_kind: Literal["text", "file"]
+    input_kind: Literal["text", "file"] | None = None
     profile: RunProfile
     status: RunStatus
     created_at: AwareDatetime
@@ -1028,7 +1028,7 @@ class PublicRunListItem(_RunResponseModel):
     decision: PublicDecision | None = None
     error_code: str | None = Field(default=None, max_length=128)
     task_summary_ref: str | None = None
-    input_kind: Literal["text", "file"]
+    input_kind: Literal["text", "file"] | None = None
     profile: RunProfile
     created_at: AwareDatetime
     updated_at: AwareDatetime
