@@ -8,6 +8,12 @@ state.
 
 ## Unreleased
 
+- Source check: `runs.prepare`, `runs.run` (sync and async) and the MCP client `run` accept an
+  optional `reference_file` (an `art_...` reference), an uploaded source file an inline text
+  answer is checked against. `PublicRunResponse` and `PublicRunListItem` carry
+  `reference_file_attached` (default `False`); `SafeResultLocation.source` gains
+  `reference_file`. The OpenAPI mirror and response shapes follow the Gateway.
+
 ### Breaking
 
 The next release is a **major** version (this change removes public methods and changes a

@@ -22,6 +22,14 @@ MAX_PAGE_LIMIT = 100
 MAX_CURSOR_LENGTH = 200
 
 
+def reference_file_body(reference_file: str | None) -> dict[str, str] | None:
+    """The request member for an `art_` reference file; validation stays in the request model."""
+
+    if reference_file is None:
+        return None
+    return {"type": "zenture_ref", "value": reference_file}
+
+
 def parse_response(model_type: type[ModelT], payload: object) -> ModelT:
     """Validate a public API response against a client contract model."""
 
