@@ -663,13 +663,19 @@ def test_upload_put_answers_are_raised_once_with_the_servers_retryable_flag(
             },
         )
 
-    client = _sync(Flow(put_response=answer), max_retries=2, initial_retry_backoff=0.0, max_retry_backoff=0.0)
+    client = _sync(
+        Flow(put_response=answer), max_retries=2, initial_retry_backoff=0.0, max_retry_backoff=0.0
+    )
 
     with pytest.raises(ZentureAPIError) as caught:
         client.runs.attach_artifact(**_args())  # type: ignore[arg-type]
 
     assert attempts == 1
-    assert (caught.value.status_code, caught.value.error_code, caught.value.retryable) == (status, code, retryable)
+    assert (caught.value.status_code, caught.value.error_code, caught.value.retryable) == (
+        status,
+        code,
+        retryable,
+    )
     assert not isinstance(caught.value, ZentureArtifactUnavailableError)
     assert TOKEN not in str(caught.value) + repr(caught.value)
     client.close()
@@ -704,7 +710,9 @@ def test_prepare_retries_a_transient_artifact_unavailable_503_then_raises_the_ty
         )
 
     assert len(calls) == 3  # the first call and two retries, then the typed error
-    assert keys[0] is not None and len(set(keys)) == 1  # every retry replays the same Idempotency-Key
+    # every retry replays the same Idempotency-Key
+    assert keys[0] is not None
+    assert len(set(keys)) == 1
     assert (caught.value.status_code, caught.value.retryable) == (503, True)
     client.close()
 
@@ -767,7 +775,11 @@ def test_quota_exceeded_surfaces_the_servers_retry_hint_and_is_not_retried() -> 
             429,
             headers={"Retry-After": "1800"},
             json={
-                "error": {"code": "artifact_quota_exceeded", "message": "Quota used.", "retry_after_seconds": 1800},
+                "error": {
+                    "code": "artifact_quota_exceeded",
+                    "message": "Quota used.",
+                    "retry_after_seconds": 1800,
+                },
                 "request_id": "req_1",
             },
         )
@@ -783,5 +795,6 @@ def test_quota_exceeded_surfaces_the_servers_retry_hint_and_is_not_retried() -> 
         client.runs.attach_artifact(**_args())  # type: ignore[arg-type]
 
     assert attempts == 1
-    assert caught.value.retry_after_seconds == 1800 and caught.value.status_code == 429
+    assert caught.value.retry_after_seconds == 1800
+    assert caught.value.status_code == 429
     client.close()
