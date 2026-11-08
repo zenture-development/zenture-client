@@ -129,7 +129,7 @@ class ZentureArtifactQuotaExceededError(ZentureAPIError):
 
 
 class ZentureArtifactUnavailableError(ZentureAPIError):
-    """Raised when a file is unavailable, e.g. its single-use upload token was already used."""
+    """Raised when Run prepare cannot read a file right now (503, retryable)."""
 
 
 class ZentureLengthRequiredError(ZentureAPIError):

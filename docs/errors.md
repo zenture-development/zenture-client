@@ -45,9 +45,13 @@ to the declared size; chunked or missing lengths are refused. `attach_artifact` 
 declared length (also for streams and files) and raises `ValueError` before finishing when a
 source is shorter or longer than declared, so this error signals a proxy or a changed source.
 
-`artifact_unavailable` (422, `retryable: false`, `ZentureArtifactUnavailableError`): the file is
-not available, for example after its single-use upload token was already used. Request a new
-upload with `attach_artifact`; the client never retries it.
+`artifact_unavailable` (503, `retryable: true`, `ZentureArtifactUnavailableError`): Run prepare
+could not read the file right now (a transient failure). The client retries it with the usual
+backoff (prepare carries an idempotency key); if it persists, call again later. The upload
+`PUT` never answers it: a used, wrong or expired upload token answers `401 unauthorized` (never
+retried; call `attach_artifact` again for a new link). The `PUT` bytes are not replayed by the
+client, so `408` (body not received in time, retryable by the server's flag), `413`, `415` and `422`
+each end that call; call `attach_artifact` again.
 
 The artifact status route (direct API use) reports `skipped_images`, the number of embedded
 images that were not read; the text is complete (default 0).

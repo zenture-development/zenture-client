@@ -21,7 +21,6 @@ _NON_RETRYABLE_ERROR_CODES = {
     "operation_expired",
     "artifact_quota_exceeded",
     "length_required",
-    "artifact_unavailable",
 }
 
 

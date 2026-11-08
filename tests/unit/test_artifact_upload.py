@@ -13,6 +13,7 @@ import pytest
 
 from zenture import AsyncZentureClient, ZentureClient
 from zenture.errors import (
+    ZentureAPIError,
     ZentureArtifactExtractFailedError,
     ZentureArtifactNotFoundError,
     ZentureArtifactNotReadyError,
@@ -635,34 +636,73 @@ def test_length_required_maps_to_typed_error_without_retry() -> None:
     assert error.status_code == 411
 
 
-def test_burnt_token_artifact_unavailable_is_typed_and_not_retryable() -> None:
+@pytest.mark.parametrize(
+    ("status", "code", "retryable"),
+    [
+        (401, "unauthorized", False),  # a used, wrong or expired token: one equal answer
+        (408, "validation_failed", True),  # the body did not arrive in time
+        (413, "artifact_too_large", False),
+        (415, "artifact_type_unsupported", False),
+        (422, "artifact_extract_failed", False),
+    ],
+)
+def test_upload_put_answers_are_raised_once_with_the_servers_retryable_flag(
+    status: int, code: str, retryable: bool
+) -> None:
+    """The upload PUT never answers artifact_unavailable; its bytes are not replayed, so each answer ends the call."""
     attempts = 0
 
-    def burnt(_request: httpx.Request) -> httpx.Response:
+    def answer(_request: httpx.Request) -> httpx.Response:
         nonlocal attempts
         attempts += 1
         return httpx.Response(
-            422,
+            status,
             json={
-                "error": {
-                    "code": "artifact_unavailable",
-                    "message": "The selected artifact is unavailable.",
-                    "retryable": False,
-                },
+                "error": {"code": code, "message": "Refused.", "retryable": retryable},
                 "request_id": "req_1",
             },
         )
 
-    flow = Flow(put_response=burnt)
-    client = _sync(flow, max_retries=2, initial_retry_backoff=0.0, max_retry_backoff=0.0)
+    client = _sync(Flow(put_response=answer), max_retries=2, initial_retry_backoff=0.0, max_retry_backoff=0.0)
 
-    with pytest.raises(ZentureArtifactUnavailableError) as caught:
+    with pytest.raises(ZentureAPIError) as caught:
         client.runs.attach_artifact(**_args())  # type: ignore[arg-type]
 
     assert attempts == 1
-    assert caught.value.retryable is False
-    assert caught.value.status_code == 422
+    assert (caught.value.status_code, caught.value.error_code, caught.value.retryable) == (status, code, retryable)
+    assert not isinstance(caught.value, ZentureArtifactUnavailableError)
     assert TOKEN not in str(caught.value) + repr(caught.value)
+    client.close()
+
+
+def test_prepare_retries_a_transient_artifact_unavailable_503_then_raises_the_typed_error() -> None:
+    calls: list[str] = []
+    envelope = {
+        "error": {"code": "artifact_unavailable", "message": "Try again.", "retryable": True},
+        "request_id": "req_1",
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request.url.path)
+        return httpx.Response(503, json=envelope)
+
+    client = ZentureClient(
+        api_key=API_KEY,
+        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+        max_retries=2,
+        initial_retry_backoff=0.0,
+        max_retry_backoff=0.0,
+    )
+
+    with pytest.raises(ZentureArtifactUnavailableError) as caught:
+        client.runs.prepare(
+            task="Review this file.",
+            artifact={"type": "zenture_ref", "value": "art_abcdefgh"},
+            idempotency_key="prep-1",
+        )
+
+    assert len(calls) == 3  # the first call and two retries, then the typed error
+    assert (caught.value.status_code, caught.value.retryable) == (503, True)
     client.close()
 
 

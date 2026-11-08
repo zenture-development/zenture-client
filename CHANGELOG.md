@@ -58,7 +58,8 @@ return type). The version is not bumped here; release publication is a separate 
   and files, sync and async), never chunked; new error code `length_required` (411,
   `ZentureLengthRequiredError`, not retried).
 - `artifact_unavailable` raises `ZentureArtifactUnavailableError`. The upload `PUT` never
-  answers it; Run prepare answers it as a 503 for a transient file-read failure. The OpenAPI mirror's artifact status
+  answers it (a used or wrong token answers 401); Run prepare answers it as a retryable 503
+  for a transient file-read failure, and the client now retries it with the usual backoff. The OpenAPI mirror's artifact status
   gains optional `skipped_images` (integer, at least 0).
 - MCP `attach_artifact` mirrors the tool and sends no bytes: `ArtifactUploadResponse` is now an
   upload link (`upload_url`, `upload_id`, `upload_token` hidden in repr, `expires_at`) or a
