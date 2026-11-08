@@ -10,7 +10,9 @@ from uuid import UUID
 import httpx
 import pytest
 from pydantic import BaseModel, ValidationError
-from test_safe_result_content_contract import _golden_payload
+from test_safe_result_content_contract import (
+    _golden_payload,  # pyright: ignore[reportPrivateUsage] -- shared golden fixture
+)
 
 from zenture import ZentureClient
 from zenture._contract.models import (

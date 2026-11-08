@@ -75,7 +75,9 @@ class Flow:
         put_response: Callable[[httpx.Request], httpx.Response] | None = None,
     ) -> None:
         self.upload_url = upload_url
-        self.put_response = put_response or (lambda _request: _accepted())
+        self.put_response: Callable[[httpx.Request], httpx.Response] = put_response or (
+            lambda _request: _accepted()
+        )
         self.requests: list[httpx.Request] = []
         self.put_bodies: list[bytes] = []
 
@@ -515,7 +517,7 @@ class _Wire:
         outer = self
 
         class Handler(http.server.BaseHTTPRequestHandler):
-            def log_message(self, *_args: object) -> None:
+            def log_message(self, format: str, *args: object) -> None:
                 return
 
             def _json(self, status: int, body: dict[str, object]) -> None:
