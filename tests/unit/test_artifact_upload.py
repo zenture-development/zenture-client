@@ -677,6 +677,7 @@ def test_upload_put_answers_are_raised_once_with_the_servers_retryable_flag(
 
 def test_prepare_retries_a_transient_artifact_unavailable_503_then_raises_the_typed_error() -> None:
     calls: list[str] = []
+    keys: list[str | None] = []
     envelope = {
         "error": {"code": "artifact_unavailable", "message": "Try again.", "retryable": True},
         "request_id": "req_1",
@@ -684,6 +685,7 @@ def test_prepare_retries_a_transient_artifact_unavailable_503_then_raises_the_ty
 
     def handler(request: httpx.Request) -> httpx.Response:
         calls.append(request.url.path)
+        keys.append(request.headers.get("Idempotency-Key"))
         return httpx.Response(503, json=envelope)
 
     client = ZentureClient(
@@ -702,6 +704,7 @@ def test_prepare_retries_a_transient_artifact_unavailable_503_then_raises_the_ty
         )
 
     assert len(calls) == 3  # the first call and two retries, then the typed error
+    assert keys[0] is not None and len(set(keys)) == 1  # every retry replays the same Idempotency-Key
     assert (caught.value.status_code, caught.value.retryable) == (503, True)
     client.close()
 
