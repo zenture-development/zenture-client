@@ -6,7 +6,11 @@ The project follows semantic versioning once public releases begin. Prerelease
 versions may change while the Public API contract is still in release-candidate
 state.
 
-## Unreleased
+## 1.2.0 (2026-11-08)
+
+The file upload flow changed and two public methods were removed. Migration
+steps are in [docs/migration.md](docs/migration.md#upgrading-to-120). Text Runs, MCP
+text Runs and the classic API are unchanged.
 
 - Source check: `runs.prepare`, `runs.run` (sync and async) and the MCP client `run` accept an
   optional `reference_file` (an `art_...` reference), an uploaded source file an inline text
@@ -14,10 +18,9 @@ state.
   `reference_file_attached` (default `False`); `SafeResultLocation.source` gains
   `reference_file`. The OpenAPI mirror and response shapes follow the Gateway.
 
-### Breaking
+### Changed (upgrade notes)
 
-The next release is a **major** version (this change removes public methods and changes a
-return type). The version is not bumped here; release publication is a separate owner step.
+This release removes public methods and changes a return type; see the migration guide.
 
 - `runs.signed_upload(...)` is removed.
   - Before: `up = client.runs.signed_upload(file_name=..., mime_type=..., byte_size=...,

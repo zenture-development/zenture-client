@@ -31,7 +31,9 @@ for complete payloads, methods, return shapes and recovery. It also explains
 when to use the evaluation-specific API below.
 
 - `prepare(...)` inspects a proposal; `create(...)` starts that proposal.
-- `run(...)` prepares and starts; it does not poll to completion.
+- `run(...)` prepares and starts; it does not poll to completion. `prepare(...)`, `run(...)`
+  and the MCP `run` take an optional `reference_file` (an `art_...` reference) for a source
+  check of an inline text answer against an uploaded file.
 - `get(...)`, `list(...)`, `wait(...)` read status and available results.
 - `list_events(...)` replays one page; `iter_events(...)` streams events.
 - `attach_artifact(...)` uploads a file in two steps (issue an upload link, then a

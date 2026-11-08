@@ -21,14 +21,15 @@ on a POSIX shell:
 ```bash
 python3 -m venv .venv-zenture
 .venv-zenture/bin/python -m pip uninstall -y zenture-sdk
-.venv-zenture/bin/python -m pip install --upgrade zenture==1.1.0
+.venv-zenture/bin/python -m pip install --upgrade zenture==1.2.0
 ```
 
 For an existing virtual environment containing `zenture-sdk`, skip creation
 and substitute its Python executable in both commands. On Windows, the
 executable inside the environment is `Scripts/python.exe` instead of
 `bin/python`. The `--upgrade` flag also updates an existing canonical
-`zenture` installation, including 1.0.3, to 1.1.0.
+`zenture` installation, including 1.1.0, to 1.2.0. If you come from a canonical
+1.x release, read [Upgrading to 1.2.0](#upgrading-to-120) first.
 
 Update your application imports and class references together:
 
@@ -43,6 +44,61 @@ remains noninteractive; MCP login does not read that token. MCP uses separate
 account OAuth credentials and explicit login; ordinary client calls never
 start login. See [authentication](./authentication.md) and
 [hosted MCP clients](./mcp-client.md) for those public interfaces.
+
+## Upgrading to 1.2.0
+
+Release 1.2.0 changes the file upload flow and removes two public methods. Run, MCP and
+error handling for text Runs are unchanged. Only code that uploads a file or reads the
+removed types needs edits.
+
+| 1.1.x | 1.2.0 |
+|---|---|
+| `up = client.runs.signed_upload(file_name=..., mime_type=..., byte_size=..., content_hash=..., idempotency_key=...)` | Removed. `attach_artifact` issues the upload link itself. |
+| `client.runs.attach_artifact(upload_id=up.upload_id, file_name=..., mime_type=..., content=..., content_hash=..., idempotency_key=...)` returned `ArtifactUploadResponse` | `client.runs.attach_artifact(file_name=..., mime_type=..., content=..., content_hash=..., idempotency_key=...)` (no `upload_id`) returns `ArtifactUploadAccepted` with `artifact_ref`, `status="pending"`, `retry_after_seconds`, `next_step`. |
+| `SignedUploadResponse` in `zenture.types` | Removed. |
+| bearer `POST /v1/run-artifacts` | Removed. The bytes go with `PUT` to the issued link and the single-use `X-Upload-Token` (no bearer, no redirects, never retried). |
+| `McpClient.attach_artifact(...)` returned the old `ArtifactUploadResponse` | Returns an upload link (`upload_url`, `upload_id`, `upload_token` hidden in repr, `expires_at`) or a registered host file; it sends no bytes. |
+
+Before:
+
+```python
+up = client.runs.signed_upload(
+    file_name=name, mime_type=mime, byte_size=size, content_hash=digest, idempotency_key=key
+)
+done = client.runs.attach_artifact(
+    upload_id=up.upload_id,
+    file_name=name,
+    mime_type=mime,
+    content=data,
+    content_hash=digest,
+    idempotency_key=key,
+)
+```
+
+After:
+
+```python
+accepted = client.runs.attach_artifact(
+    file_name=name, mime_type=mime, content=data, content_hash=digest, idempotency_key=key
+)
+run = client.runs.run(
+    task=task,
+    artifact={"type": "zenture_ref", "value": accepted.artifact_ref},
+    idempotency_key=run_key,
+)
+```
+
+The file is read asynchronously. Starting a Run before that finishes raises
+`ZentureArtifactNotReadyError` (HTTP 409) with `retry_after_seconds`: wait and send the
+same request again. New closed errors you may want to handle:
+`ZentureArtifactTooLargeError`, `ZentureArtifactTypeUnsupportedError`,
+`ZentureArtifactExtractFailedError`, `ZentureArtifactNotFoundError`,
+`ZentureArtifactQuotaExceededError` and `ZentureLengthRequiredError`.
+
+New in 1.2.0: source checks. `runs.prepare(...)`, `runs.run(...)` and the MCP `run` take an
+optional `reference_file` (an `art_...` reference from an upload). The inline text answer
+is then checked against that file; the result carries `reference_file_attached=True` and
+locations with `source="reference_file"`. See the [Run guide](./run-guide.md).
 
 ## Return to the published baseline
 
