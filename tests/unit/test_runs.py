@@ -65,6 +65,7 @@ def _run(
         "generation": 1,
         "family": "knowledge",
         "work_type": "answer",
+        "input_kind": "text",
         "profile": "standard",
         "status": status,
         "created_at": "2026-08-30T12:00:00Z",
@@ -2389,3 +2390,14 @@ def test_safe_result_decision_decodes_null_outcome_of_a_technically_failed_evalu
     )
     assert ready.outcome == "ready"
     assert ready.technical_status is None
+
+
+def test_public_run_response_requires_its_input_kind_text_or_file() -> None:
+    """The Run payload says whether the Run checks a text or an uploaded file; every Run carries it."""
+    for kind in ("text", "file"):
+        assert PublicRunResponse.model_validate({**_run(), "input_kind": kind}).input_kind == kind
+    with pytest.raises(ValidationError):
+        PublicRunResponse.model_validate({**_run(), "input_kind": "image"})
+    without = {key: value for key, value in _run().items() if key != "input_kind"}
+    with pytest.raises(ValidationError):
+        PublicRunResponse.model_validate(without)

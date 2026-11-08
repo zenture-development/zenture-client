@@ -940,6 +940,7 @@ class PublicRunResponse(_RunResponseModel):
     generation: int = Field(ge=1)
     family: Literal["knowledge"] = "knowledge"
     work_type: str = Field(min_length=1, max_length=64)
+    input_kind: Literal["text", "file"]
     profile: RunProfile
     status: RunStatus
     created_at: AwareDatetime

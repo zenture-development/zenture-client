@@ -50,6 +50,7 @@ def _run(*, status: str = "completed", run_id: str = RUN_ID) -> dict[str, object
         "generation": 1,
         "family": "knowledge",
         "work_type": "answer",
+        "input_kind": "text",
         "profile": "standard",
         "status": status,
         "created_at": "2026-09-01T12:00:00Z",

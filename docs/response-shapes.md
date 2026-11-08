@@ -757,6 +757,7 @@ Schema: `PublicRunResponse`
   "event_cursor": "example",
   "family": "knowledge",
   "generation": 1,
+  "input_kind": "text",
   "limitations": [
     "example"
   ],
@@ -818,6 +819,7 @@ Schema: `PublicRunResponse`
   "event_cursor": "example",
   "family": "knowledge",
   "generation": 1,
+  "input_kind": "text",
   "limitations": [
     "example"
   ],
@@ -955,6 +957,7 @@ Schema: `PublicRunResponse`
   "event_cursor": "example",
   "family": "knowledge",
   "generation": 1,
+  "input_kind": "text",
   "limitations": [
     "example"
   ],
@@ -1038,6 +1041,7 @@ Schema: `PublicRunResponse`
   "event_cursor": "example",
   "family": "knowledge",
   "generation": 1,
+  "input_kind": "text",
   "limitations": [
     "example"
   ],
@@ -1199,6 +1203,7 @@ Schema: `PublicRunOutcomeResponse`
   "event_cursor": "example",
   "family": "knowledge",
   "generation": 1,
+  "input_kind": "text",
   "limitations": [
     "example"
   ],

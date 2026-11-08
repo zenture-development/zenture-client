@@ -75,6 +75,9 @@ return type). The version is not bumped here; release publication is a separate 
   and `locations`; composed content exposes `next_action_text`.
 - `PublicCapabilityCoverage` accepts up to 256 `available_refs` and `unavailable_refs`
   (Backend bound); `limitation_refs` stays at 32.
+- `PublicRunResponse.input_kind` (`"text"` or `"file"`, required) says whether the Run checks a
+  submitted text or an uploaded file; it is set at Run creation and present on every Run,
+  including failed ones.
 
 ## 1.1.0 - 2026-10-19
 

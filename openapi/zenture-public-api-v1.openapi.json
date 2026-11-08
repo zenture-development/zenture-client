@@ -1910,6 +1910,14 @@
             "minimum": 1,
             "type": "integer"
           },
+          "input_kind": {
+            "description": "Whether the Run checks a submitted text or an uploaded file; set at Run creation, present on every Run including failed ones.",
+            "enum": [
+              "text",
+              "file"
+            ],
+            "type": "string"
+          },
           "limitations": {
             "items": {
               "type": "string"
@@ -2072,6 +2080,7 @@
           "generation",
           "family",
           "work_type",
+          "input_kind",
           "profile",
           "status",
           "created_at",
@@ -2162,6 +2171,14 @@
             "minimum": 1,
             "type": "integer"
           },
+          "input_kind": {
+            "description": "Whether the Run checks a submitted text or an uploaded file; set at Run creation, present on every Run including failed ones.",
+            "enum": [
+              "text",
+              "file"
+            ],
+            "type": "string"
+          },
           "limitations": {
             "items": {
               "type": "string"
@@ -2324,6 +2341,7 @@
           "generation",
           "family",
           "work_type",
+          "input_kind",
           "profile",
           "status",
           "created_at",
