@@ -459,7 +459,7 @@ def test_signed_upload_and_old_bearer_route_are_gone() -> None:
     client = ZentureClient(api_key=API_KEY)
     assert not hasattr(client.runs, "signed_upload")
     with pytest.raises(TypeError):
-        client.runs.attach_artifact(upload_id="upload_abcdefgh", **_args())  # type: ignore[arg-type]
+        client.runs.attach_artifact(upload_id="upload_abcdefgh", **_args())  # type: ignore[call-arg, arg-type]
     client.close()
 
 
@@ -483,8 +483,8 @@ def test_closed_artifact_errors_map_to_typed_exceptions(
         headers={},
     )
     assert type(error) is error_type
-    assert error.error_code == code  # type: ignore[attr-defined]
-    assert error.status_code == status  # type: ignore[attr-defined]
+    assert error.error_code == code
+    assert error.status_code == status
 
 
 def test_artifact_not_ready_carries_retry_after_seconds() -> None:

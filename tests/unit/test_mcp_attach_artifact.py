@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from pydantic import ValidationError
 from test_mcp_client import ARTIFACT_REF, AsyncRecordingTransport, RecordingTransport
@@ -27,7 +29,7 @@ HOST = {
     "retry_after_seconds": 3,
     "next_steps": "Start the run with the artifact_ref.",
 }
-ARGS = {
+ARGS: dict[str, Any] = {
     "file_name": "answer.txt",
     "mime_type": "text/plain",
     "byte_size": 4,

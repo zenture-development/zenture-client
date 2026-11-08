@@ -9,7 +9,7 @@ from uuid import UUID
 
 import httpx
 import pytest
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 from test_safe_result_content_contract import _golden_payload
 
 from zenture import ZentureClient
@@ -128,7 +128,7 @@ def test_error_retry_after_seconds_follows_the_mirror_bounds() -> None:
 
 def test_sdk_models_are_pinned_to_the_mirror_for_the_upload_and_location_schemas() -> None:
     schemas = json.loads(MIRROR.read_text())["components"]["schemas"]
-    pairs = {
+    pairs: dict[str, type[BaseModel]] = {
         "SafeResultLocation": SafeResultLocation,
         "PublicSignedUploadResponse": SignedUploadResponse,
         "PublicUploadAcceptedResponse": ArtifactUploadAccepted,
