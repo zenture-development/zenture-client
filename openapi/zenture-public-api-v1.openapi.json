@@ -1521,7 +1521,7 @@
             ]
           },
           "retry_after_seconds": {
-            "description": "Only on artifact_not_ready: seconds to wait before retrying the same request.",
+            "description": "Only on artifact_not_ready (retry the same request) and artifact_quota_exceeded (429, wait before issuing another upload link; sent as Retry-After too): seconds to wait.",
             "maximum": 3600,
             "minimum": 1,
             "type": "integer"

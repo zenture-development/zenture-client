@@ -755,3 +755,33 @@ async def test_async_attach_refuses_a_link_whose_id_differs_from_the_issued_uplo
 
     assert [r.method for r in flow.requests] == ["POST"]
     await client.aclose()
+
+
+def test_quota_exceeded_surfaces_the_servers_retry_hint_and_is_not_retried() -> None:
+    attempts = 0
+
+    def quota(_request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        return httpx.Response(
+            429,
+            headers={"Retry-After": "1800"},
+            json={
+                "error": {"code": "artifact_quota_exceeded", "message": "Quota used.", "retry_after_seconds": 1800},
+                "request_id": "req_1",
+            },
+        )
+
+    client = ZentureClient(
+        api_key=API_KEY,
+        max_retries=2,
+        initial_retry_backoff=0.0,
+        max_retry_backoff=0.0,
+        http_client=httpx.Client(transport=httpx.MockTransport(quota)),
+    )
+    with pytest.raises(ZentureArtifactQuotaExceededError) as caught:
+        client.runs.attach_artifact(**_args())  # type: ignore[arg-type]
+
+    assert attempts == 1
+    assert caught.value.retry_after_seconds == 1800 and caught.value.status_code == 429
+    client.close()

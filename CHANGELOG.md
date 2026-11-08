@@ -57,6 +57,8 @@ return type). The version is not bumped here; release publication is a separate 
 - The upload `PUT` always carries `Content-Length` equal to the declared size (bytes, streams
   and files, sync and async), never chunked; new error code `length_required` (411,
   `ZentureLengthRequiredError`, not retried).
+- `ZentureArtifactQuotaExceededError.retry_after_seconds` carries the Gateway's wait hint
+  (1 to 3600 seconds, also sent as `Retry-After`); the client still does not retry it.
 - `artifact_unavailable` raises `ZentureArtifactUnavailableError`. The upload `PUT` never
   answers it (a used or wrong token answers 401); Run prepare answers it as a retryable 503
   for a transient file-read failure, and the client now retries it with the usual backoff. The OpenAPI mirror's artifact status
