@@ -1028,6 +1028,7 @@ class PublicRunListItem(_RunResponseModel):
     decision: PublicDecision | None = None
     error_code: str | None = Field(default=None, max_length=128)
     task_summary_ref: str | None = None
+    input_kind: Literal["text", "file"]
     profile: RunProfile
     created_at: AwareDatetime
     updated_at: AwareDatetime

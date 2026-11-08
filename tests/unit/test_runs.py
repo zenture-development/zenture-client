@@ -136,6 +136,7 @@ def test_sync_run_list_forwards_success_filter_and_reads_success_status(status: 
                     {
                         "run_id": RUN_ID,
                         "status": status,
+                        "input_kind": "text",
                         "profile": "standard",
                         "created_at": "2026-08-30T12:00:00Z",
                         "updated_at": "2026-08-30T12:00:00Z",

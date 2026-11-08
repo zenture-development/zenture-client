@@ -1783,6 +1783,14 @@
               "null"
             ]
           },
+          "input_kind": {
+            "description": "Whether the Run checks a submitted text or an uploaded file; set at Run creation, present on every Run including failed ones.",
+            "enum": [
+              "text",
+              "file"
+            ],
+            "type": "string"
+          },
           "profile": {
             "enum": [
               "fast",
@@ -1821,6 +1829,7 @@
         "required": [
           "run_id",
           "status",
+          "input_kind",
           "profile",
           "created_at",
           "updated_at"

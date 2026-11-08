@@ -68,6 +68,7 @@ def _list_runs() -> dict[str, object]:
                 "run_id": RUN_ID,
                 "status": "completed",
                 "decision": "ready",
+                "input_kind": "text",
                 "profile": "standard",
                 "created_at": "2026-09-01T12:00:00Z",
                 "updated_at": "2026-09-01T12:00:01Z",

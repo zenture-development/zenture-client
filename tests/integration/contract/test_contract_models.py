@@ -629,6 +629,7 @@ def test_run_responses_accept_additive_fields_but_keep_known_fields_strict() -> 
         {
             "run_id": run["run_id"],
             "status": run["status"],
+            "input_kind": "file",
             "profile": run["profile"],
             "created_at": run["created_at"],
             "updated_at": run["updated_at"],
@@ -637,6 +638,7 @@ def test_run_responses_accept_additive_fields_but_keep_known_fields_strict() -> 
         }
     )
     assert list_item.deadline_at == response.deadline_at
+    assert list_item.input_kind == "file"
 
     with pytest.raises(ValidationError):
         PublicRunResponse.model_validate({**run, "status": "future_status"})

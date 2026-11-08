@@ -689,6 +689,7 @@ Schema: `PublicRunCollectionResponse`
       "deadline_at": "example",
       "decision": "ready",
       "error_code": "example",
+      "input_kind": "text",
       "profile": "fast",
       "run_id": "example",
       "status": "active",
