@@ -74,6 +74,11 @@ class PublicErrorCode(StrEnum):
     ARTIFACT_EXPIRED = "artifact_expired"
     ARTIFACT_TYPE_UNSUPPORTED = "artifact_type_unsupported"
     ARTIFACT_PROCESSING_UNAVAILABLE = "artifact_processing_unavailable"
+    ARTIFACT_NOT_READY = "artifact_not_ready"
+    ARTIFACT_TOO_LARGE = "artifact_too_large"
+    ARTIFACT_EXTRACT_FAILED = "artifact_extract_failed"
+    ARTIFACT_QUOTA_EXCEEDED = "artifact_quota_exceeded"
+    LENGTH_REQUIRED = "length_required"
     PREPARE_RATE_LIMITED = "prepare_rate_limited"
     PREPARE_CAPACITY_UNAVAILABLE = "prepare_capacity_unavailable"
     TOO_MANY_OUTSTANDING_RUNS = "too_many_outstanding_runs"
@@ -461,16 +466,8 @@ class RunHeaderSchema(SDKBaseModel):
     """Declared public header facts for sanitation; never used for local admission."""
 
     idempotency_key: str = Field(alias="Idempotency-Key", min_length=1, max_length=255)
-    content_length: int = Field(
-        alias="Content-Length",
-        ge=0,
-        le=10 * 1024 * 1024,
-        json_schema_extra={"x-validation-unit": "bytes"},
-    )
     last_event_id: str = Field(alias="Last-Event-ID", min_length=1, max_length=512)
     prefer: str = Field(alias="Prefer")
-    content_type: str = Field(alias="Content-Type")
-    upload_id: str = Field(alias="X-Upload-ID")
 
 
 class RunStatus(StrEnum):
@@ -522,41 +519,69 @@ class ArtifactUploadRequest(_RunRequestModel):
         ge=1, le=10 * 1024 * 1024, json_schema_extra={"x-validation-unit": "bytes"}
     )
     content_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
-    upload_id: str | None = Field(
-        default=None, min_length=8, max_length=128, pattern=r"^upload_[A-Za-z0-9_-]{8,128}$"
-    )
 
 
 class ArtifactUploadResponse(SDKBaseModel):
+    """MCP `attach_artifact` answer: an upload link, or a registered host-bytes file.
+
+    Link: `upload_url`, `upload_id`, `upload_token` (single use, hidden in repr),
+    `expires_at`. Host bytes: `content_hash`, `byte_size`, `content_type`, `status`
+    (`pending`) and optional `retry_after_seconds`. `next_steps` says what to do next.
+    The Python MCP client does not send the bytes; the host or caller does.
+    """
+
+    artifact_ref: str = Field(min_length=7, max_length=132, pattern=r"^art_[A-Za-z0-9_-]{3,128}$")
+    next_steps: str = Field(max_length=1024)
+    upload_url: str | None = Field(default=None, max_length=2048)
     upload_id: str | None = Field(
         default=None, min_length=8, max_length=128, pattern=r"^upload_[A-Za-z0-9_-]{8,128}$"
     )
-    artifact_ref: str | None = Field(
-        default=None,
-        min_length=7,
-        max_length=132,
-        pattern=r"^art_[A-Za-z0-9_-]{3,128}$",
-    )
-    content_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
-    byte_size: int = Field(ge=1, le=10 * 1024 * 1024)
-    content_type: str = Field(min_length=1, max_length=127)
+    upload_token: str | None = Field(default=None, repr=False, pattern=r"^[A-Za-z0-9_-]{16,256}$")
     expires_at: AwareDatetime | None = None
+    content_hash: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+    byte_size: int | None = Field(default=None, ge=1, le=10 * 1024 * 1024)
+    content_type: str | None = Field(default=None, min_length=1, max_length=127)
+    status: Literal["pending"] | None = None
+    retry_after_seconds: int | None = Field(default=None, ge=0, le=3600)
 
     @field_validator("expires_at", mode="before")
     @classmethod
     def _expires_at(cls, value: object) -> object:
         return _coerce_aware_datetime(value)
+
+    @model_validator(mode="after")
+    def _one_complete_shape(self) -> ArtifactUploadResponse:
+        link = (self.upload_url, self.upload_id, self.upload_token, self.expires_at)
+        host = (self.content_hash, self.byte_size, self.content_type, self.status)
+        if all(v is not None for v in link) and all(v is None for v in host):
+            return self
+        if all(v is not None for v in host) and all(v is None for v in link):
+            return self
+        raise ValueError("attach_artifact answer is neither a complete link nor a registered file")
 
 
 class SignedUploadResponse(SDKBaseModel):
+    """Upload intent; the single-use token is never shown in repr, str or errors."""
+
     upload_id: str = Field(min_length=8, max_length=128, pattern=r"^upload_[A-Za-z0-9_-]{8,128}$")
     expires_at: AwareDatetime
-    upload_url: str | None = Field(default=None, max_length=2048)
+    upload_url: str = Field(min_length=1, max_length=2048)
+    upload_token: str = Field(repr=False, pattern=r"^[A-Za-z0-9_-]{16,256}$")
+    artifact_ref: str = Field(min_length=7, max_length=132, pattern=r"^art_[A-Za-z0-9_-]{3,128}$")
 
     @field_validator("expires_at", mode="before")
     @classmethod
     def _expires_at(cls, value: object) -> object:
         return _coerce_aware_datetime(value)
+
+
+class ArtifactUploadAccepted(SDKBaseModel):
+    """Answer to the token-authenticated upload: extraction continues asynchronously."""
+
+    artifact_ref: str = Field(min_length=7, max_length=132, pattern=r"^art_[A-Za-z0-9_-]{3,128}$")
+    status: Literal["pending"]
+    retry_after_seconds: int = Field(ge=1, le=60)
+    next_step: Literal["start_run"]
 
 
 class PrepareKnowledgeRunRequest(_RunRequestModel):
@@ -915,6 +940,7 @@ class PublicRunResponse(_RunResponseModel):
     generation: int = Field(ge=1)
     family: Literal["knowledge"] = "knowledge"
     work_type: str = Field(min_length=1, max_length=64)
+    input_kind: Literal["text", "file"] | None = None
     profile: RunProfile
     status: RunStatus
     created_at: AwareDatetime
@@ -1002,6 +1028,7 @@ class PublicRunListItem(_RunResponseModel):
     decision: PublicDecision | None = None
     error_code: str | None = Field(default=None, max_length=128)
     task_summary_ref: str | None = None
+    input_kind: Literal["text", "file"] | None = None
     profile: RunProfile
     created_at: AwareDatetime
     updated_at: AwareDatetime

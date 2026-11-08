@@ -40,6 +40,7 @@ def run_payload(
         "run_id": RUN_ID,
         "generation": 1,
         "work_type": "answer",
+        "input_kind": "text",
         "profile": "standard",
         "status": status,
         "created_at": "2026-10-07T09:00:00Z",

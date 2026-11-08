@@ -530,18 +530,25 @@ def test_run_success_models_enforce_gateway_upload_and_cursor_constraints() -> N
 
     upload = "upload_abcdefgh"
     ArtifactUploadResponse(
-        upload_id=upload,
         artifact_ref="art_abcdefgh",
+        next_steps="Start the run with the artifact_ref.",
         content_hash="a" * 64,
         byte_size=1,
         content_type="text/plain",
+        status="pending",
     )
-    SignedUploadResponse.model_validate({"upload_id": upload, "expires_at": "2026-01-01T00:00:00Z"})
+    issued = {
+        "expires_at": "2026-01-01T00:00:00Z",
+        "upload_url": "https://api.zenture.app/v1/run-artifacts/uploads/" + upload,
+        "upload_token": "t" * 24,
+        "artifact_ref": "art_abcdefgh",
+    }
+    SignedUploadResponse.model_validate({"upload_id": upload, **issued})
     for invalid in ("short", "upload_bad value", "upload_abc"):
         with pytest.raises(ValidationError):
-            SignedUploadResponse.model_validate(
-                {"upload_id": invalid, "expires_at": "2026-01-01T00:00:00Z"}
-            )
+            SignedUploadResponse.model_validate({"upload_id": invalid, **issued})
+    with pytest.raises(ValidationError):
+        SignedUploadResponse.model_validate({"upload_id": upload, **issued, "upload_token": "t"})
     for response_type in (ListRunsResponse, ListRunEventsResponse):
         for invalid in (
             "x" * 513,
@@ -565,6 +572,7 @@ def test_run_success_models_enforce_gateway_upload_and_cursor_constraints() -> N
         "generation": 1,
         "family": "knowledge",
         "work_type": "answer",
+        "input_kind": "text",
         "profile": "standard",
         "status": "completed",
         "created_at": "2026-01-01T00:00:00Z",
@@ -599,6 +607,7 @@ def test_run_responses_accept_additive_fields_but_keep_known_fields_strict() -> 
         "generation": 1,
         "family": "knowledge",
         "work_type": "answer",
+        "input_kind": "text",
         "profile": "standard",
         "status": "queued",
         "created_at": "2026-01-01T00:00:00Z",
@@ -620,6 +629,7 @@ def test_run_responses_accept_additive_fields_but_keep_known_fields_strict() -> 
         {
             "run_id": run["run_id"],
             "status": run["status"],
+            "input_kind": "file",
             "profile": run["profile"],
             "created_at": run["created_at"],
             "updated_at": run["updated_at"],
@@ -628,6 +638,7 @@ def test_run_responses_accept_additive_fields_but_keep_known_fields_strict() -> 
         }
     )
     assert list_item.deadline_at == response.deadline_at
+    assert list_item.input_kind == "file"
 
     with pytest.raises(ValidationError):
         PublicRunResponse.model_validate({**run, "status": "future_status"})
@@ -651,6 +662,7 @@ def test_run_deadline_requires_an_aware_timestamp() -> None:
         "generation": 1,
         "family": "knowledge",
         "work_type": "answer",
+        "input_kind": "text",
         "profile": "standard",
         "status": "queued",
         "created_at": "2026-01-01T00:00:00Z",
@@ -666,6 +678,7 @@ _RUN_BASE = {
     "generation": 1,
     "family": "knowledge",
     "work_type": "answer",
+    "input_kind": "text",
     "profile": "standard",
     "status": "queued",
     "created_at": "2026-01-01T00:00:00Z",
@@ -777,7 +790,7 @@ def test_retry_after_is_declared_on_transient_gateway_failures() -> None:
                     assert not has_retry_after, (method, path)
 
     run_routes = {key for key in declared["503"] if key[1].startswith("/v1/run")}
-    assert len(declared["503"]) == 24
-    assert len(run_routes) == 10
+    assert len(declared["503"]) == 25
+    assert len(run_routes) == 11
     assert declared["502"] == run_routes
     assert declared["504"] == run_routes

@@ -480,9 +480,10 @@ class McpClient:
             task: Original user task and explicit evaluation criteria; non-blank,
                 at most 20,000 Unicode code points. Do not invent requirements.
             artifact: Selected content as {"type": "text", "value": "..."} (1-50,000
-                code points). A bare URL is not selected text. The schema retains
-                zenture_ref, but Run preparation currently rejects registered-file
-                inputs; registration does not enable file evaluation.
+                code points). A bare URL is not selected text. A file from
+                attach_artifact is {"type": "zenture_ref", "value": artifact_ref};
+                while it is read the tool answers artifact_not_ready with
+                retry_after_seconds.
             profile: "standard" by default; "fast" and "detailed" require explicit
                 user intent. Actual capabilities and costs remain service-defined.
             idempotency_key: Caller-owned key saved before dispatch. Reuse the same
@@ -530,12 +531,16 @@ class McpClient:
             content_hash: SHA-256 of those bytes, 64 hexadecimal characters;
                 uppercase and surrounding whitespace are normalized.
 
-        Returns ArtifactUploadResponse with the registered artifact_ref. Registration
-        does not enable evaluation: Run preparation currently rejects zenture_ref.
-        The MCP host must supply the real bytes through its resolver. This method
-        neither reads a Python file nor sends bytes in JSON. Check list_tools() first;
-        an absent resolver cannot be repaired by inventing metadata or reselecting.
-        Invalid metadata raises ValidationError; tool failures raise ZentureMCPError.
+        Mirrors the tool; it sends no bytes. Returns ArtifactUploadResponse with the
+        artifact_ref and next_steps, in one of two shapes. Upload link: upload_url,
+        upload_id, upload_token (single use, hidden in repr, header X-Upload-Token only,
+        never in a URL) and expires_at; PUT the bytes there yourself, then run with
+        {"type": "zenture_ref", "value": artifact_ref}. Host bytes (the host resolver
+        supplied them): content_hash, byte_size, content_type, status "pending" and
+        optional retry_after_seconds. While the file is read, run answers
+        artifact_not_ready with retry_after_seconds. This method neither reads a Python
+        file nor sends bytes in JSON. Invalid metadata raises ValidationError; tool
+        failures raise ZentureMCPError.
         """
 
         request = McpArtifactRequest(
@@ -876,9 +881,10 @@ class AsyncMcpClient:
             task: Original user task and explicit evaluation criteria; non-blank,
                 at most 20,000 Unicode code points. Do not invent requirements.
             artifact: Selected content as {"type": "text", "value": "..."} (1-50,000
-                code points). A bare URL is not selected text. The schema retains
-                zenture_ref, but Run preparation currently rejects registered-file
-                inputs; registration does not enable file evaluation.
+                code points). A bare URL is not selected text. A file from
+                attach_artifact is {"type": "zenture_ref", "value": artifact_ref};
+                while it is read the tool answers artifact_not_ready with
+                retry_after_seconds.
             profile: "standard" by default; "fast" and "detailed" require explicit
                 user intent. Actual capabilities and costs remain service-defined.
             idempotency_key: Caller-owned key saved before dispatch. Reuse the same
@@ -928,12 +934,16 @@ class AsyncMcpClient:
             content_hash: SHA-256 of those bytes, 64 hexadecimal characters;
                 uppercase and surrounding whitespace are normalized.
 
-        Returns ArtifactUploadResponse with the registered artifact_ref. Registration
-        does not enable evaluation: Run preparation currently rejects zenture_ref.
-        The MCP host must supply the real bytes through its resolver. This method
-        neither reads a Python file nor sends bytes in JSON. Check list_tools() first;
-        an absent resolver cannot be repaired by inventing metadata or reselecting.
-        Invalid metadata raises ValidationError; tool failures raise ZentureMCPError.
+        Mirrors the tool; it sends no bytes. Returns ArtifactUploadResponse with the
+        artifact_ref and next_steps, in one of two shapes. Upload link: upload_url,
+        upload_id, upload_token (single use, hidden in repr, header X-Upload-Token only,
+        never in a URL) and expires_at; PUT the bytes there yourself, then run with
+        {"type": "zenture_ref", "value": artifact_ref}. Host bytes (the host resolver
+        supplied them): content_hash, byte_size, content_type, status "pending" and
+        optional retry_after_seconds. While the file is read, run answers
+        artifact_not_ready with retry_after_seconds. This method neither reads a Python
+        file nor sends bytes in JSON. Invalid metadata raises ValidationError; tool
+        failures raise ZentureMCPError.
 
         Async variant: await this call.
         """

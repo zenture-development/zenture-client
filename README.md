@@ -35,8 +35,10 @@ A `completed` Run is only technically finished; it can still say `revise`.
 Starting a Run may use Credits from your zenture balance. Waiting and reading
 do not start new work. Runs are identified by a `run_...` ID, which differs from
 the operation IDs of the classic API resources below.
-Current Run execution supports inline text. File registration is available, but
-Run preparation currently rejects `zenture_ref` inputs.
+Runs take inline text or an uploaded file: `client.runs.attach_artifact(...)` returns an
+`artifact_ref`, which a Run takes as `{"type": "zenture_ref", "value": artifact_ref}`.
+While the file is still being read the Run answers `ZentureArtifactNotReadyError`
+with `retry_after_seconds`.
 
 ## Installation
 

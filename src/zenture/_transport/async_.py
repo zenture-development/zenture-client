@@ -55,6 +55,10 @@ class AsyncTransport:
         self._user_agent = user_agent
 
     @property
+    def base_url(self) -> str:
+        return self._config.base_url
+
+    @property
     def is_closed(self) -> bool:
         return self._client.is_closed
 
@@ -102,8 +106,14 @@ class AsyncTransport:
         content: bytes | AsyncIterable[bytes] | None = None,
         replayable: bool = True,
         timeout: float | None = None,
+        url: str | None = None,
+        follow_redirects: bool | None = None,
     ) -> object:
-        """Request a JSON response and map public API errors."""
+        """Request a JSON response and map public API errors.
+
+        `url` replaces the built API URL (already validated by the caller);
+        `follow_redirects=False` refuses any redirect instead of following it.
+        """
 
         response = await self._request(
             method,
@@ -115,6 +125,8 @@ class AsyncTransport:
             content=content,
             replayable=replayable,
             timeout=timeout,
+            url=url,
+            follow_redirects=follow_redirects,
         )
         response_error: ZentureResponseError | None = None
         try:
@@ -181,6 +193,8 @@ class AsyncTransport:
         content: bytes | AsyncIterable[bytes] | None = None,
         replayable: bool = True,
         timeout: float | None = None,
+        url: str | None = None,
+        follow_redirects: bool | None = None,
     ) -> httpx.Response:
         request_headers = self._request_headers(auth=auth)
         if headers is not None:
@@ -215,9 +229,11 @@ class AsyncTransport:
                     }
                 if request_timeout is not None:
                     request_kwargs["timeout"] = request_timeout
+                if follow_redirects is not None:
+                    request_kwargs["follow_redirects"] = follow_redirects
                 response = await self._client.request(
                     method,
-                    build_url(self._config, path),
+                    url or build_url(self._config, path),
                     **request_kwargs,
                 )
             except httpx.HTTPError as exc:
@@ -249,6 +265,8 @@ class AsyncTransport:
                 raise transport_error
             assert response is not None
 
+            if follow_redirects is False and response.is_redirect:
+                raise ZentureResponseError("Redirect refused.")
             if response.status_code < 400:
                 return response
 
