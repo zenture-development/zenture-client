@@ -23,6 +23,7 @@ def result(status: str, run_id: str = RUN_ID) -> dict[str, object]:
         "generation": 1,
         "family": "knowledge",
         "work_type": "answer",
+        "input_kind": "text",
         "profile": "standard",
         "status": status,
         "created_at": "2026-09-01T12:00:00Z",
@@ -116,7 +117,6 @@ def test_wait_preserves_permanent_error() -> None:
 def test_wait_retry_minimum_and_deadline(
     monkeypatch: pytest.MonkeyPatch, asynchronous: bool, hint: int | None, expected: list[float]
 ) -> None:
-
     clock = [0.0]
     sleeps: list[float] = []
 

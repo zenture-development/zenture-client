@@ -39,8 +39,8 @@ Run in `.run`, while REST `runs.get()` returns it directly.
 | `GET` | `/v1/limits` | `200` | `client.limits.get()` | `LimitsResponse` |
 | `GET` | `/v1/models` | `200` | `client.models.list(mode=None | "single" | "multi")` | `PublicModelListResponse` |
 | `GET` | `/v1/operations/{operation_id}` | `200` | `client.operations.get(...)`, `client.operations.wait(...)` | `PublicOperationResponse` |
-| `POST` | `/v1/run-artifacts` | `201` | `client.runs.attach_artifact(...)` | `PublicRunArtifactResponse` |
-| `POST` | `/v1/run-artifacts/signed-upload` | `200` | `client.runs.signed_upload(...)` | `PublicSignedUploadResponse` |
+| `POST` | `/v1/run-artifacts/signed-upload` | `200` | `client.runs.attach_artifact(...)` (step 1, internal) | `PublicSignedUploadResponse` |
+| `PUT` | `/v1/run-artifacts/uploads/{upload_id}` | `202` | `client.runs.attach_artifact(...)` (step 2, internal) | `PublicUploadAcceptedResponse` |
 | `GET` | `/v1/runs` | `200` | `client.runs.list(...)` | `PublicRunCollectionResponse` |
 | `POST` | `/v1/runs` | `200, 202` | `client.runs.create(...)`, `client.runs.run(...)` | `PublicRunResponse` |
 | `POST` | `/v1/runs/prepare` | `200` | `client.runs.prepare(...)` | `PrepareRunResponse` |
@@ -585,42 +585,41 @@ Schema: `PublicOperationResponse`
 }
 ```
 
-### `POST /v1/run-artifacts`
+### `PUT /v1/run-artifacts/uploads/{upload_id}`
 
-Client surface: `client.runs.attach_artifact(...)`
+Client surface: `client.runs.attach_artifact(...)` (step 2 of 2; the client sends it,
+you do not call it yourself)
 
-Client model: `PublicRunArtifactResponse`
+Client model: `ArtifactUploadAccepted` (wire schema `PublicUploadAcceptedResponse`)
 
-Auth mode: `api_token`
+Auth mode: `upload_token` (header `X-Upload-Token` only; no bearer, never in a URL)
 
-Scopes: `evaluation:run`
+Scopes: none
 
-Idempotency: `required`
+Idempotency: not used; the token works once, so the client never retries this request
 
-Request body schema: `string`
+Request body: the raw file bytes with the declared `Content-Type`
 
-Request body example:
+Response `202` as `application/json`:
 
-```json
-"example"
-```
-
-Response `201` as `application/json`:
-
-Schema: `PublicRunArtifactResponse`
+Schema: `PublicUploadAcceptedResponse`
 
 ```json
 {
-  "artifact_ref": "example",
-  "byte_size": 1,
-  "content_hash": "example",
-  "content_type": "example"
+  "artifact_ref": "art_example",
+  "next_step": "start_run",
+  "retry_after_seconds": 3,
+  "status": "pending"
 }
 ```
 
+Reading the file continues asynchronously. Start the Run with the `artifact_ref` as a
+`zenture_ref`; until the file is read the Run answers `artifact_not_ready` (409) with
+`retry_after_seconds` in the error body.
+
 ### `POST /v1/run-artifacts/signed-upload`
 
-Client surface: `client.runs.signed_upload(...)`
+Client surface: `client.runs.attach_artifact(...)` (step 1 of 2)
 
 Client model: `PublicSignedUploadResponse`
 
@@ -649,11 +648,18 @@ Schema: `PublicSignedUploadResponse`
 
 ```json
 {
+  "artifact_ref": "art_example",
   "expires_at": "example",
   "upload_id": "example",
-  "upload_url": "example"
+  "upload_token": "single-use, header only",
+  "upload_url": "https://api.zenture.app/v1/run-artifacts/uploads/upload_example"
 }
 ```
+
+`upload_token` is a single-use credential. The client keeps it out of every URL, log,
+repr and exception text and sends it only in `X-Upload-Token`. It refuses an
+`upload_url` that is not https (loopback http only for a loopback client origin) or not
+on its own API origin under `/v1/run-artifacts/uploads/`.
 
 ### `GET /v1/runs`
 
@@ -683,7 +689,9 @@ Schema: `PublicRunCollectionResponse`
       "deadline_at": "example",
       "decision": "ready",
       "error_code": "example",
+      "input_kind": "text",
       "profile": "fast",
+      "reference_file_attached": false,
       "run_id": "example",
       "status": "active",
       "task_summary_ref": "example",
@@ -751,6 +759,7 @@ Schema: `PublicRunResponse`
   "event_cursor": "example",
   "family": "knowledge",
   "generation": 1,
+  "input_kind": "text",
   "limitations": [
     "example"
   ],
@@ -764,6 +773,7 @@ Schema: `PublicRunResponse`
     "queue_reason": "example"
   },
   "reason_code": "example",
+  "reference_file_attached": false,
   "run_id": "example",
   "run_insight_ref": "example",
   "safe_result_content": "example",
@@ -812,6 +822,7 @@ Schema: `PublicRunResponse`
   "event_cursor": "example",
   "family": "knowledge",
   "generation": 1,
+  "input_kind": "text",
   "limitations": [
     "example"
   ],
@@ -825,6 +836,7 @@ Schema: `PublicRunResponse`
     "queue_reason": "example"
   },
   "reason_code": "example",
+  "reference_file_attached": false,
   "run_id": "example",
   "run_insight_ref": "example",
   "safe_result_content": "example",
@@ -949,6 +961,7 @@ Schema: `PublicRunResponse`
   "event_cursor": "example",
   "family": "knowledge",
   "generation": 1,
+  "input_kind": "text",
   "limitations": [
     "example"
   ],
@@ -962,6 +975,7 @@ Schema: `PublicRunResponse`
     "queue_reason": "example"
   },
   "reason_code": "example",
+  "reference_file_attached": false,
   "run_id": "example",
   "run_insight_ref": "example",
   "safe_result_content": "example",
@@ -1032,6 +1046,7 @@ Schema: `PublicRunResponse`
   "event_cursor": "example",
   "family": "knowledge",
   "generation": 1,
+  "input_kind": "text",
   "limitations": [
     "example"
   ],
@@ -1045,6 +1060,7 @@ Schema: `PublicRunResponse`
     "queue_reason": "example"
   },
   "reason_code": "example",
+  "reference_file_attached": false,
   "run_id": "example",
   "run_insight_ref": "example",
   "safe_result_content": "example",
@@ -1193,6 +1209,7 @@ Schema: `PublicRunOutcomeResponse`
   "event_cursor": "example",
   "family": "knowledge",
   "generation": 1,
+  "input_kind": "text",
   "limitations": [
     "example"
   ],
@@ -1206,6 +1223,7 @@ Schema: `PublicRunOutcomeResponse`
     "queue_reason": "example"
   },
   "reason_code": "example",
+  "reference_file_attached": false,
   "run_id": "example",
   "run_insight_ref": "example",
   "safe_result_content": "example",

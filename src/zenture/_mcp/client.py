@@ -21,6 +21,7 @@ from zenture._contract import (
     PublicRunResponse,
     RunArtifact,
     RunProfile,
+    RunReferenceArtifact,
 )
 from zenture._mcp.catalog import CatalogSnapshot, McpToolDefinition, continuation
 from zenture._mcp.contracts import (
@@ -265,13 +266,25 @@ def _validate_arguments(arguments: Mapping[str, object]) -> dict[str, object]:
     return result
 
 
-def _run_request(*, task: str, artifact: dict[str, Any], profile: str) -> dict[str, object]:
+def _run_request(
+    *, task: str, artifact: dict[str, Any], profile: str, reference_file: str | None
+) -> dict[str, object]:
     request = PrepareKnowledgeRunRequest(
         task=task,
         artifact=cast("RunArtifact", artifact),
         profile=cast("RunProfile", profile),
+        reference_file=(
+            None
+            if reference_file is None
+            else RunReferenceArtifact(type="zenture_ref", value=reference_file)
+        ),
     )
-    return cast("dict[str, object]", request.model_dump(mode="json"))
+    arguments = cast(
+        "dict[str, object]", request.model_dump(mode="json", exclude={"reference_file"})
+    )
+    if request.reference_file is not None:
+        arguments["reference_file"] = request.reference_file.value  # the tool takes the art_ ref
+    return arguments
 
 
 def _require_run_id(actual: str, expected: str) -> None:
@@ -475,6 +488,7 @@ class McpClient(StandardsMcpMixin):
         artifact: dict[str, Any],
         profile: str = "standard",
         idempotency_key: str = cast("str", _OMITTED_RUN_KEY),
+        reference_file: str | None = None,
     ) -> McpRunResponse:
         """Start evaluation of one explicitly selected answer; do not wait for completion.
 
@@ -482,9 +496,10 @@ class McpClient(StandardsMcpMixin):
             task: Original user task and explicit evaluation criteria; non-blank,
                 at most 20,000 Unicode code points. Do not invent requirements.
             artifact: Selected content as {"type": "text", "value": "..."} (1-50,000
-                code points). A bare URL is not selected text. The schema retains
-                zenture_ref, but Run preparation currently rejects registered-file
-                inputs; registration does not enable file evaluation.
+                code points). A bare URL is not selected text. A file from
+                attach_artifact is {"type": "zenture_ref", "value": artifact_ref};
+                while it is read the tool answers artifact_not_ready with
+                retry_after_seconds.
             profile: "standard" by default; "fast" and "detailed" require explicit
                 user intent. Actual capabilities and costs remain service-defined.
             idempotency_key: Caller-owned key saved before dispatch. Reuse the same
@@ -492,6 +507,9 @@ class McpClient(StandardsMcpMixin):
                 key as a retry fallback. Keep credentials and personal data out of it.
                 MCP keys allow 1-128 ASCII letters, digits, _ or -. Omission generates
                 a random key per call; explicit None and whitespace are rejected.
+            reference_file: Optional art_... reference from attach_artifact of a source
+                file the answer is checked against; only with a text artifact (a file
+                artifact raises ValidationError). Its text in results is untrusted.
 
         Returns:
             A PublicRunResponse-compatible object with run_id and possibly ongoing
@@ -512,7 +530,9 @@ class McpClient(StandardsMcpMixin):
         key = validate_run_idempotency_key(
             uuid4().hex if idempotency_key is _OMITTED_RUN_KEY else idempotency_key
         )
-        arguments = _run_request(task=task, artifact=artifact, profile=profile)
+        arguments = _run_request(
+            task=task, artifact=artifact, profile=profile, reference_file=reference_file
+        )
         arguments["idempotency_key"] = key
         try:
             return _parse_model(McpRunResponse, self._call("run", arguments))
@@ -532,12 +552,16 @@ class McpClient(StandardsMcpMixin):
             content_hash: SHA-256 of those bytes, 64 hexadecimal characters;
                 uppercase and surrounding whitespace are normalized.
 
-        Returns ArtifactUploadResponse with the registered artifact_ref. Registration
-        does not enable evaluation: Run preparation currently rejects zenture_ref.
-        The MCP host must supply the real bytes through its resolver. This method
-        neither reads a Python file nor sends bytes in JSON. Check list_tools() first;
-        an absent resolver cannot be repaired by inventing metadata or reselecting.
-        Invalid metadata raises ValidationError; tool failures raise ZentureMCPError.
+        Mirrors the tool; it sends no bytes. Returns ArtifactUploadResponse with the
+        artifact_ref and next_steps, in one of two shapes. Upload link: upload_url,
+        upload_id, upload_token (single use, hidden in repr, header X-Upload-Token only,
+        never in a URL) and expires_at; PUT the bytes there yourself, then run with
+        {"type": "zenture_ref", "value": artifact_ref}. Host bytes (the host resolver
+        supplied them): content_hash, byte_size, content_type, status "pending" and
+        optional retry_after_seconds. While the file is read, run answers
+        artifact_not_ready with retry_after_seconds. This method neither reads a Python
+        file nor sends bytes in JSON. Invalid metadata raises ValidationError; tool
+        failures raise ZentureMCPError.
         """
 
         request = McpArtifactRequest(
@@ -881,6 +905,7 @@ class AsyncMcpClient(AsyncStandardsMcpMixin):
         artifact: dict[str, Any],
         profile: str = "standard",
         idempotency_key: str = cast("str", _OMITTED_RUN_KEY),
+        reference_file: str | None = None,
     ) -> McpRunResponse:
         """Start evaluation of one explicitly selected answer; do not wait for completion.
 
@@ -888,9 +913,10 @@ class AsyncMcpClient(AsyncStandardsMcpMixin):
             task: Original user task and explicit evaluation criteria; non-blank,
                 at most 20,000 Unicode code points. Do not invent requirements.
             artifact: Selected content as {"type": "text", "value": "..."} (1-50,000
-                code points). A bare URL is not selected text. The schema retains
-                zenture_ref, but Run preparation currently rejects registered-file
-                inputs; registration does not enable file evaluation.
+                code points). A bare URL is not selected text. A file from
+                attach_artifact is {"type": "zenture_ref", "value": artifact_ref};
+                while it is read the tool answers artifact_not_ready with
+                retry_after_seconds.
             profile: "standard" by default; "fast" and "detailed" require explicit
                 user intent. Actual capabilities and costs remain service-defined.
             idempotency_key: Caller-owned key saved before dispatch. Reuse the same
@@ -898,6 +924,9 @@ class AsyncMcpClient(AsyncStandardsMcpMixin):
                 key as a retry fallback. Keep credentials and personal data out of it.
                 MCP keys allow 1-128 ASCII letters, digits, _ or -. Omission generates
                 a random key per call; explicit None and whitespace are rejected.
+            reference_file: Optional art_... reference from attach_artifact of a source
+                file the answer is checked against; only with a text artifact (a file
+                artifact raises ValidationError). Its text in results is untrusted.
 
         Returns:
             A PublicRunResponse-compatible object with run_id and possibly ongoing
@@ -920,7 +949,9 @@ class AsyncMcpClient(AsyncStandardsMcpMixin):
         key = validate_run_idempotency_key(
             uuid4().hex if idempotency_key is _OMITTED_RUN_KEY else idempotency_key
         )
-        arguments = _run_request(task=task, artifact=artifact, profile=profile)
+        arguments = _run_request(
+            task=task, artifact=artifact, profile=profile, reference_file=reference_file
+        )
         arguments["idempotency_key"] = key
         try:
             return _parse_model(McpRunResponse, await self._call("run", arguments))
@@ -940,12 +971,16 @@ class AsyncMcpClient(AsyncStandardsMcpMixin):
             content_hash: SHA-256 of those bytes, 64 hexadecimal characters;
                 uppercase and surrounding whitespace are normalized.
 
-        Returns ArtifactUploadResponse with the registered artifact_ref. Registration
-        does not enable evaluation: Run preparation currently rejects zenture_ref.
-        The MCP host must supply the real bytes through its resolver. This method
-        neither reads a Python file nor sends bytes in JSON. Check list_tools() first;
-        an absent resolver cannot be repaired by inventing metadata or reselecting.
-        Invalid metadata raises ValidationError; tool failures raise ZentureMCPError.
+        Mirrors the tool; it sends no bytes. Returns ArtifactUploadResponse with the
+        artifact_ref and next_steps, in one of two shapes. Upload link: upload_url,
+        upload_id, upload_token (single use, hidden in repr, header X-Upload-Token only,
+        never in a URL) and expires_at; PUT the bytes there yourself, then run with
+        {"type": "zenture_ref", "value": artifact_ref}. Host bytes (the host resolver
+        supplied them): content_hash, byte_size, content_type, status "pending" and
+        optional retry_after_seconds. While the file is read, run answers
+        artifact_not_ready with retry_after_seconds. This method neither reads a Python
+        file nor sends bytes in JSON. Invalid metadata raises ValidationError; tool
+        failures raise ZentureMCPError.
 
         Async variant: await this call.
         """

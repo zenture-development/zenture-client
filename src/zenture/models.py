@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from zenture.validation_issues import ValidationConstraints as ValidationConstraints
 from zenture.validation_issues import ValidationIssue as ValidationIssue
@@ -22,6 +22,7 @@ class ForwardCompatibleError(SDKBaseModel):
     message: str
     issues: tuple[ValidationIssue, ...] = ()
     retryable: bool = False
+    retry_after_seconds: int | None = Field(default=None, ge=1, le=3600)
 
     @field_validator("issues", mode="before")
     @classmethod

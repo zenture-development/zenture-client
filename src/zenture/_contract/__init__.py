@@ -6,6 +6,7 @@ from zenture._contract.headers import RATE_LIMIT_HEADER_NAMES, parse_rate_limit_
 from zenture._contract.learnings import Essence, Learnings
 from zenture._contract.models import (
     AcceptRunRequest,
+    ArtifactUploadAccepted,
     ArtifactUploadRequest,
     ArtifactUploadResponse,
     AvailableCreditAmount,
@@ -77,6 +78,7 @@ __all__ = (
     "AcceptRunRequest",
     "AgentStandard",
     "AgentStandards",
+    "ArtifactUploadAccepted",
     "ArtifactUploadRequest",
     "ArtifactUploadResponse",
     "AvailableCreditAmount",

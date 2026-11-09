@@ -18,10 +18,46 @@ Common exception types:
 - `ZentureDependencyUnavailableError`
 - `ZentureInternalServerError`
 - `ZentureOperationExpiredError`
+- `ZentureArtifactNotReadyError`, `ZentureArtifactTooLargeError`,
+  `ZentureArtifactTypeUnsupportedError`, `ZentureArtifactExtractFailedError`,
+  `ZentureArtifactNotFoundError`, `ZentureArtifactQuotaExceededError`
 - `ZentureTransportError`
 - `ZentureResponseError`
 - `ZenturePollingTimeoutError`
 - `ZenturePollingStoppedError`
+
+## File errors
+
+Uploads and Runs that start from a `zenture_ref` answer closed codes, each with its own
+exception (all carry `error_code`, `status_code`, `request_id`):
+
+| Code | Exception | Retry |
+|---|---|---|
+| `artifact_not_ready` (409) | `ZentureArtifactNotReadyError` | Yes: wait `retry_after_seconds` (an integer attribute of the exception), then send the same request again |
+| `artifact_too_large` (422) | `ZentureArtifactTooLargeError` | No; the text read from the file exceeds the supported maximum |
+| `artifact_type_unsupported` (415) | `ZentureArtifactTypeUnsupportedError` | No |
+| `artifact_extract_failed` (422) | `ZentureArtifactExtractFailedError` | No; the file could not be read |
+| `artifact_not_found` (404) | `ZentureArtifactNotFoundError` | No; unknown, expired and foreign references look the same |
+| `artifact_quota_exceeded` (429) | `ZentureArtifactQuotaExceededError` | No until the allowance renews; the client does not retry it. `error.retry_after_seconds` (and the `Retry-After` header) say how long to wait before issuing another upload link |
+
+`length_required` (411, `ZentureLengthRequiredError`): the upload needs a `Content-Length` equal
+to the declared size; chunked or missing lengths are refused. `attach_artifact` always sends the
+declared length (also for streams and files) and raises `ValueError` before finishing when a
+source is shorter or longer than declared, so this error signals a proxy or a changed source.
+
+`artifact_unavailable` (503, `retryable: true`, `ZentureArtifactUnavailableError`): Run prepare
+could not read the file right now (a transient failure). The client retries it with the usual
+backoff (prepare carries an idempotency key); if it persists, call again later. The upload
+`PUT` never answers it: a used, wrong or expired upload token answers `401 unauthorized` (never
+retried; call `attach_artifact` again for a new link). The `PUT` bytes are not replayed by the
+client, so `408` (body not received in time, retryable by the server's flag), `413`, `415` and `422`
+each end that call; call `attach_artifact` again.
+
+The artifact status route (direct API use) reports `skipped_images`, the number of embedded
+images that were not read; the text is complete (default 0).
+
+A rejected upload token (replay, wrong size, hash or type, expired link) raises
+`ZentureAuthenticationError`; the message never contains the token.
 
 ## Polling Errors
 

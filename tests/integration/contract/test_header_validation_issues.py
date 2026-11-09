@@ -34,7 +34,7 @@ def producer(monkeypatch: pytest.MonkeyPatch) -> tuple[Any, Any, Any]:
 @pytest.mark.parametrize("asynchronous", [False, True])
 @pytest.mark.parametrize(
     ("case", "operation", "path"),
-    [("key", "run.start", "/Idempotency-Key"), ("length", "artifact.finalize", "/Content-Length")],
+    [("key", "run.start", "/Idempotency-Key")],
 )
 def test_actual_backend_mcp_sdk_header_details_survive_public_decode(
     producer: tuple[Any, Any, Any], asynchronous: bool, case: str, operation: str, path: str
@@ -94,7 +94,7 @@ def test_complete_supported_header_contract_matches_sdk(producer: tuple[Any, Any
     _, _, schema = producer
     projection = importlib.import_module("zenture_mcp_server.validation_projection")
     properties: dict[str, Any] = {}
-    for operation in ("run.start", "run.events_stream", "artifact.finalize"):
+    for operation in ("run.start", "run.events_stream"):
         properties.update(
             {
                 name: node
@@ -102,14 +102,7 @@ def test_complete_supported_header_contract_matches_sdk(producer: tuple[Any, Any
                 if name[0].isupper()
             }
         )
-    assert set(properties) == {
-        "Idempotency-Key",
-        "Prefer",
-        "Last-Event-ID",
-        "Content-Length",
-        "Content-Type",
-        "X-Upload-ID",
-    }
+    assert set(properties) == {"Idempotency-Key", "Prefer", "Last-Event-ID"}
     for name, node in properties.items():
         raw: dict[str, object] = {"path": "/" + name, "category": "invalid_format"}
         branch = next(child for child in node.get("anyOf", [node]) if child.get("type") != "null")
@@ -165,9 +158,6 @@ def test_unknown_or_unowned_header_facts_remain_optional(raw: dict[str, object])
         ("Idempotency-Key", "run.start", "run"),
         ("Prefer", "run.start", "run"),
         ("Last-Event-ID", "run.events_stream", "get_run"),
-        ("Content-Length", "artifact.finalize", "attach_artifact"),
-        ("Content-Type", "artifact.finalize", "attach_artifact"),
-        ("X-Upload-ID", "artifact.finalize", "attach_artifact"),
     ],
 )
 def test_every_declared_header_survives_public_sync_async_error_decode(
@@ -214,13 +204,6 @@ def test_every_declared_header_survives_public_sync_async_error_decode(
                 "task": "task",
                 "artifact": {"type": "text", "value": "selected"},
                 "idempotency_key": "saved_key",
-            }
-        elif method == "attach_artifact":
-            kwargs = {
-                "file_name": "selected.txt",
-                "mime_type": "text/plain",
-                "byte_size": 1,
-                "content_hash": "a" * 64,
             }
         if isinstance(peer, AsyncMcpClient):
             await getattr(peer, method)(*args, **kwargs)

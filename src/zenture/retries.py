@@ -19,6 +19,8 @@ _NON_RETRYABLE_ERROR_CODES = {
     "missing_idempotency_key",
     "idempotency_conflict",
     "operation_expired",
+    "artifact_quota_exceeded",
+    "length_required",
 }
 
 

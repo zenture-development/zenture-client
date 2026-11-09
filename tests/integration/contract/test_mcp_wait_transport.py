@@ -39,6 +39,7 @@ async def connected(
             "generation": 1,
             "family": "knowledge",
             "work_type": "answer",
+            "input_kind": "text",
             "profile": "standard",
             "status": "expired",
             "created_at": "2026-09-01T12:00:00Z",

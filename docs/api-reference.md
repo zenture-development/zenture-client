@@ -31,12 +31,16 @@ for complete payloads, methods, return shapes and recovery. It also explains
 when to use the evaluation-specific API below.
 
 - `prepare(...)` inspects a proposal; `create(...)` starts that proposal.
-- `run(...)` prepares and starts; it does not poll to completion.
+- `run(...)` prepares and starts; it does not poll to completion. `prepare(...)`, `run(...)`
+  and the MCP `run` take an optional `reference_file` (an `art_...` reference) for a source
+  check of an inline text answer against an uploaded file.
 - `get(...)`, `list(...)`, `wait(...)` read status and available results.
 - `list_events(...)` replays one page; `iter_events(...)` streams events.
-- `signed_upload(...)`, `attach_artifact(...)` authorize and send file bytes for
-  registration. Run preparation currently rejects `zenture_ref`; registration
-  does not enable file evaluation.
+- `attach_artifact(...)` uploads a file in two steps (issue an upload link, then a
+  token-authenticated `PUT`) and returns `ArtifactUploadAccepted` with the `artifact_ref`.
+  Reading the file continues asynchronously; start the Run with that `artifact_ref`
+  as a `zenture_ref` and handle `ZentureArtifactNotReadyError` (see
+  [errors](errors.md#file-errors)).
 - `cancel(...)` requests cancellation; `record_outcome(...)` records feedback.
 
 Run pages use limits 1-50 and cursors up to 512 characters, unlike the older

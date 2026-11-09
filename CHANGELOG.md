@@ -28,6 +28,77 @@ state.
   the languages served today, so a future language does not break released clients.
 - The committed OpenAPI mirror is resynced with the Gateway artefact (adds `GET /v1/learnings`,
   the learning Run fields and earlier bound changes).
+
+## 1.2.0 (2026-11-08)
+
+The file upload flow changed and two public methods were removed. Migration
+steps are in [docs/migration.md](docs/migration.md#upgrading-to-120). Text Runs, MCP
+text Runs and the classic API are unchanged.
+
+- Source check: `runs.prepare`, `runs.run` (sync and async) and the MCP client `run` accept an
+  optional `reference_file` (an `art_...` reference), an uploaded source file an inline text
+  answer is checked against. `PublicRunResponse` and `PublicRunListItem` carry
+  `reference_file_attached` (default `False`); `SafeResultLocation.source` gains
+  `reference_file`. The OpenAPI mirror and response shapes follow the Gateway.
+
+### Changed (upgrade notes)
+
+This release removes public methods and changes a return type; see the migration guide.
+
+- `runs.signed_upload(...)` is removed.
+  - Before: `up = client.runs.signed_upload(file_name=..., mime_type=..., byte_size=...,
+    content_hash=..., idempotency_key=...)` returned `SignedUploadResponse` (`upload_id`,
+    `expires_at`, optional `upload_url`).
+  - After: there is no such method; `attach_artifact` issues the upload link itself.
+    `SignedUploadResponse` is no longer in `zenture.types`.
+- `runs.attach_artifact(...)` changes signature and result (sync and async).
+  - Before: `client.runs.attach_artifact(upload_id=up.upload_id, file_name=..., mime_type=...,
+    content=..., content_hash=..., idempotency_key=...)` sent the bytes with a bearer `POST
+    /v1/run-artifacts` and returned `ArtifactUploadResponse` (`artifact_ref`, `content_hash`,
+    `byte_size`, `content_type`).
+  - After: `client.runs.attach_artifact(file_name=..., mime_type=..., content=...,
+    content_hash=..., idempotency_key=...)` (no `upload_id`) issues the link and sends the
+    bytes with `PUT` and `X-Upload-Token` (no bearer). It returns `ArtifactUploadAccepted`
+    (`artifact_ref`, `status="pending"`, `retry_after_seconds`, `next_step`). Start the Run
+    with the `artifact_ref` and handle `ZentureArtifactNotReadyError`.
+- MCP `McpClient.attach_artifact(...)` returns `ArtifactUploadResponse` in a new shape (see
+  below).
+
+- File upload moves to the two-step flow. `runs.attach_artifact(...)` (sync and async) now
+  issues an upload link and then sends the bytes with `PUT` and the single-use
+  `X-Upload-Token` (no bearer, no redirects, never retried). It no longer takes
+  `upload_id` and returns `ArtifactUploadAccepted` (`artifact_ref`, `status="pending"`,
+  `retry_after_seconds`, `next_step`). The token never appears in a URL, log, repr or
+  exception text, and an upload link that is not https or not on the client's API origin
+  under `/v1/run-artifacts/uploads/` is refused before any byte leaves.
+- Removed: `runs.signed_upload(...)` and `SignedUploadResponse` (issuing is part of
+  `attach_artifact`), the bearer `POST /v1/run-artifacts` route and its
+  `PublicRunArtifactResponse`, and the `X-Upload-ID`, `Content-Type` and `Content-Length`
+  upload header declarations.
+- New typed errors for file references: `ZentureArtifactNotReadyError` (with
+  `retry_after_seconds`), `ZentureArtifactTooLargeError`, `ZentureArtifactTypeUnsupportedError`,
+  `ZentureArtifactExtractFailedError`, `ZentureArtifactNotFoundError` and
+  `ZentureArtifactQuotaExceededError`. `ZentureAPIError` carries `retry_after_seconds`.
+- The OpenAPI mirror lists `PUT /v1/run-artifacts/uploads/{upload_id}`, the new
+  `signed-upload` answer and the new error codes `artifact_not_ready`,
+  `artifact_too_large`, `artifact_extract_failed` and `artifact_quota_exceeded` (HTTP 429,
+  never retried by the client).
+- The OpenAPI mirror follows the final Gateway contract: the upload `PUT` documents 408 and
+  415, `GET /v1/run-artifacts/{artifact_id}` names its path parameter `artifact_id`, and the
+  `zenture_ref` descriptor is described as an accepted reference.
+- The upload `PUT` always carries `Content-Length` equal to the declared size (bytes, streams
+  and files, sync and async), never chunked; new error code `length_required` (411,
+  `ZentureLengthRequiredError`, not retried).
+- `ZentureArtifactQuotaExceededError.retry_after_seconds` carries the Gateway's wait hint
+  (1 to 3600 seconds, also sent as `Retry-After`); the client still does not retry it.
+- `artifact_unavailable` raises `ZentureArtifactUnavailableError`. The upload `PUT` never
+  answers it (a used or wrong token answers 401); Run prepare answers it as a retryable 503
+  for a transient file-read failure, and the client now retries it with the usual backoff. The OpenAPI mirror's artifact status
+  gains optional `skipped_images` (integer, at least 0).
+- MCP `attach_artifact` mirrors the tool and sends no bytes: `ArtifactUploadResponse` is now an
+  upload link (`upload_url`, `upload_id`, `upload_token` hidden in repr, `expires_at`) or a
+  registered host-bytes file (`content_hash`, `byte_size`, `content_type`, `status`,
+  `retry_after_seconds`), each with `next_steps`.
 - The committed OpenAPI mirror follows the Gateway public contract: API token management routes are no longer listed. Token management stays in the web app and is not part of the SDK surface.
 - A terminal Run may carry `billing_summary.status="pending"` (valid, no `final_credits`);
   the later `run.billing.settled` event is a valid event. Documented: re-read the Run with
@@ -39,6 +110,10 @@ state.
   and `locations`; composed content exposes `next_action_text`.
 - `PublicCapabilityCoverage` accepts up to 256 `available_refs` and `unavailable_refs`
   (Backend bound); `limitation_refs` stays at 32.
+- `PublicRunResponse.input_kind` and `PublicRunListItem.input_kind` (`"text"` or `"file"`) say
+  whether the Run checks a submitted text or an uploaded file; the server sets it at Run
+  creation and sends it on every Run, including failed ones. The models accept an absent value
+  (`None`) so a new client still works against a server that does not send it yet.
 
 ## 1.1.0 - 2026-10-19
 

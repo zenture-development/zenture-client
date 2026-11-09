@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from zenture._contract.learnings import Essence, Learnings
 from zenture._contract.models import (
+    ArtifactUploadAccepted,
     ArtifactUploadResponse,
     LimitsResponse,
     ListRunEventsResponse,
@@ -36,13 +37,13 @@ from zenture._contract.models import (
     RouteLimitProjection,
     RunProfile,
     RunStatus,
-    SignedUploadResponse,
 )
 from zenture._contract.standards import AgentStandard, AgentStandards
 
 __all__ = (
     "AgentStandard",
     "AgentStandards",
+    "ArtifactUploadAccepted",
     "ArtifactUploadResponse",
     "Essence",
     "Learnings",
@@ -77,5 +78,4 @@ __all__ = (
     "RouteLimitProjection",
     "RunProfile",
     "RunStatus",
-    "SignedUploadResponse",
 )

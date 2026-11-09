@@ -29,6 +29,7 @@ class ZentureAPIError(ZentureError):
         status_code: int,
         request_id: str | None = None,
         retry_after: float | None = None,
+        retry_after_seconds: int | None = None,
         issues: tuple[ValidationIssue, ...] = (),
         retryable: bool = False,
     ) -> None:
@@ -38,6 +39,7 @@ class ZentureAPIError(ZentureError):
         self.status_code = status_code
         self.request_id = request_id
         self.retry_after = retry_after
+        self.retry_after_seconds = retry_after_seconds
         self.issues = safe_issues(issues)
         super().__init__(self.message)
 
@@ -100,6 +102,38 @@ class ZentureInternalServerError(ZentureAPIError):
 
 class ZentureOperationExpiredError(ZentureAPIError):
     """Raised when operation polling TTL has expired."""
+
+
+class ZentureArtifactNotReadyError(ZentureAPIError):
+    """Raised while an uploaded file is still being read; retry after `retry_after_seconds`."""
+
+
+class ZentureArtifactTooLargeError(ZentureAPIError):
+    """Raised when the text extracted from a file exceeds the supported maximum; not retryable."""
+
+
+class ZentureArtifactTypeUnsupportedError(ZentureAPIError):
+    """Raised when the file type is not supported."""
+
+
+class ZentureArtifactExtractFailedError(ZentureAPIError):
+    """Raised when a file could not be read; not retryable."""
+
+
+class ZentureArtifactNotFoundError(ZentureAPIError):
+    """Raised for an unknown, expired or foreign file reference (one answer for all three)."""
+
+
+class ZentureArtifactQuotaExceededError(ZentureAPIError):
+    """Raised when the account's file upload quota is used up."""
+
+
+class ZentureArtifactUnavailableError(ZentureAPIError):
+    """Raised when Run prepare cannot read a file right now (503, retryable)."""
+
+
+class ZentureLengthRequiredError(ZentureAPIError):
+    """Raised when an upload arrives without a Content-Length equal to the declared size."""
 
 
 class ZentureTransportError(ZentureError):
@@ -217,6 +251,14 @@ _ERROR_TYPES: dict[str, type[ZentureAPIError]] = {
     "dependency_unavailable": ZentureDependencyUnavailableError,
     "internal_error": ZentureInternalServerError,
     "operation_expired": ZentureOperationExpiredError,
+    "artifact_not_ready": ZentureArtifactNotReadyError,
+    "artifact_too_large": ZentureArtifactTooLargeError,
+    "artifact_type_unsupported": ZentureArtifactTypeUnsupportedError,
+    "artifact_extract_failed": ZentureArtifactExtractFailedError,
+    "artifact_not_found": ZentureArtifactNotFoundError,
+    "artifact_quota_exceeded": ZentureArtifactQuotaExceededError,
+    "artifact_unavailable": ZentureArtifactUnavailableError,
+    "length_required": ZentureLengthRequiredError,
 }
 
 
@@ -250,6 +292,7 @@ def error_from_response(
         status_code=status_code,
         request_id=envelope.request_id,
         retry_after=retry_after,
+        retry_after_seconds=envelope.error.retry_after_seconds,
         issues=envelope.error.issues,
         retryable=envelope.error.retryable,
     )

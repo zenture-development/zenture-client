@@ -50,8 +50,6 @@ def test_coverage_still_rejects_lists_beyond_the_backend_bounds() -> None:
 def test_openapi_copy_states_the_backend_bounds() -> None:
     properties = _coverage_properties()
 
-    # The Gateway artefact publishes 32 for the status refs; the client model stays tolerant
-    # up to the Backend bound (256) so a Backend response never breaks a released client.
-    assert properties["available_refs"]["maxItems"] == BACKEND_LIMITATION_REF_LIMIT
-    assert properties["unavailable_refs"]["maxItems"] == BACKEND_LIMITATION_REF_LIMIT
+    assert properties["available_refs"]["maxItems"] == BACKEND_STATUS_REF_LIMIT
+    assert properties["unavailable_refs"]["maxItems"] == BACKEND_STATUS_REF_LIMIT
     assert properties["limitation_refs"]["maxItems"] == BACKEND_LIMITATION_REF_LIMIT

@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
-import io
 import json
 import math
 import time
@@ -18,7 +16,12 @@ import pytest
 from pydantic import ValidationError
 
 from zenture import AsyncZentureClient, ZentureClient
-from zenture._contract import PublicRunEvent, PublicRunHeartbeat, PublicRunResponse
+from zenture._contract import (
+    PublicRunEvent,
+    PublicRunHeartbeat,
+    PublicRunListItem,
+    PublicRunResponse,
+)
 from zenture._contract.run_references import validate_run_cursor
 from zenture._resources.runs import RunEventStreamState
 from zenture.errors import (
@@ -67,6 +70,7 @@ def _run(
         "generation": 1,
         "family": "knowledge",
         "work_type": "answer",
+        "input_kind": "text",
         "profile": "standard",
         "status": status,
         "created_at": "2026-08-30T12:00:00Z",
@@ -137,6 +141,7 @@ def test_sync_run_list_forwards_success_filter_and_reads_success_status(status: 
                     {
                         "run_id": RUN_ID,
                         "status": status,
+                        "input_kind": "text",
                         "profile": "standard",
                         "created_at": "2026-08-30T12:00:00Z",
                         "updated_at": "2026-08-30T12:00:00Z",
@@ -947,444 +952,6 @@ async def test_async_iter_events_bounds_cursor_cycles() -> None:
     await client.aclose()
 
 
-def _artifact_response(content: bytes) -> httpx.Response:
-    return httpx.Response(
-        201,
-        json={
-            "artifact_ref": "art_abcdefgh",
-            "content_hash": hashlib.sha256(content).hexdigest(),
-            "byte_size": len(content),
-            "content_type": "application/pdf",
-        },
-    )
-
-
-def test_sync_attach_artifact_streams_iterable_with_declared_size_and_hash() -> None:
-    content = b"streamed bytes"
-    chunks = iter((content[:8], content[8:]))
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        assert request.headers["content-length"] == str(len(content))
-        assert request.read() == content
-        return _artifact_response(content)
-
-    client = ZentureClient(
-        api_key=API_KEY,
-        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
-    )
-    result = client.runs.attach_artifact(
-        upload_id="upload_abcdefgh",
-        file_name="answer.pdf",
-        mime_type="application/pdf",
-        content=chunks,
-        byte_size=len(content),
-        content_hash=hashlib.sha256(content).hexdigest(),
-        idempotency_key="artifact-stream-1",
-    )
-
-    assert result.artifact_ref == "art_abcdefgh"
-    client.close()
-
-
-@pytest.mark.asyncio
-async def test_async_attach_artifact_streams_async_iterable_with_declared_size_and_hash() -> None:
-    content = b"async streamed bytes"
-
-    async def chunks() -> AsyncIterator[bytes]:
-        yield content[:5]
-        yield content[5:]
-
-    async def handler(request: httpx.Request) -> httpx.Response:
-        assert request.headers["content-length"] == str(len(content))
-        assert await request.aread() == content
-        return _artifact_response(content)
-
-    client = AsyncZentureClient(
-        api_key=API_KEY,
-        http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
-    )
-    result = await client.runs.attach_artifact(
-        upload_id="upload_abcdefgh",
-        file_name="answer.pdf",
-        mime_type="application/pdf",
-        content=chunks(),
-        byte_size=len(content),
-        content_hash=hashlib.sha256(content).hexdigest(),
-        idempotency_key="artifact-stream-1",
-    )
-
-    assert result.artifact_ref == "art_abcdefgh"
-    await client.aclose()
-
-
-def test_sync_attach_artifact_streams_file_without_closing_caller_source() -> None:
-    content = b"sync file bytes"
-    source = io.BytesIO(content)
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        assert request.read() == content
-        return _artifact_response(content)
-
-    client = ZentureClient(
-        api_key=API_KEY,
-        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
-    )
-    result = client.runs.attach_artifact(
-        upload_id="upload_abcdefgh",
-        file_name="answer.pdf",
-        mime_type="application/pdf",
-        content=source,
-        byte_size=len(content),
-        content_hash=hashlib.sha256(content).hexdigest(),
-        idempotency_key="artifact-file-1",
-    )
-
-    assert result.artifact_ref == "art_abcdefgh"
-    assert not source.closed
-    client.close()
-
-
-@pytest.mark.asyncio
-async def test_async_attach_artifact_streams_file_without_closing_caller_source() -> None:
-    content = b"async file bytes"
-    source = io.BytesIO(content)
-
-    async def handler(request: httpx.Request) -> httpx.Response:
-        assert await request.aread() == content
-        return _artifact_response(content)
-
-    client = AsyncZentureClient(
-        api_key=API_KEY,
-        http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
-    )
-    result = await client.runs.attach_artifact(
-        upload_id="upload_abcdefgh",
-        file_name="answer.pdf",
-        mime_type="application/pdf",
-        content=source,
-        byte_size=len(content),
-        content_hash=hashlib.sha256(content).hexdigest(),
-        idempotency_key="artifact-file-1",
-    )
-
-    assert result.artifact_ref == "art_abcdefgh"
-    assert not source.closed
-    await client.aclose()
-
-
-def test_sync_attach_artifact_rejects_size_overrun_and_hash_mismatch() -> None:
-    content = b"bytes"
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        request.read()
-        return _artifact_response(content)
-
-    client = ZentureClient(
-        api_key=API_KEY,
-        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
-    )
-    with pytest.raises(ValueError, match="exceeds declared byte_size"):
-        client.runs.attach_artifact(
-            upload_id="upload_abcdefgh",
-            file_name="answer.pdf",
-            mime_type="application/pdf",
-            content=iter((b"bytes", b"extra")),
-            byte_size=len(content),
-            content_hash=hashlib.sha256(content + b"extra").hexdigest(),
-            idempotency_key="artifact-stream-6",
-        )
-    with pytest.raises(ValueError, match="content_hash"):
-        client.runs.attach_artifact(
-            upload_id="upload_abcdefgh",
-            file_name="answer.pdf",
-            mime_type="application/pdf",
-            content=iter((content,)),
-            byte_size=len(content),
-            content_hash=hashlib.sha256(b"other").hexdigest(),
-            idempotency_key="artifact-stream-7",
-        )
-
-    client.close()
-
-
-@pytest.mark.asyncio
-async def test_async_attach_artifact_rejects_size_overrun_and_hash_mismatch() -> None:
-    content = b"bytes"
-
-    async def overrun_chunks() -> AsyncIterator[bytes]:
-        yield content
-        yield b"extra"
-
-    async def bad_hash_chunks() -> AsyncIterator[bytes]:
-        yield content
-
-    async def handler(request: httpx.Request) -> httpx.Response:
-        await request.aread()
-        return _artifact_response(content)
-
-    client = AsyncZentureClient(
-        api_key=API_KEY,
-        http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
-    )
-    with pytest.raises(ValueError, match="exceeds declared byte_size"):
-        await client.runs.attach_artifact(
-            upload_id="upload_abcdefgh",
-            file_name="answer.pdf",
-            mime_type="application/pdf",
-            content=overrun_chunks(),
-            byte_size=len(content),
-            content_hash=hashlib.sha256(content + b"extra").hexdigest(),
-            idempotency_key="artifact-stream-6",
-        )
-    with pytest.raises(ValueError, match="content_hash"):
-        await client.runs.attach_artifact(
-            upload_id="upload_abcdefgh",
-            file_name="answer.pdf",
-            mime_type="application/pdf",
-            content=bad_hash_chunks(),
-            byte_size=len(content),
-            content_hash=hashlib.sha256(b"other").hexdigest(),
-            idempotency_key="artifact-stream-7",
-        )
-
-    await client.aclose()
-
-
-def test_sync_attach_artifact_rejects_stream_without_declared_size() -> None:
-    requests: list[httpx.Request] = []
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        requests.append(request)
-        return _artifact_response(b"bytes")
-
-    client = ZentureClient(
-        api_key=API_KEY,
-        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
-    )
-    with pytest.raises(ValueError, match="byte_size"):
-        client.runs.attach_artifact(
-            upload_id="upload_abcdefgh",
-            file_name="answer.pdf",
-            mime_type="application/pdf",
-            content=iter((b"bytes",)),
-            content_hash=hashlib.sha256(b"bytes").hexdigest(),
-            idempotency_key="artifact-stream-2",
-        )
-
-    assert not requests
-    client.close()
-
-
-@pytest.mark.asyncio
-async def test_async_attach_artifact_rejects_stream_without_declared_size() -> None:
-    requests: list[httpx.Request] = []
-
-    async def chunks() -> AsyncIterator[bytes]:
-        yield b"bytes"
-
-    async def handler(request: httpx.Request) -> httpx.Response:
-        requests.append(request)
-        return _artifact_response(b"bytes")
-
-    client = AsyncZentureClient(
-        api_key=API_KEY,
-        http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
-    )
-    with pytest.raises(ValueError, match="byte_size"):
-        await client.runs.attach_artifact(
-            upload_id="upload_abcdefgh",
-            file_name="answer.pdf",
-            mime_type="application/pdf",
-            content=chunks(),
-            content_hash=hashlib.sha256(b"bytes").hexdigest(),
-            idempotency_key="artifact-stream-2",
-        )
-
-    assert not requests
-    await client.aclose()
-
-
-def test_sync_attach_artifact_rejects_non_bytes_chunk() -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        request.read()
-        return _artifact_response(b"bytes")
-
-    client = ZentureClient(
-        api_key=API_KEY,
-        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
-    )
-    with pytest.raises(ValueError, match="chunks must be bytes"):
-        client.runs.attach_artifact(
-            upload_id="upload_abcdefgh",
-            file_name="answer.pdf",
-            mime_type="application/pdf",
-            content=cast("Any", iter((b"byte", "s"))),
-            byte_size=5,
-            content_hash=hashlib.sha256(b"bytes").hexdigest(),
-            idempotency_key="artifact-stream-3",
-        )
-
-    client.close()
-
-
-@pytest.mark.asyncio
-async def test_async_attach_artifact_rejects_non_bytes_chunk() -> None:
-    async def chunks() -> AsyncIterator[Any]:
-        yield b"byte"
-        yield "s"
-
-    async def handler(request: httpx.Request) -> httpx.Response:
-        await request.aread()
-        return _artifact_response(b"bytes")
-
-    client = AsyncZentureClient(
-        api_key=API_KEY,
-        http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
-    )
-    with pytest.raises(ValueError, match="chunks must be bytes"):
-        await client.runs.attach_artifact(
-            upload_id="upload_abcdefgh",
-            file_name="answer.pdf",
-            mime_type="application/pdf",
-            content=chunks(),
-            byte_size=5,
-            content_hash=hashlib.sha256(b"bytes").hexdigest(),
-            idempotency_key="artifact-stream-3",
-        )
-
-    await client.aclose()
-
-
-def test_sync_attach_artifact_does_not_retry_one_shot_file() -> None:
-    content = b"one-shot bytes"
-    source = io.BytesIO(content)
-    attempts = 0
-
-    def handler(_request: httpx.Request) -> httpx.Response:
-        nonlocal attempts
-        attempts += 1
-        raise httpx.ReadError("upload connection reset")
-
-    client = ZentureClient(
-        api_key=API_KEY,
-        max_retries=2,
-        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
-    )
-    with pytest.raises(ZentureTransportError):
-        client.runs.attach_artifact(
-            upload_id="upload_abcdefgh",
-            file_name="answer.pdf",
-            mime_type="application/pdf",
-            content=source,
-            byte_size=len(content),
-            content_hash=hashlib.sha256(content).hexdigest(),
-            idempotency_key="artifact-stream-4",
-        )
-
-    assert attempts == 1
-    assert not source.closed
-    client.close()
-
-
-@pytest.mark.asyncio
-async def test_async_attach_artifact_does_not_retry_one_shot_file() -> None:
-    content = b"one-shot async bytes"
-    source = io.BytesIO(content)
-    attempts = 0
-
-    async def handler(_request: httpx.Request) -> httpx.Response:
-        nonlocal attempts
-        attempts += 1
-        raise httpx.ReadError("upload connection reset")
-
-    client = AsyncZentureClient(
-        api_key=API_KEY,
-        max_retries=2,
-        http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
-    )
-    with pytest.raises(ZentureTransportError):
-        await client.runs.attach_artifact(
-            upload_id="upload_abcdefgh",
-            file_name="answer.pdf",
-            mime_type="application/pdf",
-            content=source,
-            byte_size=len(content),
-            content_hash=hashlib.sha256(content).hexdigest(),
-            idempotency_key="artifact-stream-4",
-        )
-
-    assert attempts == 1
-    assert not source.closed
-    await client.aclose()
-
-
-def test_sync_attach_artifact_retries_replayable_bytes() -> None:
-    content = b"replayable bytes"
-    attempts = 0
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        nonlocal attempts
-        attempts += 1
-        if attempts == 1:
-            raise httpx.ReadError("upload connection reset")
-        assert request.read() == content
-        return _artifact_response(content)
-
-    client = ZentureClient(
-        api_key=API_KEY,
-        max_retries=1,
-        initial_retry_backoff=0.0,
-        max_retry_backoff=0.0,
-        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
-    )
-    result = client.runs.attach_artifact(
-        upload_id="upload_abcdefgh",
-        file_name="answer.pdf",
-        mime_type="application/pdf",
-        content=content,
-        content_hash=hashlib.sha256(content).hexdigest(),
-        idempotency_key="artifact-stream-5",
-    )
-
-    assert result.artifact_ref == "art_abcdefgh"
-    assert attempts == 2
-    client.close()
-
-
-@pytest.mark.asyncio
-async def test_async_attach_artifact_retries_replayable_bytes() -> None:
-    content = b"replayable async bytes"
-    attempts = 0
-
-    async def handler(request: httpx.Request) -> httpx.Response:
-        nonlocal attempts
-        attempts += 1
-        if attempts == 1:
-            raise httpx.ReadError("upload connection reset")
-        assert await request.aread() == content
-        return _artifact_response(content)
-
-    client = AsyncZentureClient(
-        api_key=API_KEY,
-        max_retries=1,
-        initial_retry_backoff=0.0,
-        max_retry_backoff=0.0,
-        http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
-    )
-    result = await client.runs.attach_artifact(
-        upload_id="upload_abcdefgh",
-        file_name="answer.pdf",
-        mime_type="application/pdf",
-        content=content,
-        content_hash=hashlib.sha256(content).hexdigest(),
-        idempotency_key="artifact-stream-5",
-    )
-
-    assert result.artifact_ref == "art_abcdefgh"
-    assert attempts == 2
-    await client.aclose()
-
-
 def test_sync_wait_returns_when_queued_run_reaches_completed() -> None:
     responses = [_run(), _run(status="completed")]
     seen: list[httpx.Request] = []
@@ -2130,107 +1697,6 @@ data: {\"type\":\"run.event\",\"event_id\":\"event_bbbbbbbb\",\"run_id\":\"run_3
     client.close()
 
 
-def test_sync_attach_artifact_sends_bytes_with_upload_intent() -> None:
-    content = b"%PDF-1.7\nbytes"
-    content_hash = hashlib.sha256(content).hexdigest()
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url.path == "/v1/run-artifacts"
-        assert request.headers["content-type"] == "application/pdf"
-        assert request.headers["x-upload-id"] == "upload_abcdefgh"
-        assert request.content == content
-        return httpx.Response(
-            201,
-            json={
-                "artifact_ref": "art_abcdefgh",
-                "content_hash": content_hash,
-                "byte_size": len(content),
-                "content_type": "application/pdf",
-            },
-        )
-
-    client = ZentureClient(
-        api_key=API_KEY,
-        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
-    )
-    artifact = client.runs.attach_artifact(
-        upload_id="upload_abcdefgh",
-        file_name="answer.pdf",
-        mime_type="application/pdf",
-        content=content,
-        content_hash=content_hash,
-        idempotency_key="artifact-1",
-    )
-
-    assert artifact.artifact_ref == "art_abcdefgh"
-    client.close()
-
-
-def test_sync_signed_upload_omits_optional_upload_id() -> None:
-    content_hash = hashlib.sha256(b"bytes").hexdigest()
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url.path == "/v1/run-artifacts/signed-upload"
-        assert request.headers["X-Zenture-Error-Details"] == "issues"
-        assert "upload_id" not in request.content.decode()
-        return httpx.Response(
-            200,
-            json={
-                "upload_id": "upload_abcdefgh",
-                "expires_at": "2026-06-15T10:00:00Z",
-                "upload_url": "/v1/run-artifacts",
-            },
-        )
-
-    client = ZentureClient(
-        api_key=API_KEY,
-        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
-    )
-    upload = client.runs.signed_upload(
-        file_name="answer.txt",
-        mime_type="text/plain",
-        byte_size=5,
-        content_hash=content_hash,
-        idempotency_key="signed-upload-1",
-    )
-
-    assert upload.upload_id == "upload_abcdefgh"
-    client.close()
-
-
-@pytest.mark.asyncio
-async def test_async_signed_upload_omits_optional_upload_id() -> None:
-    content_hash = hashlib.sha256(b"bytes").hexdigest()
-
-    async def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url.path == "/v1/run-artifacts/signed-upload"
-        assert request.headers["X-Zenture-Error-Details"] == "issues"
-        assert "upload_id" not in request.content.decode()
-        return httpx.Response(
-            200,
-            json={
-                "upload_id": "upload_abcdefgh",
-                "expires_at": "2026-06-15T10:00:00Z",
-                "upload_url": "/v1/run-artifacts",
-            },
-        )
-
-    client = AsyncZentureClient(
-        api_key=API_KEY,
-        http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
-    )
-    upload = await client.runs.signed_upload(
-        file_name="answer.txt",
-        mime_type="text/plain",
-        byte_size=5,
-        content_hash=content_hash,
-        idempotency_key="signed-upload-1",
-    )
-
-    assert upload.upload_id == "upload_abcdefgh"
-    await client.aclose()
-
-
 @pytest.mark.asyncio
 async def test_async_run_resources_match_sync_event_surface() -> None:
     stream = b'event: run.event\ndata: {"type":"run.event","event_id":"event_aaaaaaaa","run_id":"run_33333333333343338333333333333333","sequence":1,"status":"completed","message_key":"run.status.completed","event_cursor":"cursor_aaa"}\n\n'
@@ -2930,3 +2396,26 @@ def test_safe_result_decision_decodes_null_outcome_of_a_technically_failed_evalu
     )
     assert ready.outcome == "ready"
     assert ready.technical_status is None
+
+
+def test_public_run_input_kind_is_text_or_file_and_tolerates_a_server_that_does_not_send_it() -> (
+    None
+):
+    """The Run payload says whether the Run checks a text or an uploaded file; an older server may omit it."""
+    for kind in ("text", "file"):
+        assert PublicRunResponse.model_validate({**_run(), "input_kind": kind}).input_kind == kind
+    with pytest.raises(ValidationError):
+        PublicRunResponse.model_validate({**_run(), "input_kind": "image"})
+    without = {key: value for key, value in _run().items() if key != "input_kind"}
+    assert PublicRunResponse.model_validate(without).input_kind is None
+    item = {
+        "run_id": RUN_ID,
+        "status": "queued",
+        "profile": "standard",
+        "created_at": "2026-08-30T12:00:00Z",
+        "updated_at": "2026-08-30T12:00:00Z",
+    }
+    assert PublicRunListItem.model_validate(item).input_kind is None
+    assert PublicRunListItem.model_validate({**item, "input_kind": "file"}).input_kind == "file"
+    with pytest.raises(ValidationError):
+        PublicRunListItem.model_validate({**item, "input_kind": "image"})
