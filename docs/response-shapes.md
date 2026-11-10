@@ -48,7 +48,6 @@ Run in `.run`, while REST `runs.get()` returns it directly.
 | `GET` | `/v1/helloworld` | `200` | `client.helloworld()` | `str` |
 | `POST` | `/v1/input-wizard` | `202` | `client.input_wizard.create(...)`, `client.input_wizard.run(...)` | `PublicOperationResponse`, `OperationRunResult` |
 | `GET` | `/v1/learnings` | `200` | `httpx` direct call | `PublicLearningsResponse` |
-| `PUT` | `/v1/learnings/visibility` | `200` | `httpx` direct call | `LearningVisibility` |
 | `GET` | `/v1/limits` | `200` | `client.limits.get()` | `LimitsResponse` |
 | `GET` | `/v1/models` | `200` | `client.models.list(mode=None | "single" | "multi")` | `PublicModelListResponse` |
 | `GET` | `/v1/operations/{operation_id}` | `200` | `client.operations.get(...)`, `client.operations.wait(...)` | `PublicOperationResponse` |
@@ -340,12 +339,14 @@ Request body example:
 ```json
 {
   "artifact": "example",
+  "learning_context": "private",
   "predecessor_run_id": "example",
   "profile": "fast",
   "reference_file": {
     "type": "zenture_ref",
     "value": "example"
   },
+  "standards": "organization",
   "task": "example"
 }
 ```
@@ -381,16 +382,19 @@ Schema: `PublicRunResponse`
   "created_at": "2026-06-15T10:00:00Z",
   "deadline_at": "example",
   "essence": "example",
+  "essence_scope": "personal",
   "essence_version": "example",
   "event_cursor": "example",
   "family": "knowledge",
   "generation": 1,
   "input_kind": "text",
   "learning_applied": "example",
+  "learning_context": "private",
   "limitations": [
     "example"
   ],
   "next_action": "example",
+  "note": "learning_context_unavailable",
   "phase": "preparing",
   "profile": "fast",
   "queue": {
@@ -458,16 +462,19 @@ Schema: `PublicRunResponse`
   "created_at": "2026-06-15T10:00:00Z",
   "deadline_at": "example",
   "essence": "example",
+  "essence_scope": "personal",
   "essence_version": "example",
   "event_cursor": "example",
   "family": "knowledge",
   "generation": 1,
   "input_kind": "text",
   "learning_applied": "example",
+  "learning_context": "private",
   "limitations": [
     "example"
   ],
   "next_action": "example",
+  "note": "learning_context_unavailable",
   "phase": "preparing",
   "profile": "fast",
   "queue": {
@@ -526,11 +533,13 @@ Request body example:
     "type": "example",
     "value": "example"
   },
+  "learning_context": "private",
   "profile": "fast",
   "reference_file": {
     "type": "zenture_ref",
     "value": "example"
   },
+  "standards": "organization",
   "task": "example"
 }
 ```
@@ -615,16 +624,19 @@ Schema: `PublicRunResponse`
   "created_at": "2026-06-15T10:00:00Z",
   "deadline_at": "example",
   "essence": "example",
+  "essence_scope": "personal",
   "essence_version": "example",
   "event_cursor": "example",
   "family": "knowledge",
   "generation": 1,
   "input_kind": "text",
   "learning_applied": "example",
+  "learning_context": "private",
   "limitations": [
     "example"
   ],
   "next_action": "example",
+  "note": "learning_context_unavailable",
   "phase": "preparing",
   "profile": "fast",
   "queue": {
@@ -714,16 +726,19 @@ Schema: `PublicRunResponse`
   "created_at": "2026-06-15T10:00:00Z",
   "deadline_at": "example",
   "essence": "example",
+  "essence_scope": "personal",
   "essence_version": "example",
   "event_cursor": "example",
   "family": "knowledge",
   "generation": 1,
   "input_kind": "text",
   "learning_applied": "example",
+  "learning_context": "private",
   "limitations": [
     "example"
   ],
   "next_action": "example",
+  "note": "learning_context_unavailable",
   "phase": "preparing",
   "profile": "fast",
   "queue": {
@@ -891,16 +906,19 @@ Schema: `PublicRunOutcomeResponse`
   "created_at": "2026-06-15T10:00:00Z",
   "deadline_at": "example",
   "essence": "example",
+  "essence_scope": "personal",
   "essence_version": "example",
   "event_cursor": "example",
   "family": "knowledge",
   "generation": 1,
   "input_kind": "text",
   "learning_applied": "example",
+  "learning_context": "private",
   "limitations": [
     "example"
   ],
   "next_action": "example",
+  "note": "learning_context_unavailable",
   "phase": "preparing",
   "profile": "fast",
   "queue": {
@@ -1291,40 +1309,6 @@ Schema: `PublicLearningsResponse`
     }
   ],
   "state": "available"
-}
-```
-
-### `PUT /v1/learnings/visibility`
-
-Client surface: `httpx` direct call
-
-Client model: `LearningVisibility`
-
-Auth mode: `api_token`
-
-Scopes: `evaluation:run`
-
-Idempotency: `required`
-
-Request body schema: `LearningVisibilityRequest`
-
-Request body example:
-
-```json
-{
-  "code": "factual_error",
-  "hidden": true
-}
-```
-
-Response `200` as `application/json`:
-
-Schema: `LearningVisibility`
-
-```json
-{
-  "code": "factual_error",
-  "hidden": true
 }
 ```
 
@@ -1809,9 +1793,5 @@ Stable public gateway error codes are:
 - `standard_limit`
 - `standard_not_checkable`
 - `standards_unavailable`
-- `learning_not_allowed`
-- `learning_hide_private_only`
-- `learning_generation_conflict`
-- `learning_unavailable`
 
 The zenture client maps known public error codes to typed exceptions where available and keeps future unknown safe error codes as `ZentureAPIError` without exposing API tokens, bearer headers, prompts, or other secrets in exception strings.

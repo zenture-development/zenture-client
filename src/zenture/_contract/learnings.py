@@ -71,10 +71,3 @@ class LearningVisibility(SDKBaseModel):
 
     code: LearningCode
     hidden: bool
-
-
-class LearningVisibilityRequest(SDKBaseModel):
-    """Hide (`hidden=True`) or show one learning by its closed code."""
-
-    code: LearningCode
-    hidden: bool

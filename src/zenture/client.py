@@ -41,7 +41,6 @@ if TYPE_CHECKING:
         AgentStandard,
         AgentStandards,
         Learnings,
-        LearningVisibility,
         StandardVersions,
     )
 
@@ -209,11 +208,6 @@ class ZentureClient:
         """Accept the ready preview of a written standard, as the app does; its criterion becomes version + 1."""
 
         return self._standards.accept_preview(standard_id, expected_version=expected_version, idempotency_key=idempotency_key)
-
-    def set_learning_hidden(self, code: str, hidden: bool, *, idempotency_key: str) -> LearningVisibility:
-        """Hide (`hidden=True`) or show one learning listed by `get_learnings`, as the card in the app does."""
-
-        return self._learnings.set_hidden(code, hidden, idempotency_key=idempotency_key)
 
     def close(self) -> None:
         """Close client-owned transport resources."""

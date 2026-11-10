@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any, cast
 
 from pydantic import BaseModel, ValidationError
 
-from zenture._contract.learnings import LearningVisibility, LearningVisibilityRequest
 from zenture._contract.standards import (
     AcceptStandardPreviewRequest,
     AgentStandard,
@@ -137,17 +136,6 @@ class StandardsMcpMixin:
         result = self._call("accept_standard_preview", {"standard_id": standard_id, **body})  # type: ignore[attr-defined]
         return cast("AgentStandard", _parse(AgentStandard, result))
 
-    def set_learning_hidden(self, code: str, hidden: bool) -> LearningVisibility:
-        """Hide or show one learning through the hosted `set_learning_hidden` tool."""
-
-        body = LearningVisibilityRequest.model_validate(
-            {"code": code, "hidden": hidden}
-        ).model_dump(mode="json")
-        return cast(
-            "LearningVisibility",
-            _parse(LearningVisibility, self._call("set_learning_hidden", body)),
-        )  # type: ignore[attr-defined]
-
 
 class AsyncStandardsMcpMixin:
     """Async variant of `StandardsMcpMixin`."""
@@ -221,14 +209,3 @@ class AsyncStandardsMcpMixin:
         ).model_dump(mode="json")
         result = await self._call("accept_standard_preview", {"standard_id": standard_id, **body})  # type: ignore[attr-defined]
         return cast("AgentStandard", _parse(AgentStandard, result))
-
-    async def set_learning_hidden(self, code: str, hidden: bool) -> LearningVisibility:
-        """Hide or show one learning (async) through the hosted `set_learning_hidden` tool."""
-
-        body = LearningVisibilityRequest.model_validate(
-            {"code": code, "hidden": hidden}
-        ).model_dump(mode="json")
-        return cast(
-            "LearningVisibility",
-            _parse(LearningVisibility, await self._call("set_learning_hidden", body)),
-        )  # type: ignore[attr-defined]

@@ -60,6 +60,14 @@
           "artifact": {
             "$ref": "#/components/schemas/RunArtifactDescriptor"
           },
+          "learning_context": {
+            "description": "Where this Run's learning goes. Overrides the connection's or the API token's default; without either, an organisation member's Run is organization and every other Run private. A caller who is not an eligible member asking organization gets a private Run and the closed note learning_context_unavailable on the Run read.",
+            "enum": [
+              "private",
+              "organization"
+            ],
+            "type": "string"
+          },
           "predecessor_run_id": {
             "description": "Optional public reference of one of your finished Runs that this Run follows; part of the request identity for the Idempotency-Key.",
             "maxLength": 132,
@@ -79,6 +87,14 @@
           "reference_file": {
             "$ref": "#/components/schemas/ZentureRefRunArtifact",
             "description": "Optional uploaded reference file the answer is checked against (a zenture_ref of one of your ready files). Only with an inline text artifact, otherwise 422 validation_failed; a file that is not ready or readable answers like a file artifact. Part of the request identity."
+          },
+          "standards": {
+            "description": "The standards set in organization context (default organization_and_personal). Ignored in private context, which checks the personal standards only; the Run read then carries the note learning_context_unavailable.",
+            "enum": [
+              "organization",
+              "organization_and_personal"
+            ],
+            "type": "string"
           },
           "task": {
             "maxLength": 20000,
@@ -886,48 +902,6 @@
         ],
         "type": "object"
       },
-      "LearningVisibilityRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "code": {
-            "description": "One of the codes GET /v1/learnings lists under learnings.",
-            "enum": [
-              "factual_error",
-              "unsupported_claim",
-              "outdated_claim",
-              "calculation_error",
-              "missing_requirement",
-              "violated_constraint",
-              "missing_citation",
-              "translation_deviation",
-              "standard_violation",
-              "other",
-              "requirements_checked",
-              "claims_verified",
-              "figures_recomputed",
-              "citation_check",
-              "translation_fidelity",
-              "standard_checked",
-              "facts_with_sources",
-              "calculation",
-              "text_edit",
-              "translation",
-              "concept",
-              "communication"
-            ],
-            "type": "string"
-          },
-          "hidden": {
-            "description": "true hides the learning (as the card's Hide), false shows it again.",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "code",
-          "hidden"
-        ],
-        "type": "object"
-      },
       "LimitsResponse": {
         "additionalProperties": false,
         "properties": {
@@ -997,6 +971,14 @@
           "artifact": {
             "$ref": "#/components/schemas/RunArtifactDescriptor"
           },
+          "learning_context": {
+            "description": "Where this Run's learning goes. Overrides the connection's or the API token's default; without either, an organisation member's Run is organization and every other Run private. A caller who is not an eligible member asking organization gets a private Run and the closed note learning_context_unavailable on the Run read.",
+            "enum": [
+              "private",
+              "organization"
+            ],
+            "type": "string"
+          },
           "profile": {
             "default": "standard",
             "description": "Evaluation profile; omitted means standard. fast uses a shorter execution budget; detailed uses an extended budget and additional review steps. Guest Runs admit fast or standard only; detailed requires an account.",
@@ -1010,6 +992,14 @@
           "reference_file": {
             "$ref": "#/components/schemas/ZentureRefRunArtifact",
             "description": "Optional uploaded reference file the answer is checked against (a zenture_ref of one of your ready files). Only with an inline text artifact, otherwise 422 validation_failed; a file that is not ready or readable answers like a file artifact. Part of the request identity."
+          },
+          "standards": {
+            "description": "The standards set in organization context (default organization_and_personal). Ignored in private context, which checks the personal standards only; the Run read then carries the note learning_context_unavailable.",
+            "enum": [
+              "organization",
+              "organization_and_personal"
+            ],
+            "type": "string"
           },
           "task": {
             "maxLength": 20000,
@@ -1439,11 +1429,7 @@
           "standard_invalid",
           "standard_limit",
           "standard_not_checkable",
-          "standards_unavailable",
-          "learning_not_allowed",
-          "learning_hide_private_only",
-          "learning_generation_conflict",
-          "learning_unavailable"
+          "standards_unavailable"
         ],
         "type": "string"
       },
@@ -1715,7 +1701,7 @@
             "description": "Present exactly when state is available."
           },
           "learnings": {
-            "description": "The learnings the card can hide or show, with the flag; present when an Essenz exists, also while a hidden learning keeps the state at cold_start.",
+            "description": "The learnings with the hidden flag the owner set in the web app (read-only here); present when an Essenz exists, also while a hidden learning keeps the state at cold_start.",
             "items": {
               "$ref": "#/components/schemas/LearningVisibility"
             },
@@ -2448,6 +2434,18 @@
               "null"
             ]
           },
+          "essence_scope": {
+            "description": "Whose Essenz the Run carried; null when the Run carried none. Present with learning_context.",
+            "enum": [
+              "personal",
+              "organization",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "essence_version": {
             "description": "Version of the Essenz that shaped this Run.",
             "maxLength": 64,
@@ -2486,6 +2484,18 @@
               "null"
             ]
           },
+          "learning_context": {
+            "description": "The context the Run's learning was fixed to (private or organization); present on a terminal Run that has a learning record.",
+            "enum": [
+              "private",
+              "organization",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "limitations": {
             "items": {
               "type": "string"
@@ -2495,6 +2505,17 @@
           },
           "next_action": {
             "maxLength": 128,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "note": {
+            "description": "Closed note: the learning_context or standards asked for was not available (a non-member asking organization, standards outside organization context); the Run ran private.",
+            "enum": [
+              "learning_context_unavailable",
+              null
+            ],
             "type": [
               "string",
               "null"
@@ -2750,6 +2771,18 @@
               "null"
             ]
           },
+          "essence_scope": {
+            "description": "Whose Essenz the Run carried; null when the Run carried none. Present with learning_context.",
+            "enum": [
+              "personal",
+              "organization",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "essence_version": {
             "description": "Version of the Essenz that shaped this Run.",
             "maxLength": 64,
@@ -2788,6 +2821,18 @@
               "null"
             ]
           },
+          "learning_context": {
+            "description": "The context the Run's learning was fixed to (private or organization); present on a terminal Run that has a learning record.",
+            "enum": [
+              "private",
+              "organization",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "limitations": {
             "items": {
               "type": "string"
@@ -2797,6 +2842,17 @@
           },
           "next_action": {
             "maxLength": 128,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "note": {
+            "description": "Closed note: the learning_context or standards asked for was not available (a non-member asking organization, standards outside organization context); the Run ran private.",
+            "enum": [
+              "learning_context_unavailable",
+              null
+            ],
             "type": [
               "string",
               "null"
@@ -6403,268 +6459,6 @@
         "x-zenture-max-body-bytes": 1024,
         "x-zenture-scopes": [
           "evaluation:read"
-        ]
-      }
-    },
-    "/v1/learnings/visibility": {
-      "put": {
-        "operationId": "putV1LearningVisibility",
-        "parameters": [
-          {
-            "description": "Required idempotency key for safe mutation retries. Use an ASCII-safe caller key such as [A-Za-z0-9._:-]+. Do not include prompts, answers, API tokens, PII, or raw request bodies.",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "required": true,
-            "schema": {
-              "maxLength": 255,
-              "minLength": 1,
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LearningVisibilityRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LearningVisibility"
-                }
-              }
-            },
-            "description": "The learning with its hidden flag.",
-            "headers": {
-              "RateLimit-Limit": {
-                "$ref": "#/components/headers/RateLimitLimit"
-              },
-              "RateLimit-Remaining": {
-                "$ref": "#/components/headers/RateLimitRemaining"
-              },
-              "RateLimit-Reset": {
-                "$ref": "#/components/headers/RateLimitReset"
-              },
-              "X-RateLimit-Limit": {
-                "$ref": "#/components/headers/XRateLimitLimit"
-              },
-              "X-RateLimit-Remaining": {
-                "$ref": "#/components/headers/XRateLimitRemaining"
-              },
-              "X-RateLimit-Reset": {
-                "$ref": "#/components/headers/XRateLimitReset"
-              }
-            }
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicErrorEnvelope"
-                }
-              }
-            },
-            "description": "Public gateway error"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicErrorEnvelope"
-                }
-              }
-            },
-            "description": "Public gateway error"
-          },
-          "402": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicErrorEnvelope"
-                }
-              }
-            },
-            "description": "Public gateway error"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicErrorEnvelope"
-                }
-              }
-            },
-            "description": "Public gateway error"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicErrorEnvelope"
-                }
-              }
-            },
-            "description": "Public gateway error"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicErrorEnvelope"
-                }
-              }
-            },
-            "description": "Public gateway error"
-          },
-          "413": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicErrorEnvelope"
-                }
-              }
-            },
-            "description": "Public gateway error"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicErrorEnvelope"
-                }
-              }
-            },
-            "description": "Public gateway error"
-          },
-          "429": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicErrorEnvelope"
-                }
-              }
-            },
-            "description": "Public gateway error",
-            "headers": {
-              "RateLimit-Limit": {
-                "$ref": "#/components/headers/RateLimitLimit"
-              },
-              "RateLimit-Remaining": {
-                "$ref": "#/components/headers/RateLimitRemaining"
-              },
-              "RateLimit-Reset": {
-                "$ref": "#/components/headers/RateLimitReset"
-              },
-              "Retry-After": {
-                "$ref": "#/components/headers/RetryAfter"
-              },
-              "X-RateLimit-Limit": {
-                "$ref": "#/components/headers/XRateLimitLimit"
-              },
-              "X-RateLimit-Remaining": {
-                "$ref": "#/components/headers/XRateLimitRemaining"
-              },
-              "X-RateLimit-Reset": {
-                "$ref": "#/components/headers/XRateLimitReset"
-              }
-            }
-          },
-          "431": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicErrorEnvelope"
-                }
-              }
-            },
-            "description": "Public gateway error"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicErrorEnvelope"
-                }
-              }
-            },
-            "description": "Public gateway error",
-            "headers": {
-              "Retry-After": {
-                "$ref": "#/components/headers/RetryAfter"
-              }
-            }
-          },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicErrorEnvelope"
-                }
-              }
-            },
-            "description": "Public gateway error",
-            "headers": {
-              "Retry-After": {
-                "$ref": "#/components/headers/RetryAfter"
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "ApiTokenAuth": []
-          }
-        ],
-        "summary": "Put Learning Visibility",
-        "x-zenture-auth-mode": "api_token",
-        "x-zenture-backend-target": "backend_forwarded",
-        "x-zenture-client-surface": "public_api",
-        "x-zenture-cors-policy": "disabled",
-        "x-zenture-cost-class": "expensive_mutation",
-        "x-zenture-error-contract": {
-          "envelope": "#/components/schemas/PublicErrorEnvelope",
-          "terminal_statuses": [
-            "400",
-            "401",
-            "402",
-            "403",
-            "413",
-            "422",
-            "431"
-          ],
-          "transient_statuses": [
-            "429",
-            "503"
-          ]
-        },
-        "x-zenture-error-mappings": [
-          "unauthorized",
-          "forbidden",
-          "rate_limited",
-          "validation_failed",
-          "missing_idempotency_key",
-          "insufficient_credits",
-          "dependency_unavailable",
-          "capacity_unavailable",
-          "internal_error",
-          "idempotency_conflict",
-          "operation_expired",
-          "learning_not_allowed",
-          "learning_hide_private_only",
-          "learning_generation_conflict",
-          "learning_unavailable"
-        ],
-        "x-zenture-idempotency-required": true,
-        "x-zenture-max-body-bytes": 1000,
-        "x-zenture-scopes": [
-          "evaluation:run"
         ]
       }
     },

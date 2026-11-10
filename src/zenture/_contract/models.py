@@ -107,10 +107,6 @@ class PublicErrorCode(StrEnum):
     STANDARD_LIMIT = "standard_limit"
     STANDARD_NOT_CHECKABLE = "standard_not_checkable"
     STANDARDS_UNAVAILABLE = "standards_unavailable"
-    LEARNING_NOT_ALLOWED = "learning_not_allowed"
-    LEARNING_HIDE_PRIVATE_ONLY = "learning_hide_private_only"
-    LEARNING_GENERATION_CONFLICT = "learning_generation_conflict"
-    LEARNING_UNAVAILABLE = "learning_unavailable"
 
 
 class ModelMode(StrEnum):
@@ -610,6 +606,21 @@ class PrepareKnowledgeRunRequest(_RunRequestModel):
             "inline text artifact."
         ),
     )
+    learning_context: Literal["private", "organization"] | None = Field(
+        default=None,
+        description=(
+            "Where this Run's learning goes; overrides the access default. A caller who is not an "
+            "eligible organisation member asking organization gets a private Run and the note "
+            "learning_context_unavailable."
+        ),
+    )
+    standards: Literal["organization", "organization_and_personal"] | None = Field(
+        default=None,
+        description=(
+            "The standards set in organization context (default organization_and_personal); "
+            "ignored in private context."
+        ),
+    )
 
     @field_validator("task")
     @classmethod
@@ -996,6 +1007,9 @@ class PublicRunResponse(_RunResponseModel):
     cancellation_requested: bool = False
     learning_applied: bool | None = None
     essence_version: str | None = Field(default=None, min_length=1, max_length=64)
+    learning_context: Literal["private", "organization"] | None = None
+    essence_scope: Literal["personal", "organization"] | None = None
+    note: Literal["learning_context_unavailable"] | None = None
     essence: str | None = Field(default=None, min_length=1, max_length=600)
     standards_checked: StandardsChecked | None = None
     event_cursor: str | None = Field(

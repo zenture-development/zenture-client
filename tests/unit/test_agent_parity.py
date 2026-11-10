@@ -1,4 +1,4 @@
-"""D-190 parity over REST and MCP: form and preview, accept a preview, standard versions, hide a learning, and the edit criterion."""
+"""D-190 parity over REST and MCP: form and preview, accept a preview, standard versions, and the edit criterion (hiding a learning is a web action, D-207)."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from test_standards import (
 )
 
 from zenture._mcp import AsyncMcpClient, McpClient
-from zenture.types import AgentStandard, Learnings, LearningVisibility, StandardVersions
+from zenture.types import AgentStandard, Learnings, StandardVersions
 
 READY = {
     "state": "ready",
@@ -127,27 +127,12 @@ def test_accepting_a_preview_posts_the_expected_version_with_the_saved_key() -> 
         _rest(seen).accept_standard_preview(STANDARD_ID, expected_version=0, idempotency_key=KEY)
 
 
-def test_hiding_a_learning_puts_a_closed_code_and_refuses_an_unknown_one_before_any_request() -> (
-    None
-):
-    seen = _Seen(200, HIDE)
-    rest = _rest(seen).set_learning_hidden("calculation_error", True, idempotency_key=KEY)
-    transport = _SyncMcp(HIDE)
-    mcp = McpClient(transport).set_learning_hidden("calculation_error", True)
-    request = seen.requests[0]
-    assert isinstance(rest, LearningVisibility)
-    assert rest == mcp
-    assert (request.method, request.url.path, json.loads(request.content)) == (
-        "PUT",
-        "/v1/learnings/visibility",
-        HIDE,
-    )
-    assert request.headers["Idempotency-Key"] == KEY
-    assert transport.calls == [("set_learning_hidden", HIDE)]
-    refused = _Seen(200, HIDE)
-    with pytest.raises(ValueError, match="Input should be"):
-        _rest(refused).set_learning_hidden("made_up", True, idempotency_key=KEY)
-    assert refused.requests == []
+def test_there_is_no_sdk_call_to_hide_a_learning() -> None:
+    """D-207: hiding and showing learnings is a web action; the SDK only reads the flags."""
+    for client in (_rest(_Seen(200, HIDE)), McpClient(_SyncMcp(HIDE))):
+        assert not hasattr(client, "set_learning_hidden")
+    assert not hasattr(_rest(_Seen(200, HIDE))._learnings, "set_hidden")
+    assert not hasattr(AsyncMcpClient(_AsyncMcp(HIDE)), "set_learning_hidden")
 
 
 def test_learnings_list_the_codes_with_their_hidden_flag() -> None:
@@ -164,13 +149,10 @@ def test_async_clients_match_the_sync_wire() -> None:
     async def scenario() -> tuple[object, ...]:
         async with _rest_async(_Seen(200, VERSIONS)) as versions:
             first = await versions.get_standard_versions(STANDARD_ID)
-        async with _rest_async(_Seen(200, HIDE)) as hide:
-            second = await hide.set_learning_hidden("calculation_error", True, idempotency_key=KEY)
         mcp = AsyncMcpClient(_AsyncMcp({**STANDARD, "version": 2}))
-        return first, second, await mcp.accept_standard_preview(STANDARD_ID, expected_version=1)
+        return first, await mcp.accept_standard_preview(STANDARD_ID, expected_version=1)
 
-    versions, hidden, accepted = asyncio.run(scenario())
+    versions, accepted = asyncio.run(scenario())
     assert isinstance(versions, StandardVersions)
-    assert isinstance(hidden, LearningVisibility)
     assert isinstance(accepted, AgentStandard)
     assert accepted.version == 2
