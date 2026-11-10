@@ -790,7 +790,7 @@ def test_retry_after_is_declared_on_transient_gateway_failures() -> None:
                     assert not has_retry_after, (method, path)
 
     run_routes = {key for key in declared["503"] if key[1].startswith("/v1/run")}
-    assert len(declared["503"]) == 29
+    assert len(declared["503"]) == 32
     assert len(run_routes) == 11
     assert declared["502"] == run_routes
     assert declared["504"] == run_routes
