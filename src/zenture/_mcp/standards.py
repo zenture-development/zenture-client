@@ -6,11 +6,14 @@ from typing import TYPE_CHECKING, Any, cast
 
 from pydantic import BaseModel, ValidationError
 
+from zenture._contract.learnings import LearningVisibility, LearningVisibilityRequest
 from zenture._contract.standards import (
+    AcceptStandardPreviewRequest,
     AgentStandard,
     AgentStandards,
     DefineStandardRequest,
     EditStandardRequest,
+    StandardVersions,
 )
 from zenture._resources.standards import standard_path
 from zenture.errors import ZentureMCPProtocolError
@@ -44,6 +47,7 @@ def edit_arguments(
     *,
     expected_version: int,
     text: str | None,
+    criterion: str | None = None,
     strength: str | None,
     task_types: Sequence[str] | None,
     active: bool | None,
@@ -53,6 +57,7 @@ def edit_arguments(
     fields = {
         "expected_version": expected_version,
         "text": text,
+        "criterion": criterion,
         "strength": strength,
         "task_types": None if task_types is None else list(task_types),
         "active": active,
@@ -95,6 +100,7 @@ class StandardsMcpMixin:
         *,
         expected_version: int,
         text: str | None = None,
+        criterion: str | None = None,
         strength: str | None = None,
         task_types: Sequence[str] | None = None,
         active: bool | None = None,
@@ -106,12 +112,41 @@ class StandardsMcpMixin:
             standard_id,
             expected_version=expected_version,
             text=text,
+            criterion=criterion,
             strength=strength,
             task_types=task_types,
             active=active,
             restore_version=restore_version,
         )
         return cast("AgentStandard", _parse(AgentStandard, self._call("edit_standard", arguments)))  # type: ignore[attr-defined]
+
+    def get_standard_versions(self, standard_id: str) -> StandardVersions:
+        """Read the versions of one standard through the hosted `get_standard_versions` tool."""
+
+        standard_path(standard_id)
+        result = self._call("get_standard_versions", {"standard_id": standard_id})  # type: ignore[attr-defined]
+        return cast("StandardVersions", _parse(StandardVersions, result))
+
+    def accept_standard_preview(self, standard_id: str, *, expected_version: int) -> AgentStandard:
+        """Accept the ready preview of a written standard, as the app does."""
+
+        standard_path(standard_id)
+        body = AcceptStandardPreviewRequest.model_validate(
+            {"expected_version": expected_version}
+        ).model_dump(mode="json")
+        result = self._call("accept_standard_preview", {"standard_id": standard_id, **body})  # type: ignore[attr-defined]
+        return cast("AgentStandard", _parse(AgentStandard, result))
+
+    def set_learning_hidden(self, code: str, hidden: bool) -> LearningVisibility:
+        """Hide or show one learning through the hosted `set_learning_hidden` tool."""
+
+        body = LearningVisibilityRequest.model_validate(
+            {"code": code, "hidden": hidden}
+        ).model_dump(mode="json")
+        return cast(
+            "LearningVisibility",
+            _parse(LearningVisibility, self._call("set_learning_hidden", body)),
+        )  # type: ignore[attr-defined]
 
 
 class AsyncStandardsMcpMixin:
@@ -146,6 +181,7 @@ class AsyncStandardsMcpMixin:
         *,
         expected_version: int,
         text: str | None = None,
+        criterion: str | None = None,
         strength: str | None = None,
         task_types: Sequence[str] | None = None,
         active: bool | None = None,
@@ -157,6 +193,7 @@ class AsyncStandardsMcpMixin:
             standard_id,
             expected_version=expected_version,
             text=text,
+            criterion=criterion,
             strength=strength,
             task_types=task_types,
             active=active,
@@ -164,4 +201,34 @@ class AsyncStandardsMcpMixin:
         )
         return cast(
             "AgentStandard", _parse(AgentStandard, await self._call("edit_standard", arguments))
+        )  # type: ignore[attr-defined]
+
+    async def get_standard_versions(self, standard_id: str) -> StandardVersions:
+        """Read the versions of one standard (async) through the hosted `get_standard_versions` tool."""
+
+        standard_path(standard_id)
+        result = await self._call("get_standard_versions", {"standard_id": standard_id})  # type: ignore[attr-defined]
+        return cast("StandardVersions", _parse(StandardVersions, result))
+
+    async def accept_standard_preview(
+        self, standard_id: str, *, expected_version: int
+    ) -> AgentStandard:
+        """Accept the ready preview of a written standard (async), as the app does."""
+
+        standard_path(standard_id)
+        body = AcceptStandardPreviewRequest.model_validate(
+            {"expected_version": expected_version}
+        ).model_dump(mode="json")
+        result = await self._call("accept_standard_preview", {"standard_id": standard_id, **body})  # type: ignore[attr-defined]
+        return cast("AgentStandard", _parse(AgentStandard, result))
+
+    async def set_learning_hidden(self, code: str, hidden: bool) -> LearningVisibility:
+        """Hide or show one learning (async) through the hosted `set_learning_hidden` tool."""
+
+        body = LearningVisibilityRequest.model_validate(
+            {"code": code, "hidden": hidden}
+        ).model_dump(mode="json")
+        return cast(
+            "LearningVisibility",
+            _parse(LearningVisibility, await self._call("set_learning_hidden", body)),
         )  # type: ignore[attr-defined]

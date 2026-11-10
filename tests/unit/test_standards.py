@@ -35,6 +35,7 @@ STANDARD = {
     "strength": "must",
     "task_types": ["facts_with_sources"],
     "active": True,
+    "form": "checkable",
     "text": "Cite a source for every figure",
     "criterion": "Every figure names its source",
     "editable": True,

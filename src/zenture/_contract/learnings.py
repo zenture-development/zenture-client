@@ -31,9 +31,50 @@ class Learnings(SDKBaseModel):
 
     state: Literal["available", "cold_start", "learning_off"]
     essence: Essence | None = None
+    learnings: list[LearningVisibility] | None = Field(default=None, max_length=14)
 
     @model_validator(mode="after")
     def _essence_iff_available(self) -> Self:
         if (self.state == "available") != (self.essence is not None):
             raise ValueError("essence is present exactly when state is available")
         return self
+
+
+LearningCode = Literal[
+    "factual_error",
+    "unsupported_claim",
+    "outdated_claim",
+    "calculation_error",
+    "missing_requirement",
+    "violated_constraint",
+    "missing_citation",
+    "translation_deviation",
+    "standard_violation",
+    "other",
+    "requirements_checked",
+    "claims_verified",
+    "figures_recomputed",
+    "citation_check",
+    "translation_fidelity",
+    "standard_checked",
+    "facts_with_sources",
+    "calculation",
+    "text_edit",
+    "translation",
+    "concept",
+    "communication",
+]
+
+
+class LearningVisibility(SDKBaseModel):
+    """One learning of the Essenz and whether it is hidden (as the card in the app shows it)."""
+
+    code: LearningCode
+    hidden: bool
+
+
+class LearningVisibilityRequest(SDKBaseModel):
+    """Hide (`hidden=True`) or show one learning by its closed code."""
+
+    code: LearningCode
+    hidden: bool
