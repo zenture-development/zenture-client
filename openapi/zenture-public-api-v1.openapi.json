@@ -1439,7 +1439,10 @@
           "standard_invalid",
           "standard_limit",
           "standard_not_checkable",
-          "standards_unavailable"
+          "standards_unavailable",
+          "learning_not_allowed",
+          "learning_generation_conflict",
+          "learning_unavailable"
         ],
         "type": "string"
       },
@@ -6652,14 +6655,9 @@
           "internal_error",
           "idempotency_conflict",
           "operation_expired",
-          "standard_not_found",
-          "standard_forbidden",
-          "standard_version_conflict",
-          "standard_duplicate",
-          "standard_invalid",
-          "standard_limit",
-          "standard_not_checkable",
-          "standards_unavailable"
+          "learning_not_allowed",
+          "learning_generation_conflict",
+          "learning_unavailable"
         ],
         "x-zenture-idempotency-required": true,
         "x-zenture-max-body-bytes": 1000,
