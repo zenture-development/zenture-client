@@ -108,6 +108,7 @@ class PublicErrorCode(StrEnum):
     STANDARD_NOT_CHECKABLE = "standard_not_checkable"
     STANDARDS_UNAVAILABLE = "standards_unavailable"
     LEARNING_NOT_ALLOWED = "learning_not_allowed"
+    LEARNING_HIDE_PRIVATE_ONLY = "learning_hide_private_only"
     LEARNING_GENERATION_CONFLICT = "learning_generation_conflict"
     LEARNING_UNAVAILABLE = "learning_unavailable"
 

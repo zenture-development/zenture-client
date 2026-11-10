@@ -1441,6 +1441,7 @@
           "standard_not_checkable",
           "standards_unavailable",
           "learning_not_allowed",
+          "learning_hide_private_only",
           "learning_generation_conflict",
           "learning_unavailable"
         ],
@@ -6656,6 +6657,7 @@
           "idempotency_conflict",
           "operation_expired",
           "learning_not_allowed",
+          "learning_hide_private_only",
           "learning_generation_conflict",
           "learning_unavailable"
         ],
