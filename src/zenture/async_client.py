@@ -175,7 +175,14 @@ class AsyncZentureClient:
         with ZentureAPIError subclasses that carry the closed standard error code.
         """
 
-        return await self._standards.define(text=text, strength=strength, criterion=criterion, task_types=None if task_types is None else list(task_types), owner=owner, idempotency_key=idempotency_key)
+        return await self._standards.define(
+            text=text,
+            strength=strength,
+            criterion=criterion,
+            task_types=None if task_types is None else list(task_types),
+            owner=owner,
+            idempotency_key=idempotency_key,
+        )
 
     async def edit_standard(
         self,
@@ -197,17 +204,31 @@ class AsyncZentureClient:
         `standard_version_conflict` read the standards again.
         """
 
-        return await self._standards.edit(standard_id, expected_version=expected_version, text=text, criterion=criterion, strength=strength, task_types=None if task_types is None else list(task_types), active=active, restore_version=restore_version, idempotency_key=idempotency_key)
+        return await self._standards.edit(
+            standard_id,
+            expected_version=expected_version,
+            text=text,
+            criterion=criterion,
+            strength=strength,
+            task_types=None if task_types is None else list(task_types),
+            active=active,
+            restore_version=restore_version,
+            idempotency_key=idempotency_key,
+        )
 
     async def get_standard_versions(self, standard_id: str) -> StandardVersions:
         """Return the versions of one standard, newest first; `version` is what `restore_version` takes."""
 
         return await self._standards.versions(standard_id)
 
-    async def accept_standard_preview(self, standard_id: str, *, expected_version: int, idempotency_key: str) -> AgentStandard:
+    async def accept_standard_preview(
+        self, standard_id: str, *, expected_version: int, idempotency_key: str
+    ) -> AgentStandard:
         """Accept the ready preview of a written standard, as the app does; its criterion becomes version + 1."""
 
-        return await self._standards.accept_preview(standard_id, expected_version=expected_version, idempotency_key=idempotency_key)
+        return await self._standards.accept_preview(
+            standard_id, expected_version=expected_version, idempotency_key=idempotency_key
+        )
 
     async def aclose(self) -> None:
         """Close client-owned transport resources."""
