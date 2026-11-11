@@ -30,7 +30,9 @@ class StandardPreview(SDKBaseModel):
 
     state: Literal["pending", "ready", "failed", "not_checkable", "superseded"]
     criterion: str | None = Field(default=None, min_length=3, max_length=300)
-    task_types_suggested: list[StandardTaskType] = Field(default_factory=list)
+    task_types_suggested: list[StandardTaskType] = Field(
+        default_factory=lambda: list[StandardTaskType]()
+    )
 
 
 class AgentStandard(SDKBaseModel):
@@ -62,7 +64,9 @@ class DefineStandardRequest(SDKBaseModel):
     text: str = Field(min_length=3, max_length=300)
     criterion: str | None = Field(default=None, min_length=3, max_length=300)
     strength: StandardStrength
-    task_types: list[StandardTaskType] = Field(default_factory=list, max_length=7)
+    task_types: list[StandardTaskType] = Field(
+        default_factory=lambda: list[StandardTaskType](), max_length=7
+    )
     owner: StandardOwner = "user"
 
     @model_validator(mode="after")

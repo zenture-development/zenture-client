@@ -55,10 +55,10 @@ class _SyncMcp:
 
 
 class _AsyncMcp(_SyncMcp):
-    async def list_tools(self) -> object:  # type: ignore[override]
+    async def list_tools(self) -> object:
         return {"tools": []}
 
-    async def call_tool(self, name: str, arguments: Mapping[str, object]) -> object:  # type: ignore[override]
+    async def call_tool(self, name: str, arguments: Mapping[str, object]) -> object:
         return super().call_tool(name, arguments)
 
 
@@ -243,7 +243,7 @@ def _run(**extra: object) -> dict[str, object]:
 
 
 def _content(finding_extra: Mapping[str, object]) -> dict[str, Any]:
-    content = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    content: dict[str, Any] = json.loads(FIXTURE.read_text(encoding="utf-8"))
     content["content"]["findings"][0].update(finding_extra)
     return content
 

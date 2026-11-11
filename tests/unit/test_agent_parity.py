@@ -11,11 +11,11 @@ from test_standards import (
     KEY,
     STANDARD,
     STANDARD_ID,
-    _AsyncMcp,
-    _rest,
-    _rest_async,
-    _Seen,
-    _SyncMcp,
+    _AsyncMcp,  # pyright: ignore[reportPrivateUsage] -- shared standards test doubles
+    _rest,  # pyright: ignore[reportPrivateUsage] -- shared standards test doubles
+    _rest_async,  # pyright: ignore[reportPrivateUsage] -- shared standards test doubles
+    _Seen,  # pyright: ignore[reportPrivateUsage] -- shared standards test doubles
+    _SyncMcp,  # pyright: ignore[reportPrivateUsage] -- shared standards test doubles
 )
 
 from zenture._mcp import AsyncMcpClient, McpClient
@@ -131,7 +131,8 @@ def test_there_is_no_sdk_call_to_hide_a_learning() -> None:
     """D-207: hiding and showing learnings is a web action; the SDK only reads the flags."""
     for client in (_rest(_Seen(200, HIDE)), McpClient(_SyncMcp(HIDE))):
         assert not hasattr(client, "set_learning_hidden")
-    assert not hasattr(_rest(_Seen(200, HIDE))._learnings, "set_hidden")
+    rest_learnings = _rest(_Seen(200, HIDE))._learnings  # pyright: ignore[reportPrivateUsage]
+    assert not hasattr(rest_learnings, "set_hidden")
     assert not hasattr(AsyncMcpClient(_AsyncMcp(HIDE)), "set_learning_hidden")
 
 

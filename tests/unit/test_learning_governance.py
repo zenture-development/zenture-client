@@ -4,11 +4,17 @@ from __future__ import annotations
 
 import asyncio
 import json
+from typing import Any
 
 import httpx
 import pytest
 from pydantic import ValidationError
-from test_run_reference_file import ANSWER, API_KEY, _proposal, _run
+from test_run_reference_file import (
+    ANSWER,
+    API_KEY,
+    _proposal,  # pyright: ignore[reportPrivateUsage] -- shared Run fixture
+    _run,  # pyright: ignore[reportPrivateUsage] -- shared Run fixture
+)
 
 from zenture import AsyncZentureClient, ZentureClient
 from zenture._contract import PublicRunResponse
@@ -64,11 +70,10 @@ def test_prepare_and_run_send_the_context_and_the_standards_set_only_when_given(
 def test_an_unknown_value_fails_locally_before_any_request(field: str, value: str) -> None:
     prepared: list[dict[str, object]] = []
     client = _sync(prepared)
+    unchecked: dict[str, Any] = {field: value}
     try:
         with pytest.raises((ValidationError, ValueError)):
-            client.runs.prepare(
-                task="Check.", artifact=ANSWER, idempotency_key="k", **{field: value}
-            )  # type: ignore[arg-type]
+            client.runs.prepare(task="Check.", artifact=ANSWER, idempotency_key="k", **unchecked)
     finally:
         client.close()
     assert prepared == []

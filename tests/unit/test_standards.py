@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import json
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypedDict
 
 import httpx
 import pytest
@@ -41,7 +41,15 @@ STANDARD = {
     "editable": True,
 }
 LIST = {"standards": [STANDARD], "limit": 8}
-DEFINE = {
+
+
+class _Define(TypedDict):
+    text: str
+    strength: str
+    task_types: list[str]
+
+
+DEFINE: _Define = {
     "text": "Cite a source for every figure",
     "strength": "must",
     "task_types": ["facts_with_sources"],
@@ -64,10 +72,10 @@ class _SyncMcp:
 
 
 class _AsyncMcp(_SyncMcp):
-    async def list_tools(self) -> object:  # type: ignore[override]
+    async def list_tools(self) -> object:
         return {"tools": []}
 
-    async def call_tool(self, name: str, arguments: Mapping[str, object]) -> object:  # type: ignore[override]
+    async def call_tool(self, name: str, arguments: Mapping[str, object]) -> object:
         return super().call_tool(name, arguments)
 
 

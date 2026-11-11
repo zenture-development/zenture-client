@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 import pytest
@@ -13,6 +13,9 @@ from pydantic import ValidationError
 from zenture import AsyncZentureClient, ZentureClient
 from zenture._contract import PublicRunResponse
 from zenture._contract.standards_checked import StandardCheckResult, StandardsChecked
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 API_KEY = "zt_" + "live_" + "client_123"
 RUN_ID = "run_33333333333343338333333333333333"
@@ -88,20 +91,22 @@ def test_a_run_without_standards_keeps_the_old_shape() -> None:
     assert "standards_checked" not in run.model_dump(mode="json", exclude_none=True)
 
 
-@pytest.mark.parametrize(
-    "mutate",
-    [
-        lambda c: c["results"][0].update(result="partly"),
-        lambda c: c["results"][0].update(strength="may"),
-        lambda c: c["results"][0].update(owner="team"),
-        lambda c: c["results"][0].update(text="the standard text"),
-        lambda c: c.update(text="extra"),
-        lambda c: c.update(set_hash="short"),
-        lambda c: c.update(results=[]),
-        lambda c: c.update(results=c["results"][:1] * 17),
-    ],
-)
-def test_the_closed_models_reject_unknown_values_and_extra_keys(mutate: Any) -> None:
+_MUTATIONS: list[Callable[[dict[str, Any]], object]] = [
+    lambda c: c["results"][0].update(result="partly"),
+    lambda c: c["results"][0].update(strength="may"),
+    lambda c: c["results"][0].update(owner="team"),
+    lambda c: c["results"][0].update(text="the standard text"),
+    lambda c: c.update(text="extra"),
+    lambda c: c.update(set_hash="short"),
+    lambda c: c.update(results=[]),
+    lambda c: c.update(results=c["results"][:1] * 17),
+]
+
+
+@pytest.mark.parametrize("mutate", _MUTATIONS)
+def test_the_closed_models_reject_unknown_values_and_extra_keys(
+    mutate: Callable[[dict[str, Any]], object],
+) -> None:
     checked = copy.deepcopy(CHECKED)
     mutate(checked)
 

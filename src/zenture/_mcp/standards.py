@@ -34,7 +34,7 @@ def define_arguments(
     *, text: str, strength: str, criterion: str | None, task_types: Sequence[str] | None, owner: str
 ) -> dict[str, object]:
     fields = {"text": text, "strength": strength, "criterion": criterion, "owner": owner}
-    present = {key: value for key, value in fields.items() if value is not None}
+    present: dict[str, object] = {key: value for key, value in fields.items() if value is not None}
     if task_types is not None:
         present["task_types"] = list(task_types)
     request = DefineStandardRequest.model_validate(present)
@@ -70,10 +70,14 @@ def edit_arguments(
 class StandardsMcpMixin:
     """`get_standards`, `define_standard` and `edit_standard`; the account is the OAuth session's."""
 
+    if TYPE_CHECKING:
+
+        def _call(self, name: str, arguments: Mapping[str, object]) -> dict[str, object]: ...
+
     def get_standards(self) -> AgentStandards:
         """Read your standards through the hosted `get_standards` tool (scope `mcp:run`). No arguments."""
 
-        return cast("AgentStandards", _parse(AgentStandards, self._call("get_standards", {})))  # type: ignore[attr-defined]
+        return cast("AgentStandards", _parse(AgentStandards, self._call("get_standards", {})))
 
     def define_standard(
         self,
@@ -91,7 +95,7 @@ class StandardsMcpMixin:
         )
         return cast(
             "AgentStandard", _parse(AgentStandard, self._call("define_standard", arguments))
-        )  # type: ignore[attr-defined]
+        )
 
     def edit_standard(
         self,
@@ -117,13 +121,13 @@ class StandardsMcpMixin:
             active=active,
             restore_version=restore_version,
         )
-        return cast("AgentStandard", _parse(AgentStandard, self._call("edit_standard", arguments)))  # type: ignore[attr-defined]
+        return cast("AgentStandard", _parse(AgentStandard, self._call("edit_standard", arguments)))
 
     def get_standard_versions(self, standard_id: str) -> StandardVersions:
         """Read the versions of one standard through the hosted `get_standard_versions` tool."""
 
         standard_path(standard_id)
-        result = self._call("get_standard_versions", {"standard_id": standard_id})  # type: ignore[attr-defined]
+        result = self._call("get_standard_versions", {"standard_id": standard_id})
         return cast("StandardVersions", _parse(StandardVersions, result))
 
     def accept_standard_preview(self, standard_id: str, *, expected_version: int) -> AgentStandard:
@@ -133,17 +137,21 @@ class StandardsMcpMixin:
         body = AcceptStandardPreviewRequest.model_validate(
             {"expected_version": expected_version}
         ).model_dump(mode="json")
-        result = self._call("accept_standard_preview", {"standard_id": standard_id, **body})  # type: ignore[attr-defined]
+        result = self._call("accept_standard_preview", {"standard_id": standard_id, **body})
         return cast("AgentStandard", _parse(AgentStandard, result))
 
 
 class AsyncStandardsMcpMixin:
     """Async variant of `StandardsMcpMixin`."""
 
+    if TYPE_CHECKING:
+
+        async def _call(self, name: str, arguments: Mapping[str, object]) -> dict[str, object]: ...
+
     async def get_standards(self) -> AgentStandards:
         """Read your standards through the hosted `get_standards` tool (async)."""
 
-        return cast("AgentStandards", _parse(AgentStandards, await self._call("get_standards", {})))  # type: ignore[attr-defined]
+        return cast("AgentStandards", _parse(AgentStandards, await self._call("get_standards", {})))
 
     async def define_standard(
         self,
@@ -161,7 +169,7 @@ class AsyncStandardsMcpMixin:
         )
         return cast(
             "AgentStandard", _parse(AgentStandard, await self._call("define_standard", arguments))
-        )  # type: ignore[attr-defined]
+        )
 
     async def edit_standard(
         self,
@@ -189,13 +197,13 @@ class AsyncStandardsMcpMixin:
         )
         return cast(
             "AgentStandard", _parse(AgentStandard, await self._call("edit_standard", arguments))
-        )  # type: ignore[attr-defined]
+        )
 
     async def get_standard_versions(self, standard_id: str) -> StandardVersions:
         """Read the versions of one standard (async) through the hosted `get_standard_versions` tool."""
 
         standard_path(standard_id)
-        result = await self._call("get_standard_versions", {"standard_id": standard_id})  # type: ignore[attr-defined]
+        result = await self._call("get_standard_versions", {"standard_id": standard_id})
         return cast("StandardVersions", _parse(StandardVersions, result))
 
     async def accept_standard_preview(
@@ -207,5 +215,5 @@ class AsyncStandardsMcpMixin:
         body = AcceptStandardPreviewRequest.model_validate(
             {"expected_version": expected_version}
         ).model_dump(mode="json")
-        result = await self._call("accept_standard_preview", {"standard_id": standard_id, **body})  # type: ignore[attr-defined]
+        result = await self._call("accept_standard_preview", {"standard_id": standard_id, **body})
         return cast("AgentStandard", _parse(AgentStandard, result))
