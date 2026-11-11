@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from zenture._contract.headers import RATE_LIMIT_HEADER_NAMES, parse_rate_limit_headers
+from zenture._contract.learnings import Essence, Learnings
 from zenture._contract.models import (
     AcceptRunRequest,
     ArtifactUploadAccepted,
@@ -69,11 +70,14 @@ from zenture._contract.models import (
     UnavailableCreditAmount,
     UsageScope,
 )
+from zenture._contract.standards import AgentStandard, AgentStandards
 from zenture.rate_limits import RateLimitInfo
 
 __all__ = (
     "RATE_LIMIT_HEADER_NAMES",
     "AcceptRunRequest",
+    "AgentStandard",
+    "AgentStandards",
     "ArtifactUploadAccepted",
     "ArtifactUploadRequest",
     "ArtifactUploadResponse",
@@ -82,9 +86,11 @@ __all__ = (
     "ComposedSafeResultContentV1",
     "CreateRunRequest",
     "CreditAmountProjectionV1",
+    "Essence",
     "EvaluateRequest",
     "FindingAdjudication",
     "InputWizardRequest",
+    "Learnings",
     "LimitsResponse",
     "ListRunEventsResponse",
     "ListRunsResponse",

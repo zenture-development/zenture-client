@@ -27,6 +27,17 @@ Run in `.run`, while REST `runs.get()` returns it directly.
 
 | Method | Endpoint | Success | Client surface | Client model |
 | --- | --- | --- | --- | --- |
+| `POST` | `/v1/run-artifacts/signed-upload` | `200` | `client.runs.signed_upload(...)` | `PublicSignedUploadResponse` |
+| `PUT` | `/v1/run-artifacts/uploads/{upload_id}` | `202` | `client.runs.attach_artifact(...)` | `PublicUploadAcceptedResponse` |
+| `GET` | `/v1/run-artifacts/{artifact_id}` | `200` | `httpx` direct call | `PublicArtifactStatusResponse` |
+| `GET` | `/v1/runs` | `200` | `client.runs.list(...)` | `PublicRunCollectionResponse` |
+| `POST` | `/v1/runs` | `200, 202` | `client.runs.create(...)`, `client.runs.run(...)` | `PublicRunResponse` |
+| `POST` | `/v1/runs/prepare` | `200` | `client.runs.prepare(...)` | `PrepareRunResponse` |
+| `GET` | `/v1/runs/{run_id}` | `200` | `client.runs.get(...)` | `PublicRunResponse` |
+| `POST` | `/v1/runs/{run_id}/cancel` | `200` | `client.runs.cancel(...)` | `PublicRunResponse` |
+| `GET` | `/v1/runs/{run_id}/events` | `200` | `client.runs.list_events(...)` | `PublicRunEventsResponse` |
+| `GET` | `/v1/runs/{run_id}/events/stream` | `200` | `client.runs.iter_events(...)` | `string` |
+| `POST` | `/v1/runs/{run_id}/outcome` | `200` | `client.runs.record_outcome(...)` | `PublicRunOutcomeResponse` |
 | `POST` | `/v1/chat` | `202` | `client.chat.create(...)`, `client.chat.create_operation(...)`, `client.chat.run(...)` | `PublicOperationResponse`, `OperationRunResult` |
 | `GET` | `/v1/chats` | `200` | `client.chat.list(...)`, `client.chat.iter(...)` | `PublicChatCollectionResponse` |
 | `GET` | `/v1/chats/{chat_id}` | `200` | `client.chat.get(...)` | `PublicChatResponse` |
@@ -36,19 +47,15 @@ Run in `.run`, while REST `runs.get()` returns it directly.
 | `GET` | `/v1/evaluations/{evaluation_id}` | `200` | `client.evaluations.get(...)` | `PublicEvaluationResponse` |
 | `GET` | `/v1/helloworld` | `200` | `client.helloworld()` | `str` |
 | `POST` | `/v1/input-wizard` | `202` | `client.input_wizard.create(...)`, `client.input_wizard.run(...)` | `PublicOperationResponse`, `OperationRunResult` |
+| `GET` | `/v1/learnings` | `200` | `httpx` direct call | `PublicLearningsResponse` |
 | `GET` | `/v1/limits` | `200` | `client.limits.get()` | `LimitsResponse` |
 | `GET` | `/v1/models` | `200` | `client.models.list(mode=None | "single" | "multi")` | `PublicModelListResponse` |
 | `GET` | `/v1/operations/{operation_id}` | `200` | `client.operations.get(...)`, `client.operations.wait(...)` | `PublicOperationResponse` |
-| `POST` | `/v1/run-artifacts/signed-upload` | `200` | `client.runs.attach_artifact(...)` (step 1, internal) | `PublicSignedUploadResponse` |
-| `PUT` | `/v1/run-artifacts/uploads/{upload_id}` | `202` | `client.runs.attach_artifact(...)` (step 2, internal) | `PublicUploadAcceptedResponse` |
-| `GET` | `/v1/runs` | `200` | `client.runs.list(...)` | `PublicRunCollectionResponse` |
-| `POST` | `/v1/runs` | `200, 202` | `client.runs.create(...)`, `client.runs.run(...)` | `PublicRunResponse` |
-| `POST` | `/v1/runs/prepare` | `200` | `client.runs.prepare(...)` | `PrepareRunResponse` |
-| `GET` | `/v1/runs/{run_id}` | `200` | `client.runs.get(...)` | `PublicRunResponse` |
-| `POST` | `/v1/runs/{run_id}/cancel` | `200` | `client.runs.cancel(...)` | `PublicRunResponse` |
-| `GET` | `/v1/runs/{run_id}/events` | `200` | `client.runs.list_events(...)` | `PublicRunEventsResponse` |
-| `GET` | `/v1/runs/{run_id}/events/stream` | `200` | `client.runs.iter_events(...)` | `string` |
-| `POST` | `/v1/runs/{run_id}/outcome` | `200` | `client.runs.record_outcome(...)` | `PublicRunOutcomeResponse` |
+| `GET` | `/v1/standards` | `200` | `httpx` direct call | `AgentStandards` |
+| `POST` | `/v1/standards` | `201` | `httpx` direct call | `AgentStandard` |
+| `PATCH` | `/v1/standards/{standard_id}` | `200` | `httpx` direct call | `AgentStandard` |
+| `POST` | `/v1/standards/{standard_id}/preview/accept` | `200` | `httpx` direct call | `AgentStandard` |
+| `GET` | `/v1/standards/{standard_id}/versions` | `200` | `httpx` direct call | `AgentStandardVersions` |
 | `GET` | `/v1/usage` | `200` | `client.usage.get(...)` | `PublicUsageResponse` |
 | `GET` | `/v1/wallet` | `200` | `client.wallet.get()` | `PublicWalletResponse` |
 
@@ -169,6 +176,784 @@ Terminal failure example:
 ```
 
 ## Endpoint Details
+
+### `POST /v1/run-artifacts/signed-upload`
+
+Client surface: `client.runs.signed_upload(...)`
+
+Client model: `PublicSignedUploadResponse`
+
+Auth mode: `api_token`
+
+Scopes: `evaluation:run`
+
+Idempotency: `required`
+
+Request body schema: `SignedUploadRequest`
+
+Request body example:
+
+```json
+{
+  "byte_size": 1,
+  "content_hash": "example",
+  "file_name": "example",
+  "mime_type": "example"
+}
+```
+
+Response `200` as `application/json`:
+
+Schema: `PublicSignedUploadResponse`
+
+```json
+{
+  "artifact_ref": "example",
+  "expires_at": "example",
+  "upload_id": "example",
+  "upload_token": "example",
+  "upload_url": "example"
+}
+```
+
+### `PUT /v1/run-artifacts/uploads/{upload_id}`
+
+Client surface: `client.runs.attach_artifact(...)`
+
+Client model: `PublicUploadAcceptedResponse`
+
+Auth mode: `upload_token`
+
+Scopes: `none`
+
+Idempotency: `not required`
+
+Request body schema: `string`
+
+Request body example:
+
+```json
+"example"
+```
+
+Response `202` as `application/json`:
+
+Schema: `PublicUploadAcceptedResponse`
+
+```json
+{
+  "artifact_ref": "example",
+  "next_step": "start_run",
+  "retry_after_seconds": 1,
+  "status": "pending"
+}
+```
+
+### `GET /v1/run-artifacts/{artifact_id}`
+
+Client surface: `httpx` direct call
+
+Client model: `PublicArtifactStatusResponse`
+
+Auth mode: `api_token`
+
+Scopes: `evaluation:run`
+
+Idempotency: `not required`
+
+Request body: none
+
+Response `200` as `application/json`:
+
+Schema: `PublicArtifactStatusResponse`
+
+```json
+{
+  "artifact_id": "example",
+  "char_count": 1,
+  "expires_at": "example",
+  "media_type": "example",
+  "retry_after_seconds": 1,
+  "skipped_images": 1,
+  "status": "pending"
+}
+```
+
+### `GET /v1/runs`
+
+Client surface: `client.runs.list(...)`
+
+Client model: `PublicRunCollectionResponse`
+
+Auth mode: `api_token`
+
+Scopes: `evaluation:read`
+
+Idempotency: `not required`
+
+Request body: none
+
+Response `200` as `application/json`:
+
+Schema: `PublicRunCollectionResponse`
+
+```json
+{
+  "has_more": true,
+  "next_cursor": "cursor_next",
+  "runs": [
+    {
+      "created_at": "2026-06-15T10:00:00Z",
+      "deadline_at": "example",
+      "decision": "ready",
+      "error_code": "example",
+      "input_kind": "text",
+      "profile": "fast",
+      "reference_file_attached": true,
+      "run_id": "example",
+      "status": "active",
+      "task_summary_ref": "example",
+      "title": "example",
+      "updated_at": "2026-06-15T10:00:30Z"
+    }
+  ]
+}
+```
+
+### `POST /v1/runs`
+
+Client surface: `client.runs.create(...)`, `client.runs.run(...)`
+
+Client model: `PublicRunResponse`
+
+Auth mode: `api_token`
+
+Scopes: `evaluation:run`
+
+Idempotency: `required`
+
+Request body schema: `object`
+
+Request body example:
+
+```json
+{
+  "artifact": "example",
+  "learning_context": "private",
+  "predecessor_run_id": "example",
+  "profile": "fast",
+  "reference_file": {
+    "type": "zenture_ref",
+    "value": "example"
+  },
+  "standards": "organization",
+  "task": "example"
+}
+```
+
+Response `200` as `application/json`:
+
+Schema: `PublicRunResponse`
+
+```json
+{
+  "acceptance_decision": "ready",
+  "artifact_refs": [
+    "example"
+  ],
+  "billing_summary": {
+    "final_credits": "example",
+    "schema_version": "run.terminal_billing_summary.v1",
+    "status": "pending"
+  },
+  "cancellation_requested": true,
+  "capability_coverage": {
+    "available_refs": [
+      "example"
+    ],
+    "limitation_refs": [
+      "example"
+    ],
+    "unavailable_refs": [
+      "example"
+    ]
+  },
+  "completed_at": "2026-06-15T10:00:30Z",
+  "created_at": "2026-06-15T10:00:00Z",
+  "deadline_at": "example",
+  "essence": "example",
+  "essence_scope": "personal",
+  "essence_version": "example",
+  "event_cursor": "example",
+  "family": "knowledge",
+  "generation": 1,
+  "input_kind": "text",
+  "learning_applied": "example",
+  "learning_context": "private",
+  "limitations": [
+    "example"
+  ],
+  "next_action": "example",
+  "note": "learning_context_unavailable",
+  "phase": "preparing",
+  "profile": "fast",
+  "queue": {
+    "estimate_as_of": "example",
+    "estimated_completion_seconds": "example",
+    "estimated_start_seconds": "example",
+    "jobs_ahead": 1,
+    "queue_reason": "example"
+  },
+  "queue_expires_at": "example",
+  "reason_code": "example",
+  "reference_file_attached": true,
+  "result": "pending",
+  "retry_after_seconds": "example",
+  "run_id": "example",
+  "run_insight_ref": "example",
+  "safe_result_content": "example",
+  "standards_checked": {
+    "results": [
+      "example"
+    ],
+    "set_hash": "example"
+  },
+  "started_at": "example",
+  "status": "created",
+  "task_contract_summary": {
+    "requirement_count": 1,
+    "summary_ref": "example",
+    "work_type": "example"
+  },
+  "technical_status": "complete",
+  "updated_at": "2026-06-15T10:00:30Z",
+  "work_type": "example"
+}
+```
+
+Response `202` as `application/json`:
+
+Schema: `PublicRunResponse`
+
+```json
+{
+  "acceptance_decision": "ready",
+  "artifact_refs": [
+    "example"
+  ],
+  "billing_summary": {
+    "final_credits": "example",
+    "schema_version": "run.terminal_billing_summary.v1",
+    "status": "pending"
+  },
+  "cancellation_requested": true,
+  "capability_coverage": {
+    "available_refs": [
+      "example"
+    ],
+    "limitation_refs": [
+      "example"
+    ],
+    "unavailable_refs": [
+      "example"
+    ]
+  },
+  "completed_at": "2026-06-15T10:00:30Z",
+  "created_at": "2026-06-15T10:00:00Z",
+  "deadline_at": "example",
+  "essence": "example",
+  "essence_scope": "personal",
+  "essence_version": "example",
+  "event_cursor": "example",
+  "family": "knowledge",
+  "generation": 1,
+  "input_kind": "text",
+  "learning_applied": "example",
+  "learning_context": "private",
+  "limitations": [
+    "example"
+  ],
+  "next_action": "example",
+  "note": "learning_context_unavailable",
+  "phase": "preparing",
+  "profile": "fast",
+  "queue": {
+    "estimate_as_of": "example",
+    "estimated_completion_seconds": "example",
+    "estimated_start_seconds": "example",
+    "jobs_ahead": 1,
+    "queue_reason": "example"
+  },
+  "queue_expires_at": "example",
+  "reason_code": "example",
+  "reference_file_attached": true,
+  "result": "pending",
+  "retry_after_seconds": "example",
+  "run_id": "example",
+  "run_insight_ref": "example",
+  "safe_result_content": "example",
+  "standards_checked": {
+    "results": [
+      "example"
+    ],
+    "set_hash": "example"
+  },
+  "started_at": "example",
+  "status": "created",
+  "task_contract_summary": {
+    "requirement_count": 1,
+    "summary_ref": "example",
+    "work_type": "example"
+  },
+  "technical_status": "complete",
+  "updated_at": "2026-06-15T10:00:30Z",
+  "work_type": "example"
+}
+```
+
+### `POST /v1/runs/prepare`
+
+Client surface: `client.runs.prepare(...)`
+
+Client model: `PrepareRunResponse`
+
+Auth mode: `api_token`
+
+Scopes: `evaluation:run`
+
+Idempotency: `required`
+
+Request body schema: `PrepareRunRequest`
+
+Request body example:
+
+```json
+{
+  "artifact": {
+    "type": "example",
+    "value": "example"
+  },
+  "learning_context": "private",
+  "profile": "fast",
+  "reference_file": {
+    "type": "zenture_ref",
+    "value": "example"
+  },
+  "standards": "organization",
+  "task": "example"
+}
+```
+
+Response `200` as `application/json`:
+
+Schema: `PrepareRunResponse`
+
+```json
+{
+  "billing_projection": {
+    "estimated_credits": "example",
+    "maximum_credits": "example",
+    "schema_version": "run.prepare_credits_projection.v1"
+  },
+  "estimated_credits": "example",
+  "expected_duration_seconds": 1,
+  "expires_at": "example",
+  "guest_slot_cost": "example",
+  "inferred_work_type": "example",
+  "maximum_credits": "example",
+  "planned_checks": [
+    "example"
+  ],
+  "proposal_hash": "example",
+  "proposal_id": "example",
+  "proposal_version": 1,
+  "start_admissible": true,
+  "task_contract_summary": {
+    "requirement_count": 1,
+    "summary_ref": "example",
+    "work_type": "example"
+  },
+  "unavailable_checks": [
+    "example"
+  ]
+}
+```
+
+### `GET /v1/runs/{run_id}`
+
+Client surface: `client.runs.get(...)`
+
+Client model: `PublicRunResponse`
+
+Auth mode: `api_token`
+
+Scopes: `evaluation:read`
+
+Idempotency: `not required`
+
+Request body: none
+
+Response `200` as `application/json`:
+
+Schema: `PublicRunResponse`
+
+```json
+{
+  "acceptance_decision": "ready",
+  "artifact_refs": [
+    "example"
+  ],
+  "billing_summary": {
+    "final_credits": "example",
+    "schema_version": "run.terminal_billing_summary.v1",
+    "status": "pending"
+  },
+  "cancellation_requested": true,
+  "capability_coverage": {
+    "available_refs": [
+      "example"
+    ],
+    "limitation_refs": [
+      "example"
+    ],
+    "unavailable_refs": [
+      "example"
+    ]
+  },
+  "completed_at": "2026-06-15T10:00:30Z",
+  "created_at": "2026-06-15T10:00:00Z",
+  "deadline_at": "example",
+  "essence": "example",
+  "essence_scope": "personal",
+  "essence_version": "example",
+  "event_cursor": "example",
+  "family": "knowledge",
+  "generation": 1,
+  "input_kind": "text",
+  "learning_applied": "example",
+  "learning_context": "private",
+  "limitations": [
+    "example"
+  ],
+  "next_action": "example",
+  "note": "learning_context_unavailable",
+  "phase": "preparing",
+  "profile": "fast",
+  "queue": {
+    "estimate_as_of": "example",
+    "estimated_completion_seconds": "example",
+    "estimated_start_seconds": "example",
+    "jobs_ahead": 1,
+    "queue_reason": "example"
+  },
+  "queue_expires_at": "example",
+  "reason_code": "example",
+  "reference_file_attached": true,
+  "result": "pending",
+  "retry_after_seconds": "example",
+  "run_id": "example",
+  "run_insight_ref": "example",
+  "safe_result_content": "example",
+  "standards_checked": {
+    "results": [
+      "example"
+    ],
+    "set_hash": "example"
+  },
+  "started_at": "example",
+  "status": "created",
+  "task_contract_summary": {
+    "requirement_count": 1,
+    "summary_ref": "example",
+    "work_type": "example"
+  },
+  "technical_status": "complete",
+  "updated_at": "2026-06-15T10:00:30Z",
+  "work_type": "example"
+}
+```
+
+### `POST /v1/runs/{run_id}/cancel`
+
+Client surface: `client.runs.cancel(...)`
+
+Client model: `PublicRunResponse`
+
+Auth mode: `api_token`
+
+Scopes: `evaluation:run`
+
+Idempotency: `required`
+
+Request body schema: `CancelRunRequest`
+
+Request body example:
+
+```json
+{
+  "reason": "user_requested"
+}
+```
+
+Response `200` as `application/json`:
+
+Schema: `PublicRunResponse`
+
+```json
+{
+  "acceptance_decision": "ready",
+  "artifact_refs": [
+    "example"
+  ],
+  "billing_summary": {
+    "final_credits": "example",
+    "schema_version": "run.terminal_billing_summary.v1",
+    "status": "pending"
+  },
+  "cancellation_requested": true,
+  "capability_coverage": {
+    "available_refs": [
+      "example"
+    ],
+    "limitation_refs": [
+      "example"
+    ],
+    "unavailable_refs": [
+      "example"
+    ]
+  },
+  "completed_at": "2026-06-15T10:00:30Z",
+  "created_at": "2026-06-15T10:00:00Z",
+  "deadline_at": "example",
+  "essence": "example",
+  "essence_scope": "personal",
+  "essence_version": "example",
+  "event_cursor": "example",
+  "family": "knowledge",
+  "generation": 1,
+  "input_kind": "text",
+  "learning_applied": "example",
+  "learning_context": "private",
+  "limitations": [
+    "example"
+  ],
+  "next_action": "example",
+  "note": "learning_context_unavailable",
+  "phase": "preparing",
+  "profile": "fast",
+  "queue": {
+    "estimate_as_of": "example",
+    "estimated_completion_seconds": "example",
+    "estimated_start_seconds": "example",
+    "jobs_ahead": 1,
+    "queue_reason": "example"
+  },
+  "queue_expires_at": "example",
+  "reason_code": "example",
+  "reference_file_attached": true,
+  "result": "pending",
+  "retry_after_seconds": "example",
+  "run_id": "example",
+  "run_insight_ref": "example",
+  "safe_result_content": "example",
+  "standards_checked": {
+    "results": [
+      "example"
+    ],
+    "set_hash": "example"
+  },
+  "started_at": "example",
+  "status": "created",
+  "task_contract_summary": {
+    "requirement_count": 1,
+    "summary_ref": "example",
+    "work_type": "example"
+  },
+  "technical_status": "complete",
+  "updated_at": "2026-06-15T10:00:30Z",
+  "work_type": "example"
+}
+```
+
+### `GET /v1/runs/{run_id}/events`
+
+Client surface: `client.runs.list_events(...)`
+
+Client model: `PublicRunEventsResponse`
+
+Auth mode: `api_token`
+
+Scopes: `evaluation:read`
+
+Idempotency: `not required`
+
+Request body: none
+
+Response `200` as `application/json`:
+
+Schema: `PublicRunEventsResponse`
+
+```json
+{
+  "events": [
+    {
+      "estimated_completion_seconds": {
+        "max": "example",
+        "min": "example"
+      },
+      "estimated_start_seconds": {
+        "max": "example",
+        "min": "example"
+      },
+      "event_cursor": "example",
+      "event_id": "example",
+      "jobs_ahead": "example",
+      "message_key": "example",
+      "progress_percent": "example",
+      "run_id": "example",
+      "sequence": 1,
+      "status": "queued",
+      "terminal_refs": [
+        "example"
+      ],
+      "type": "run.event"
+    }
+  ],
+  "has_more": true,
+  "next_cursor": "cursor_next"
+}
+```
+
+### `GET /v1/runs/{run_id}/events/stream`
+
+Client surface: `client.runs.iter_events(...)`
+
+Client model: `string`
+
+Auth mode: `api_token`
+
+Scopes: `evaluation:read`
+
+Idempotency: `not required`
+
+Request body: none
+
+Response `200` as `text/event-stream`:
+
+Schema: `string`
+
+```markdown
+example
+```
+
+### `POST /v1/runs/{run_id}/outcome`
+
+Client surface: `client.runs.record_outcome(...)`
+
+Client model: `PublicRunOutcomeResponse`
+
+Auth mode: `api_token`
+
+Scopes: `evaluation:run`
+
+Idempotency: `required`
+
+Request body schema: `RunOutcomeRequest`
+
+Request body example:
+
+```json
+{
+  "edited_artifact_ref": "example",
+  "finding_adjudications": [
+    {
+      "finding_ref": "example",
+      "outcome": "confirmed"
+    }
+  ],
+  "outcome": "used"
+}
+```
+
+Response `200` as `application/json`:
+
+Schema: `PublicRunOutcomeResponse`
+
+```json
+{
+  "acceptance_decision": "ready",
+  "artifact_refs": [
+    "example"
+  ],
+  "billing_summary": {
+    "final_credits": "example",
+    "schema_version": "run.terminal_billing_summary.v1",
+    "status": "pending"
+  },
+  "cancellation_requested": true,
+  "capability_coverage": {
+    "available_refs": [
+      "example"
+    ],
+    "limitation_refs": [
+      "example"
+    ],
+    "unavailable_refs": [
+      "example"
+    ]
+  },
+  "completed_at": "2026-06-15T10:00:30Z",
+  "created_at": "2026-06-15T10:00:00Z",
+  "deadline_at": "example",
+  "essence": "example",
+  "essence_scope": "personal",
+  "essence_version": "example",
+  "event_cursor": "example",
+  "family": "knowledge",
+  "generation": 1,
+  "input_kind": "text",
+  "learning_applied": "example",
+  "learning_context": "private",
+  "limitations": [
+    "example"
+  ],
+  "next_action": "example",
+  "note": "learning_context_unavailable",
+  "phase": "preparing",
+  "profile": "fast",
+  "queue": {
+    "estimate_as_of": "example",
+    "estimated_completion_seconds": "example",
+    "estimated_start_seconds": "example",
+    "jobs_ahead": 1,
+    "queue_reason": "example"
+  },
+  "queue_expires_at": "example",
+  "reason_code": "example",
+  "reference_file_attached": true,
+  "result": "pending",
+  "retry_after_seconds": "example",
+  "run_id": "example",
+  "run_insight_ref": "example",
+  "safe_result_content": "example",
+  "standards_checked": {
+    "results": [
+      "example"
+    ],
+    "set_hash": "example"
+  },
+  "started_at": "example",
+  "status": "created",
+  "task_contract_summary": {
+    "requirement_count": 1,
+    "summary_ref": "example",
+    "work_type": "example"
+  },
+  "technical_status": "complete",
+  "updated_at": "2026-06-15T10:00:30Z",
+  "work_type": "example"
+}
+```
 
 ### `POST /v1/chat`
 
@@ -452,7 +1237,7 @@ Base URL: `https://api.zenture.app/v1`
 
 Developer docs: `https://www.zenture.app/en/developers`
 
-Python client: [zenture-development/zenture-client](https://github.com/zenture-development/zenture-client)
+Python client (`python -m pip install --upgrade zenture==1.0.3`): [zenture-development/zenture-client](https://github.com/zenture-development/zenture-client)
 ```
 
 ### `POST /v1/input-wizard`
@@ -488,6 +1273,42 @@ Schema: `PublicOperationResponse`
   "status": "queued",
   "result": null,
   "error": null
+}
+```
+
+### `GET /v1/learnings`
+
+Client surface: `httpx` direct call
+
+Client model: `PublicLearningsResponse`
+
+Auth mode: `api_token`
+
+Scopes: `evaluation:read`
+
+Idempotency: `not required`
+
+Request body: none
+
+Response `200` as `application/json`:
+
+Schema: `PublicLearningsResponse`
+
+```json
+{
+  "essence": {
+    "day": "example",
+    "language": "de",
+    "text": "example",
+    "version": "example"
+  },
+  "learnings": [
+    {
+      "code": "factual_error",
+      "hidden": true
+    }
+  ],
+  "state": "available"
 }
 ```
 
@@ -585,87 +1406,11 @@ Schema: `PublicOperationResponse`
 }
 ```
 
-### `PUT /v1/run-artifacts/uploads/{upload_id}`
+### `GET /v1/standards`
 
-Client surface: `client.runs.attach_artifact(...)` (step 2 of 2; the client sends it,
-you do not call it yourself)
+Client surface: `httpx` direct call
 
-Client model: `ArtifactUploadAccepted` (wire schema `PublicUploadAcceptedResponse`)
-
-Auth mode: `upload_token` (header `X-Upload-Token` only; no bearer, never in a URL)
-
-Scopes: none
-
-Idempotency: not used; the token works once, so the client never retries this request
-
-Request body: the raw file bytes with the declared `Content-Type`
-
-Response `202` as `application/json`:
-
-Schema: `PublicUploadAcceptedResponse`
-
-```json
-{
-  "artifact_ref": "art_example",
-  "next_step": "start_run",
-  "retry_after_seconds": 3,
-  "status": "pending"
-}
-```
-
-Reading the file continues asynchronously. Start the Run with the `artifact_ref` as a
-`zenture_ref`; until the file is read the Run answers `artifact_not_ready` (409) with
-`retry_after_seconds` in the error body.
-
-### `POST /v1/run-artifacts/signed-upload`
-
-Client surface: `client.runs.attach_artifact(...)` (step 1 of 2)
-
-Client model: `PublicSignedUploadResponse`
-
-Auth mode: `api_token`
-
-Scopes: `evaluation:run`
-
-Idempotency: `required`
-
-Request body schema: `SignedUploadRequest`
-
-Request body example:
-
-```json
-{
-  "byte_size": 1,
-  "content_hash": "example",
-  "file_name": "example",
-  "mime_type": "example"
-}
-```
-
-Response `200` as `application/json`:
-
-Schema: `PublicSignedUploadResponse`
-
-```json
-{
-  "artifact_ref": "art_example",
-  "expires_at": "example",
-  "upload_id": "example",
-  "upload_token": "single-use, header only",
-  "upload_url": "https://api.zenture.app/v1/run-artifacts/uploads/upload_example"
-}
-```
-
-`upload_token` is a single-use credential. The client keeps it out of every URL, log,
-repr and exception text and sends it only in `X-Upload-Token`. It refuses an
-`upload_url` that is not https (loopback http only for a loopback client origin) or not
-on its own API origin under `/v1/run-artifacts/uploads/`.
-
-### `GET /v1/runs`
-
-Client surface: `client.runs.list(...)`
-
-Client model: `PublicRunCollectionResponse`
+Client model: `AgentStandards`
 
 Auth mode: `api_token`
 
@@ -677,459 +1422,200 @@ Request body: none
 
 Response `200` as `application/json`:
 
-Schema: `PublicRunCollectionResponse`
+Schema: `AgentStandards`
 
 ```json
 {
-  "has_more": true,
-  "next_cursor": "cursor_next",
-  "runs": [
+  "limit": 8,
+  "standards": [
     {
-      "created_at": "2026-06-15T10:00:00Z",
-      "deadline_at": "example",
-      "decision": "ready",
-      "error_code": "example",
-      "input_kind": "text",
-      "profile": "fast",
-      "reference_file_attached": false,
-      "run_id": "example",
-      "status": "active",
-      "task_summary_ref": "example",
-      "title": "example",
-      "updated_at": "2026-06-15T10:00:30Z"
-    }
-  ]
-}
-```
-
-### `POST /v1/runs`
-
-Client surface: `client.runs.create(...)`, `client.runs.run(...)`
-
-Client model: `PublicRunResponse`
-
-Auth mode: `api_token`
-
-Scopes: `evaluation:run`
-
-Idempotency: `required`
-
-Request body schema: `CreateRunRequest`
-
-Request body example:
-
-```json
-{
-  "predecessor_run_id": "example",
-  "proposal_hash": "example",
-  "proposal_id": "example"
-}
-```
-
-Response `200` as `application/json`:
-
-Schema: `PublicRunResponse`
-
-```json
-{
-  "acceptance_decision": "ready",
-  "artifact_refs": [
-    "example"
-  ],
-  "billing_summary": {
-    "final_credits": "example",
-    "schema_version": "run.terminal_billing_summary.v1",
-    "status": "pending"
-  },
-  "cancellation_requested": true,
-  "capability_coverage": {
-    "available_refs": [
-      "example"
-    ],
-    "limitation_refs": [
-      "example"
-    ],
-    "unavailable_refs": [
-      "example"
-    ]
-  },
-  "completed_at": "2026-06-15T10:00:30Z",
-  "created_at": "2026-06-15T10:00:00Z",
-  "deadline_at": "example",
-  "event_cursor": "example",
-  "family": "knowledge",
-  "generation": 1,
-  "input_kind": "text",
-  "limitations": [
-    "example"
-  ],
-  "next_action": "example",
-  "profile": "fast",
-  "queue": {
-    "estimate_as_of": "example",
-    "estimated_completion_seconds": "example",
-    "estimated_start_seconds": "example",
-    "jobs_ahead": 1,
-    "queue_reason": "example"
-  },
-  "reason_code": "example",
-  "reference_file_attached": false,
-  "run_id": "example",
-  "run_insight_ref": "example",
-  "safe_result_content": "example",
-  "started_at": "example",
-  "status": "created",
-  "task_contract_summary": {
-    "requirement_count": 1,
-    "summary_ref": "example",
-    "work_type": "example"
-  },
-  "updated_at": "2026-06-15T10:00:30Z",
-  "work_type": "example"
-}
-```
-
-Response `202` as `application/json`:
-
-Schema: `PublicRunResponse`
-
-```json
-{
-  "acceptance_decision": "ready",
-  "artifact_refs": [
-    "example"
-  ],
-  "billing_summary": {
-    "final_credits": "example",
-    "schema_version": "run.terminal_billing_summary.v1",
-    "status": "pending"
-  },
-  "cancellation_requested": true,
-  "capability_coverage": {
-    "available_refs": [
-      "example"
-    ],
-    "limitation_refs": [
-      "example"
-    ],
-    "unavailable_refs": [
-      "example"
-    ]
-  },
-  "completed_at": "2026-06-15T10:00:30Z",
-  "created_at": "2026-06-15T10:00:00Z",
-  "deadline_at": "example",
-  "event_cursor": "example",
-  "family": "knowledge",
-  "generation": 1,
-  "input_kind": "text",
-  "limitations": [
-    "example"
-  ],
-  "next_action": "example",
-  "profile": "fast",
-  "queue": {
-    "estimate_as_of": "example",
-    "estimated_completion_seconds": "example",
-    "estimated_start_seconds": "example",
-    "jobs_ahead": 1,
-    "queue_reason": "example"
-  },
-  "reason_code": "example",
-  "reference_file_attached": false,
-  "run_id": "example",
-  "run_insight_ref": "example",
-  "safe_result_content": "example",
-  "started_at": "example",
-  "status": "created",
-  "task_contract_summary": {
-    "requirement_count": 1,
-    "summary_ref": "example",
-    "work_type": "example"
-  },
-  "updated_at": "2026-06-15T10:00:30Z",
-  "work_type": "example"
-}
-```
-
-### `POST /v1/runs/prepare`
-
-Client surface: `client.runs.prepare(...)`
-
-Client model: `PrepareRunResponse`
-
-Auth mode: `api_token`
-
-Scopes: `evaluation:run`
-
-Idempotency: `required`
-
-Request body schema: `PrepareRunRequest`
-
-Request body example:
-
-```json
-{
-  "artifact": {
-    "type": "example",
-    "value": "example"
-  },
-  "profile": "fast",
-  "task": "example"
-}
-```
-
-Response `200` as `application/json`:
-
-Schema: `PrepareRunResponse`
-
-```json
-{
-  "billing_projection": {
-    "estimated_credits": "example",
-    "maximum_credits": "example",
-    "schema_version": "run.prepare_credits_projection.v1"
-  },
-  "estimated_credits": "example",
-  "expected_duration_seconds": 1,
-  "expires_at": "example",
-  "guest_slot_cost": "example",
-  "inferred_work_type": "example",
-  "maximum_credits": "example",
-  "planned_checks": [
-    "example"
-  ],
-  "proposal_hash": "example",
-  "proposal_id": "example",
-  "proposal_version": 1,
-  "start_admissible": true,
-  "task_contract_summary": {
-    "requirement_count": 1,
-    "summary_ref": "example",
-    "work_type": "example"
-  },
-  "unavailable_checks": [
-    "example"
-  ]
-}
-```
-
-### `GET /v1/runs/{run_id}`
-
-Client surface: `client.runs.get(...)`
-
-Client model: `PublicRunResponse`
-
-Auth mode: `api_token`
-
-Scopes: `evaluation:read`
-
-Idempotency: `not required`
-
-Request body: none
-
-Response `200` as `application/json`:
-
-Schema: `PublicRunResponse`
-
-```json
-{
-  "acceptance_decision": "ready",
-  "artifact_refs": [
-    "example"
-  ],
-  "billing_summary": {
-    "final_credits": "example",
-    "schema_version": "run.terminal_billing_summary.v1",
-    "status": "pending"
-  },
-  "cancellation_requested": true,
-  "capability_coverage": {
-    "available_refs": [
-      "example"
-    ],
-    "limitation_refs": [
-      "example"
-    ],
-    "unavailable_refs": [
-      "example"
-    ]
-  },
-  "completed_at": "2026-06-15T10:00:30Z",
-  "created_at": "2026-06-15T10:00:00Z",
-  "deadline_at": "example",
-  "event_cursor": "example",
-  "family": "knowledge",
-  "generation": 1,
-  "input_kind": "text",
-  "limitations": [
-    "example"
-  ],
-  "next_action": "example",
-  "profile": "fast",
-  "queue": {
-    "estimate_as_of": "example",
-    "estimated_completion_seconds": "example",
-    "estimated_start_seconds": "example",
-    "jobs_ahead": 1,
-    "queue_reason": "example"
-  },
-  "reason_code": "example",
-  "reference_file_attached": false,
-  "run_id": "example",
-  "run_insight_ref": "example",
-  "safe_result_content": "example",
-  "started_at": "example",
-  "status": "created",
-  "task_contract_summary": {
-    "requirement_count": 1,
-    "summary_ref": "example",
-    "work_type": "example"
-  },
-  "updated_at": "2026-06-15T10:00:30Z",
-  "work_type": "example"
-}
-```
-
-### `POST /v1/runs/{run_id}/cancel`
-
-Client surface: `client.runs.cancel(...)`
-
-Client model: `PublicRunResponse`
-
-Auth mode: `api_token`
-
-Scopes: `evaluation:run`
-
-Idempotency: `required`
-
-Request body schema: `CancelRunRequest`
-
-Request body example:
-
-```json
-{
-  "reason": "user_requested"
-}
-```
-
-Response `200` as `application/json`:
-
-Schema: `PublicRunResponse`
-
-```json
-{
-  "acceptance_decision": "ready",
-  "artifact_refs": [
-    "example"
-  ],
-  "billing_summary": {
-    "final_credits": "example",
-    "schema_version": "run.terminal_billing_summary.v1",
-    "status": "pending"
-  },
-  "cancellation_requested": true,
-  "capability_coverage": {
-    "available_refs": [
-      "example"
-    ],
-    "limitation_refs": [
-      "example"
-    ],
-    "unavailable_refs": [
-      "example"
-    ]
-  },
-  "completed_at": "2026-06-15T10:00:30Z",
-  "created_at": "2026-06-15T10:00:00Z",
-  "deadline_at": "example",
-  "event_cursor": "example",
-  "family": "knowledge",
-  "generation": 1,
-  "input_kind": "text",
-  "limitations": [
-    "example"
-  ],
-  "next_action": "example",
-  "profile": "fast",
-  "queue": {
-    "estimate_as_of": "example",
-    "estimated_completion_seconds": "example",
-    "estimated_start_seconds": "example",
-    "jobs_ahead": 1,
-    "queue_reason": "example"
-  },
-  "reason_code": "example",
-  "reference_file_attached": false,
-  "run_id": "example",
-  "run_insight_ref": "example",
-  "safe_result_content": "example",
-  "started_at": "example",
-  "status": "created",
-  "task_contract_summary": {
-    "requirement_count": 1,
-    "summary_ref": "example",
-    "work_type": "example"
-  },
-  "updated_at": "2026-06-15T10:00:30Z",
-  "work_type": "example"
-}
-```
-
-### `GET /v1/runs/{run_id}/events`
-
-Client surface: `client.runs.list_events(...)`
-
-Client model: `PublicRunEventsResponse`
-
-Auth mode: `api_token`
-
-Scopes: `evaluation:read`
-
-Idempotency: `not required`
-
-Request body: none
-
-Response `200` as `application/json`:
-
-Schema: `PublicRunEventsResponse`
-
-```json
-{
-  "events": [
-    {
-      "estimated_completion_seconds": {
-        "max": "example",
-        "min": "example"
-      },
-      "estimated_start_seconds": {
-        "max": "example",
-        "min": "example"
-      },
-      "event_cursor": "example",
-      "event_id": "example",
-      "jobs_ahead": "example",
-      "message_key": "example",
-      "progress_percent": "example",
-      "run_id": "example",
-      "sequence": 1,
-      "status": "queued",
-      "terminal_refs": [
+      "active": true,
+      "criterion": "example",
+      "editable": true,
+      "form": "written",
+      "owner": "user",
+      "preview": "example",
+      "standard_id": "example",
+      "strength": "must",
+      "task_types": [
         "example"
       ],
-      "type": "run.event"
+      "text": "example",
+      "version": 1
     }
-  ],
-  "has_more": true,
-  "next_cursor": "cursor_next"
+  ]
 }
 ```
 
-### `GET /v1/runs/{run_id}/events/stream`
+### `POST /v1/standards`
 
-Client surface: `client.runs.iter_events(...)`
+Client surface: `httpx` direct call
 
-Client model: `string`
+Client model: `AgentStandard`
+
+Auth mode: `api_token`
+
+Scopes: `evaluation:run`
+
+Idempotency: `required`
+
+Request body schema: `DefineStandardRequest`
+
+Request body example:
+
+```json
+{
+  "criterion": "example",
+  "owner": "user",
+  "strength": "must",
+  "task_types": [
+    "facts_with_sources"
+  ],
+  "text": "example"
+}
+```
+
+Response `201` as `application/json`:
+
+Schema: `AgentStandard`
+
+```json
+{
+  "active": true,
+  "criterion": "example",
+  "editable": true,
+  "form": "written",
+  "owner": "user",
+  "preview": {
+    "criterion": "example",
+    "state": "pending",
+    "task_types_suggested": [
+      "facts_with_sources"
+    ]
+  },
+  "standard_id": "example",
+  "strength": "must",
+  "task_types": [
+    "facts_with_sources"
+  ],
+  "text": "example",
+  "version": 1
+}
+```
+
+### `PATCH /v1/standards/{standard_id}`
+
+Client surface: `httpx` direct call
+
+Client model: `AgentStandard`
+
+Auth mode: `api_token`
+
+Scopes: `evaluation:run`
+
+Idempotency: `required`
+
+Request body schema: `EditStandardRequest`
+
+Request body example:
+
+```json
+{
+  "active": true,
+  "criterion": "example",
+  "expected_version": 1,
+  "restore_version": 1,
+  "strength": "must",
+  "task_types": [
+    "facts_with_sources"
+  ],
+  "text": "example"
+}
+```
+
+Response `200` as `application/json`:
+
+Schema: `AgentStandard`
+
+```json
+{
+  "active": true,
+  "criterion": "example",
+  "editable": true,
+  "form": "written",
+  "owner": "user",
+  "preview": {
+    "criterion": "example",
+    "state": "pending",
+    "task_types_suggested": [
+      "facts_with_sources"
+    ]
+  },
+  "standard_id": "example",
+  "strength": "must",
+  "task_types": [
+    "facts_with_sources"
+  ],
+  "text": "example",
+  "version": 1
+}
+```
+
+### `POST /v1/standards/{standard_id}/preview/accept`
+
+Client surface: `httpx` direct call
+
+Client model: `AgentStandard`
+
+Auth mode: `api_token`
+
+Scopes: `evaluation:run`
+
+Idempotency: `required`
+
+Request body schema: `AcceptStandardPreviewRequest`
+
+Request body example:
+
+```json
+{
+  "expected_version": 1
+}
+```
+
+Response `200` as `application/json`:
+
+Schema: `AgentStandard`
+
+```json
+{
+  "active": true,
+  "criterion": "example",
+  "editable": true,
+  "form": "written",
+  "owner": "user",
+  "preview": {
+    "criterion": "example",
+    "state": "pending",
+    "task_types_suggested": [
+      "facts_with_sources"
+    ]
+  },
+  "standard_id": "example",
+  "strength": "must",
+  "task_types": [
+    "facts_with_sources"
+  ],
+  "text": "example",
+  "version": 1
+}
+```
+
+### `GET /v1/standards/{standard_id}/versions`
+
+Client surface: `httpx` direct call
+
+Client model: `AgentStandardVersions`
 
 Auth mode: `api_token`
 
@@ -1139,103 +1625,25 @@ Idempotency: `not required`
 
 Request body: none
 
-Response `200` as `text/event-stream`:
-
-Schema: `string`
-
-```markdown
-example
-```
-
-### `POST /v1/runs/{run_id}/outcome`
-
-Client surface: `client.runs.record_outcome(...)`
-
-Client model: `PublicRunOutcomeResponse`
-
-Auth mode: `api_token`
-
-Scopes: `evaluation:run`
-
-Idempotency: `required`
-
-Request body schema: `RunOutcomeRequest`
-
-Request body example:
-
-```json
-{
-  "edited_artifact_ref": "example",
-  "finding_adjudications": [
-    {
-      "finding_ref": "example",
-      "outcome": "confirmed"
-    }
-  ],
-  "outcome": "used"
-}
-```
-
 Response `200` as `application/json`:
 
-Schema: `PublicRunOutcomeResponse`
+Schema: `AgentStandardVersions`
 
 ```json
 {
-  "acceptance_decision": "ready",
-  "artifact_refs": [
-    "example"
-  ],
-  "billing_summary": {
-    "final_credits": "example",
-    "schema_version": "run.terminal_billing_summary.v1",
-    "status": "pending"
-  },
-  "cancellation_requested": true,
-  "capability_coverage": {
-    "available_refs": [
-      "example"
-    ],
-    "limitation_refs": [
-      "example"
-    ],
-    "unavailable_refs": [
-      "example"
-    ]
-  },
-  "completed_at": "2026-06-15T10:00:30Z",
-  "created_at": "2026-06-15T10:00:00Z",
-  "deadline_at": "example",
-  "event_cursor": "example",
-  "family": "knowledge",
-  "generation": 1,
-  "input_kind": "text",
-  "limitations": [
-    "example"
-  ],
-  "next_action": "example",
-  "profile": "fast",
-  "queue": {
-    "estimate_as_of": "example",
-    "estimated_completion_seconds": "example",
-    "estimated_start_seconds": "example",
-    "jobs_ahead": 1,
-    "queue_reason": "example"
-  },
-  "reason_code": "example",
-  "reference_file_attached": false,
-  "run_id": "example",
-  "run_insight_ref": "example",
-  "safe_result_content": "example",
-  "started_at": "example",
-  "status": "created",
-  "task_contract_summary": {
-    "requirement_count": 1,
-    "summary_ref": "example",
-    "work_type": "example"
-  },
-  "updated_at": "2026-06-15T10:00:30Z",
-  "work_type": "example"
+  "standard_id": "example",
+  "versions": [
+    {
+      "active": true,
+      "created_at": "2026-06-15T10:00:00Z",
+      "criterion": "example",
+      "form": "written",
+      "source": "app",
+      "strength": "must",
+      "text": "example",
+      "version": 1
+    }
+  ]
 }
 ```
 
@@ -1355,6 +1763,11 @@ Stable public gateway error codes are:
 - `artifact_expired`
 - `artifact_type_unsupported`
 - `artifact_processing_unavailable`
+- `artifact_not_ready`
+- `artifact_too_large`
+- `artifact_extract_failed`
+- `artifact_quota_exceeded`
+- `length_required`
 - `prepare_rate_limited`
 - `prepare_capacity_unavailable`
 - `too_many_outstanding_runs`
@@ -1362,10 +1775,23 @@ Stable public gateway error codes are:
 - `maintenance_active`
 - `engine_unavailable_timeout`
 - `capability_unavailable`
+- `run_input_not_processable`
+- `run_input_contains_contact_data`
 - `run_not_found`
 - `run_terminal`
 - `cancel_conflict`
 - `budget_ceiling_exceeded`
 - `execution_failed`
+- `guest_quota_exhausted`
+- `price_ceiling_exceeded`
+- `result_unavailable`
+- `standard_not_found`
+- `standard_forbidden`
+- `standard_version_conflict`
+- `standard_duplicate`
+- `standard_invalid`
+- `standard_limit`
+- `standard_not_checkable`
+- `standards_unavailable`
 
-The client maps known public error codes to typed exceptions where available and keeps future unknown safe error codes as `ZentureAPIError` without exposing API tokens, bearer headers, prompts, or other secrets in exception strings.
+The zenture client maps known public error codes to typed exceptions where available and keeps future unknown safe error codes as `ZentureAPIError` without exposing API tokens, bearer headers, prompts, or other secrets in exception strings.

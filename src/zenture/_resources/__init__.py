@@ -15,29 +15,35 @@ from zenture._resources.chat import AsyncChatResource, ChatResource
 from zenture._resources.evaluations import AsyncEvaluationsResource, EvaluationsResource
 from zenture._resources.helloworld import AsyncHelloworldResource, HelloworldResource
 from zenture._resources.input_wizard import AsyncInputWizardResource, InputWizardResource
+from zenture._resources.learnings import AsyncLearningsResource, LearningsResource
 from zenture._resources.models import AsyncModelsResource, ModelsResource
 from zenture._resources.operations import AsyncOperationsResource, OperationsResource
 from zenture._resources.runs import RunsResource
+from zenture._resources.standards import AsyncStandardsResource, StandardsResource
 
 __all__ = (
     "AsyncChatResource",
     "AsyncEvaluationsResource",
     "AsyncHelloworldResource",
     "AsyncInputWizardResource",
+    "AsyncLearningsResource",
     "AsyncLimitsResource",
     "AsyncModelsResource",
     "AsyncOperationsResource",
     "AsyncRunsResource",
+    "AsyncStandardsResource",
     "AsyncUsageResource",
     "AsyncWalletResource",
     "ChatResource",
     "EvaluationsResource",
     "HelloworldResource",
     "InputWizardResource",
+    "LearningsResource",
     "LimitsResource",
     "ModelsResource",
     "OperationsResource",
     "RunsResource",
+    "StandardsResource",
     "UsageResource",
     "WalletResource",
 )

@@ -61,7 +61,8 @@ def assert_registration(
     attach: bool,
 ) -> None:
     assert {tool.name for tool in catalog} == set(expected)
-    assert ("attach_artifact" in expected) is attach
+    # attach_artifact is always offered: an upload link without a resolver, host bytes with one.
+    assert "attach_artifact" in expected
     for tool in catalog:
         actual = expected[tool.name]
         assert tool.title == actual.get("title")
