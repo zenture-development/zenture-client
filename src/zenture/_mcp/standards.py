@@ -7,12 +7,10 @@ from typing import TYPE_CHECKING, Any, cast
 from pydantic import BaseModel, ValidationError
 
 from zenture._contract.standards import (
-    AcceptStandardPreviewRequest,
     AgentStandard,
     AgentStandards,
     DefineStandardRequest,
     EditStandardRequest,
-    StandardVersions,
 )
 from zenture._resources.standards import standard_path
 from zenture.errors import ZentureMCPProtocolError
@@ -51,6 +49,7 @@ def edit_arguments(
     task_types: Sequence[str] | None,
     active: bool | None,
     restore_version: int | None,
+    use_suggested_criterion: bool | None = None,
 ) -> dict[str, object]:
     standard_path(standard_id)
     fields = {
@@ -61,6 +60,7 @@ def edit_arguments(
         "task_types": None if task_types is None else list(task_types),
         "active": active,
         "restore_version": restore_version,
+        "use_suggested_criterion": use_suggested_criterion,
     }
     request = EditStandardRequest.model_validate({k: v for k, v in fields.items() if v is not None})
     body = request.model_dump(mode="json", exclude_none=True)
@@ -108,8 +108,9 @@ class StandardsMcpMixin:
         task_types: Sequence[str] | None = None,
         active: bool | None = None,
         restore_version: int | None = None,
+        use_suggested_criterion: bool | None = None,
     ) -> AgentStandard:
-        """Change one standard against the version you read, or restore one earlier version."""
+        """Change one standard against the version you read: field edits, `restore_version` or `use_suggested_criterion`."""
 
         arguments = edit_arguments(
             standard_id,
@@ -120,25 +121,9 @@ class StandardsMcpMixin:
             task_types=task_types,
             active=active,
             restore_version=restore_version,
+            use_suggested_criterion=use_suggested_criterion,
         )
         return cast("AgentStandard", _parse(AgentStandard, self._call("edit_standard", arguments)))
-
-    def get_standard_versions(self, standard_id: str) -> StandardVersions:
-        """Read the versions of one standard through the hosted `get_standard_versions` tool."""
-
-        standard_path(standard_id)
-        result = self._call("get_standard_versions", {"standard_id": standard_id})
-        return cast("StandardVersions", _parse(StandardVersions, result))
-
-    def accept_standard_preview(self, standard_id: str, *, expected_version: int) -> AgentStandard:
-        """Accept the ready preview of a written standard, as the app does."""
-
-        standard_path(standard_id)
-        body = AcceptStandardPreviewRequest.model_validate(
-            {"expected_version": expected_version}
-        ).model_dump(mode="json")
-        result = self._call("accept_standard_preview", {"standard_id": standard_id, **body})
-        return cast("AgentStandard", _parse(AgentStandard, result))
 
 
 class AsyncStandardsMcpMixin:
@@ -182,8 +167,9 @@ class AsyncStandardsMcpMixin:
         task_types: Sequence[str] | None = None,
         active: bool | None = None,
         restore_version: int | None = None,
+        use_suggested_criterion: bool | None = None,
     ) -> AgentStandard:
-        """Change one standard (async) against the version you read, or restore one earlier version."""
+        """Change one standard (async) against the version you read: field edits, `restore_version` or `use_suggested_criterion`."""
 
         arguments = edit_arguments(
             standard_id,
@@ -194,26 +180,8 @@ class AsyncStandardsMcpMixin:
             task_types=task_types,
             active=active,
             restore_version=restore_version,
+            use_suggested_criterion=use_suggested_criterion,
         )
         return cast(
             "AgentStandard", _parse(AgentStandard, await self._call("edit_standard", arguments))
         )
-
-    async def get_standard_versions(self, standard_id: str) -> StandardVersions:
-        """Read the versions of one standard (async) through the hosted `get_standard_versions` tool."""
-
-        standard_path(standard_id)
-        result = await self._call("get_standard_versions", {"standard_id": standard_id})
-        return cast("StandardVersions", _parse(StandardVersions, result))
-
-    async def accept_standard_preview(
-        self, standard_id: str, *, expected_version: int
-    ) -> AgentStandard:
-        """Accept the ready preview of a written standard (async), as the app does."""
-
-        standard_path(standard_id)
-        body = AcceptStandardPreviewRequest.model_validate(
-            {"expected_version": expected_version}
-        ).model_dump(mode="json")
-        result = await self._call("accept_standard_preview", {"standard_id": standard_id, **body})
-        return cast("AgentStandard", _parse(AgentStandard, result))

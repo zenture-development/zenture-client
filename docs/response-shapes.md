@@ -47,15 +47,12 @@ Run in `.run`, while REST `runs.get()` returns it directly.
 | `GET` | `/v1/evaluations/{evaluation_id}` | `200` | `client.evaluations.get(...)` | `PublicEvaluationResponse` |
 | `GET` | `/v1/helloworld` | `200` | `client.helloworld()` | `str` |
 | `POST` | `/v1/input-wizard` | `202` | `client.input_wizard.create(...)`, `client.input_wizard.run(...)` | `PublicOperationResponse`, `OperationRunResult` |
-| `GET` | `/v1/learnings` | `200` | `httpx` direct call | `PublicLearningsResponse` |
 | `GET` | `/v1/limits` | `200` | `client.limits.get()` | `LimitsResponse` |
 | `GET` | `/v1/models` | `200` | `client.models.list(mode=None | "single" | "multi")` | `PublicModelListResponse` |
 | `GET` | `/v1/operations/{operation_id}` | `200` | `client.operations.get(...)`, `client.operations.wait(...)` | `PublicOperationResponse` |
 | `GET` | `/v1/standards` | `200` | `httpx` direct call | `AgentStandards` |
 | `POST` | `/v1/standards` | `201` | `httpx` direct call | `AgentStandard` |
 | `PATCH` | `/v1/standards/{standard_id}` | `200` | `httpx` direct call | `AgentStandard` |
-| `POST` | `/v1/standards/{standard_id}/preview/accept` | `200` | `httpx` direct call | `AgentStandard` |
-| `GET` | `/v1/standards/{standard_id}/versions` | `200` | `httpx` direct call | `AgentStandardVersions` |
 | `GET` | `/v1/usage` | `200` | `client.usage.get(...)` | `PublicUsageResponse` |
 | `GET` | `/v1/wallet` | `200` | `client.wallet.get()` | `PublicWalletResponse` |
 
@@ -1276,42 +1273,6 @@ Schema: `PublicOperationResponse`
 }
 ```
 
-### `GET /v1/learnings`
-
-Client surface: `httpx` direct call
-
-Client model: `PublicLearningsResponse`
-
-Auth mode: `api_token`
-
-Scopes: `evaluation:read`
-
-Idempotency: `not required`
-
-Request body: none
-
-Response `200` as `application/json`:
-
-Schema: `PublicLearningsResponse`
-
-```json
-{
-  "essence": {
-    "day": "example",
-    "language": "de",
-    "text": "example",
-    "version": "example"
-  },
-  "learnings": [
-    {
-      "code": "factual_error",
-      "hidden": true
-    }
-  ],
-  "state": "available"
-}
-```
-
 ### `GET /v1/limits`
 
 Client surface: `client.limits.get()`
@@ -1434,9 +1395,12 @@ Schema: `AgentStandards`
       "editable": true,
       "form": "written",
       "owner": "user",
-      "preview": "example",
+      "restorable_versions": [
+        "example"
+      ],
       "standard_id": "example",
       "strength": "must",
+      "suggested_criterion": null,
       "task_types": [
         "example"
       ],
@@ -1486,15 +1450,12 @@ Schema: `AgentStandard`
   "editable": true,
   "form": "written",
   "owner": "user",
-  "preview": {
-    "criterion": "example",
-    "state": "pending",
-    "task_types_suggested": [
-      "facts_with_sources"
-    ]
-  },
+  "restorable_versions": [
+    1
+  ],
   "standard_id": "example",
   "strength": "must",
+  "suggested_criterion": null,
   "task_types": [
     "facts_with_sources"
   ],
@@ -1529,7 +1490,8 @@ Request body example:
   "task_types": [
     "facts_with_sources"
   ],
-  "text": "example"
+  "text": "example",
+  "use_suggested_criterion": true
 }
 ```
 
@@ -1544,106 +1506,17 @@ Schema: `AgentStandard`
   "editable": true,
   "form": "written",
   "owner": "user",
-  "preview": {
-    "criterion": "example",
-    "state": "pending",
-    "task_types_suggested": [
-      "facts_with_sources"
-    ]
-  },
+  "restorable_versions": [
+    1
+  ],
   "standard_id": "example",
   "strength": "must",
+  "suggested_criterion": null,
   "task_types": [
     "facts_with_sources"
   ],
   "text": "example",
   "version": 1
-}
-```
-
-### `POST /v1/standards/{standard_id}/preview/accept`
-
-Client surface: `httpx` direct call
-
-Client model: `AgentStandard`
-
-Auth mode: `api_token`
-
-Scopes: `evaluation:run`
-
-Idempotency: `required`
-
-Request body schema: `AcceptStandardPreviewRequest`
-
-Request body example:
-
-```json
-{
-  "expected_version": 1
-}
-```
-
-Response `200` as `application/json`:
-
-Schema: `AgentStandard`
-
-```json
-{
-  "active": true,
-  "criterion": "example",
-  "editable": true,
-  "form": "written",
-  "owner": "user",
-  "preview": {
-    "criterion": "example",
-    "state": "pending",
-    "task_types_suggested": [
-      "facts_with_sources"
-    ]
-  },
-  "standard_id": "example",
-  "strength": "must",
-  "task_types": [
-    "facts_with_sources"
-  ],
-  "text": "example",
-  "version": 1
-}
-```
-
-### `GET /v1/standards/{standard_id}/versions`
-
-Client surface: `httpx` direct call
-
-Client model: `AgentStandardVersions`
-
-Auth mode: `api_token`
-
-Scopes: `evaluation:read`
-
-Idempotency: `not required`
-
-Request body: none
-
-Response `200` as `application/json`:
-
-Schema: `AgentStandardVersions`
-
-```json
-{
-  "standard_id": "example",
-  "versions": [
-    {
-      "active": true,
-      "created_at": "2026-06-15T10:00:00Z",
-      "criterion": "example",
-      "form": "written",
-      "source": "app",
-      "strength": "must",
-      "text": "example",
-      "version": 1
-    }
-  ]
 }
 ```
 

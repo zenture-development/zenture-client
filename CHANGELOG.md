@@ -19,15 +19,13 @@ state.
   `standards_unavailable`) arrive as `ZentureAPIError.error_code`. The OpenAPI mirror
   follows the Gateway.
 - `PublicRunResponse` exposes the optional `standards_checked` (closed models `StandardsChecked` and `StandardCheckResult`): which of your standards a terminal Run was checked against and with what result, ids and codes only, never their texts. Runs without standards parse as before. The OpenAPI mirror is resynced from the Gateway artefact (production server only).
-- `get_learnings()` on `ZentureClient`, `AsyncZentureClient`, `McpClient` and
-  `AsyncMcpClient` reads your Essenz (`GET /v1/learnings` over an API token, the
-  `get_learnings` tool over OAuth) into the same `Learnings` model. It is optional and
-  not needed before a Run. `PublicRunResponse` exposes the optional `learning_applied`,
-  `essence_version` and `essence`; a finding exposes `essence_focus`. Runs without these
-  fields parse as before. `Essence.language` accepts any well-formed language tag, not only
-  the languages served today, so a future language does not break released clients.
-- The committed OpenAPI mirror is resynced with the Gateway artefact (adds `GET /v1/learnings`,
-  the learning Run fields and earlier bound changes).
+- `PublicRunResponse` exposes the optional `learning_applied`, `essence_version` and `essence`; a finding exposes
+  `essence_focus`. Runs without these fields parse as before. The client has no call that reads the Essenz.
+- Standards are lean: every `AgentStandard` carries `restorable_versions` and `suggested_criterion`;
+  `edit_standard(..., expected_version=...)` takes field edits, or `restore_version`, or
+  `use_suggested_criterion=True` (exactly one). Not part of the client: `get_learnings`, `get_standard_versions`
+  and `accept_standard_preview` (REST and MCP), the `Learnings`, `Essence`, `StandardVersions` and preview models.
+- The committed OpenAPI mirror is resynced with the Gateway artefact (the learning Run fields and earlier bound changes).
 
 ## 1.2.0 (2026-11-08)
 

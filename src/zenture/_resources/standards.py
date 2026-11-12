@@ -7,12 +7,10 @@ from typing import TYPE_CHECKING, Any
 
 from zenture._contract.standards import (
     STANDARD_ID_PATTERN,
-    AcceptStandardPreviewRequest,
     AgentStandard,
     AgentStandards,
     DefineStandardRequest,
     EditStandardRequest,
-    StandardVersions,
 )
 from zenture._resources._utils import idempotency_headers, parse_response, path_segment
 
@@ -83,6 +81,7 @@ class StandardsResource:
         task_types: Sequence[str] | None = None,
         active: bool | None = None,
         restore_version: int | None = None,
+        use_suggested_criterion: bool | None = None,
     ) -> AgentStandard:
         path = standard_path(standard_id)
         body = edit_body(
@@ -93,29 +92,10 @@ class StandardsResource:
             task_types=None if task_types is None else list(task_types),
             active=active,
             restore_version=restore_version,
+            use_suggested_criterion=use_suggested_criterion,
         )
         payload = self._transport.request_json(
             "PATCH", path, headers=idempotency_headers(idempotency_key), json=body
-        )
-        return parse_response(AgentStandard, payload)
-
-    def versions(self, standard_id: str) -> StandardVersions:
-        return parse_response(
-            StandardVersions,
-            self._transport.request_json("GET", f"{standard_path(standard_id)}/versions"),
-        )
-
-    def accept_preview(
-        self, standard_id: str, *, expected_version: int, idempotency_key: str
-    ) -> AgentStandard:
-        body = AcceptStandardPreviewRequest.model_validate(
-            {"expected_version": expected_version}
-        ).model_dump(mode="json")
-        payload = self._transport.request_json(
-            "POST",
-            f"{standard_path(standard_id)}/preview/accept",
-            headers=idempotency_headers(idempotency_key),
-            json=body,
         )
         return parse_response(AgentStandard, payload)
 
@@ -165,6 +145,7 @@ class AsyncStandardsResource:
         task_types: Sequence[str] | None = None,
         active: bool | None = None,
         restore_version: int | None = None,
+        use_suggested_criterion: bool | None = None,
     ) -> AgentStandard:
         path = standard_path(standard_id)
         body = edit_body(
@@ -175,28 +156,9 @@ class AsyncStandardsResource:
             task_types=None if task_types is None else list(task_types),
             active=active,
             restore_version=restore_version,
+            use_suggested_criterion=use_suggested_criterion,
         )
         payload = await self._transport.request_json(
             "PATCH", path, headers=idempotency_headers(idempotency_key), json=body
-        )
-        return parse_response(AgentStandard, payload)
-
-    async def versions(self, standard_id: str) -> StandardVersions:
-        return parse_response(
-            StandardVersions,
-            await self._transport.request_json("GET", f"{standard_path(standard_id)}/versions"),
-        )
-
-    async def accept_preview(
-        self, standard_id: str, *, expected_version: int, idempotency_key: str
-    ) -> AgentStandard:
-        body = AcceptStandardPreviewRequest.model_validate(
-            {"expected_version": expected_version}
-        ).model_dump(mode="json")
-        payload = await self._transport.request_json(
-            "POST",
-            f"{standard_path(standard_id)}/preview/accept",
-            headers=idempotency_headers(idempotency_key),
-            json=body,
         )
         return parse_response(AgentStandard, payload)
