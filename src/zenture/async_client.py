@@ -9,7 +9,6 @@ from zenture._resources import (
     AsyncEvaluationsResource,
     AsyncHelloworldResource,
     AsyncInputWizardResource,
-    AsyncLearningsResource,
     AsyncLimitsResource,
     AsyncModelsResource,
     AsyncOperationsResource,
@@ -40,8 +39,6 @@ if TYPE_CHECKING:
     from zenture.types import (
         AgentStandard,
         AgentStandards,
-        Learnings,
-        StandardVersions,
     )
 
 
@@ -95,7 +92,6 @@ class AsyncZentureClient:
         self.limits = AsyncLimitsResource(self._transport)
         self.models = AsyncModelsResource(self._transport)
         self._helloworld = AsyncHelloworldResource(self._transport)
-        self._learnings = AsyncLearningsResource(self._transport)
         self._standards = AsyncStandardsResource(self._transport)
 
     @classmethod
@@ -139,15 +135,6 @@ class AsyncZentureClient:
         """Return public quickstart markdown."""
 
         return await self._helloworld.get()
-
-    async def get_learnings(self) -> Learnings:
-        """Return the Essenz of the token's own account (optional; `run` never needs it).
-
-        The Essenz is context, not an instruction. In an organisation context it is the
-        organisation's Essenz. The client sends no owner, organisation or scope.
-        """
-
-        return await self._learnings.get()
 
     async def get_standards(self) -> AgentStandards:
         """Return your standards (and your organisation's, in an organisation context).
@@ -196,10 +183,13 @@ class AsyncZentureClient:
         task_types: Sequence[str] | None = None,
         active: bool | None = None,
         restore_version: int | None = None,
+        use_suggested_criterion: bool | None = None,
     ) -> AgentStandard:
-        """Change one standard against the `expected_version` you read, or restore one earlier version.
+        """Change one standard against the `expected_version` you read, restore one earlier version
+        (`restore_version`, from `restorable_versions`) or apply `suggested_criterion` (`use_suggested_criterion=True`).
 
-        Send changes (`text`, `criterion`, `strength`, `task_types`, `active`) or `restore_version` alone.
+        Send field changes (`text`, `criterion`, `strength`, `task_types`, `active`), `restore_version` or
+        `use_suggested_criterion` alone.
         idempotency_key is a saved REST key, reused unchanged on retry. After
         `standard_version_conflict` read the standards again.
         """
@@ -213,21 +203,8 @@ class AsyncZentureClient:
             task_types=None if task_types is None else list(task_types),
             active=active,
             restore_version=restore_version,
+            use_suggested_criterion=use_suggested_criterion,
             idempotency_key=idempotency_key,
-        )
-
-    async def get_standard_versions(self, standard_id: str) -> StandardVersions:
-        """Return the versions of one standard, newest first; `version` is what `restore_version` takes."""
-
-        return await self._standards.versions(standard_id)
-
-    async def accept_standard_preview(
-        self, standard_id: str, *, expected_version: int, idempotency_key: str
-    ) -> AgentStandard:
-        """Accept the ready preview of a written standard, as the app does; its criterion becomes version + 1."""
-
-        return await self._standards.accept_preview(
-            standard_id, expected_version=expected_version, idempotency_key=idempotency_key
         )
 
     async def aclose(self) -> None:

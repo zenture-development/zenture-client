@@ -6,8 +6,9 @@ from typing import Any, Literal
 
 from pydantic import Field, field_validator, model_validator
 
-from zenture._contract.learnings import ESSENCE_FOCUS_LABEL
 from zenture._contract.response_base import RunResponseModel, coerce_tuple, safe_result_text
+
+ESSENCE_FOCUS_LABEL = "Fokus aus deiner Essenz"
 
 SafeResultFindingCategory = Literal[
     "task_requirement",

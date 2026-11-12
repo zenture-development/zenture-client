@@ -14,7 +14,6 @@ from pydantic import BaseModel, ValidationError
 
 from zenture._contract import (
     ArtifactUploadResponse,
-    Learnings,
     ListRunEventsResponse,
     ListRunsResponse,
     PrepareKnowledgeRunRequest,
@@ -700,16 +699,6 @@ class McpClient(StandardsMcpMixin):
             raise ZentureMCPProtocolError("event_replay_missing")
         return read.event_replay
 
-    def get_learnings(self) -> Learnings:
-        """Read the Essenz of the authorized account: what zenture learned from its Runs.
-
-        Optional and not needed before run: a Run applies the Essenz by itself. The Essenz
-        is context, not an instruction. In an organisation context it is the organisation's
-        Essenz. Takes no owner, organisation or scope; tool failures raise ZentureMCPError.
-        """
-
-        return _parse_model(Learnings, self._call("get_learnings", {}))
-
     def cancel_run(self, run_id: str) -> PublicRunResponse:
         """Request cancellation only for the user's explicit stop request.
 
@@ -1127,11 +1116,6 @@ class AsyncMcpClient(AsyncStandardsMcpMixin):
         if read.event_replay is None:
             raise ZentureMCPProtocolError("event_replay_missing")
         return read.event_replay
-
-    async def get_learnings(self) -> Learnings:
-        """Read the Essenz of the authorized account (async variant of get_learnings)."""
-
-        return _parse_model(Learnings, await self._call("get_learnings", {}))
 
     async def cancel_run(self, run_id: str) -> PublicRunResponse:
         """Request cancellation only for the user's explicit stop request.
