@@ -125,7 +125,7 @@
             "type": "boolean"
           },
           "form": {
-            "description": "written: saved without a criterion (a suggested criterion may follow); checkable: has a criterion.",
+            "description": "written: saved without a criterion (a suggestion may follow); checkable: has a criterion.",
             "enum": [
               "written",
               "checkable"
@@ -140,7 +140,7 @@
             "type": "string"
           },
           "restorable_versions": {
-            "description": "Earlier versions you can restore, ascending, at most 20; never the current version.",
+            "description": "Earlier versions restore_version accepts, ascending; the current version is not listed.",
             "items": {
               "minimum": 1,
               "type": "integer"
@@ -160,13 +160,11 @@
             "type": "string"
           },
           "suggested_criterion": {
-            "description": "The pending checkable wording of a written standard, or null when there is none.",
+            "description": "The proposed checkable criterion of a written standard, or null; use_suggested_criterion applies it.",
             "maxLength": 300,
             "minLength": 3,
-            "type": [
-              "string",
-              "null"
-            ]
+            "nullable": true,
+            "type": "string"
           },
           "task_types": {
             "items": {
@@ -205,7 +203,9 @@
           "active",
           "form",
           "text",
-          "editable"
+          "editable",
+          "restorable_versions",
+          "suggested_criterion"
         ],
         "type": "object"
       },
@@ -596,7 +596,7 @@
             "type": "integer"
           },
           "restore_version": {
-            "description": "Restore an earlier version from restorable_versions; send it alone.",
+            "description": "Restore one of the standard's restorable_versions as the next version.",
             "minimum": 1,
             "type": "integer"
           },
@@ -631,8 +631,10 @@
             "type": "string"
           },
           "use_suggested_criterion": {
-            "const": true,
-            "description": "Apply the suggested_criterion of the standard; send it alone.",
+            "description": "Apply the standard's suggested_criterion as its criterion (the next version); only valid while one is suggested.",
+            "enum": [
+              true
+            ],
             "type": "boolean"
           }
         },

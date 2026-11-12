@@ -1396,11 +1396,11 @@ Schema: `AgentStandards`
       "form": "written",
       "owner": "user",
       "restorable_versions": [
-        1
+        "example"
       ],
       "standard_id": "example",
       "strength": "must",
-      "suggested_criterion": "example",
+      "suggested_criterion": null,
       "task_types": [
         "example"
       ],
@@ -1455,7 +1455,7 @@ Schema: `AgentStandard`
   ],
   "standard_id": "example",
   "strength": "must",
-  "suggested_criterion": "example",
+  "suggested_criterion": null,
   "task_types": [
     "facts_with_sources"
   ],
@@ -1511,7 +1511,7 @@ Schema: `AgentStandard`
   ],
   "standard_id": "example",
   "strength": "must",
-  "suggested_criterion": "example",
+  "suggested_criterion": null,
   "task_types": [
     "facts_with_sources"
   ],
