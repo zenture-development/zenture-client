@@ -85,6 +85,9 @@ linked follow-ups from Python, preserving the predecessor on idempotent recovery
 |---|---|---|
 | `run` | `run(task=..., artifact=..., profile="standard", reference_file=None, idempotency_key=...)` | Start a Run; `reference_file` is the optional `art_...` reference of an uploaded source file an inline text answer is checked against (source check) |
 | `attach_artifact` | `attach_artifact(file_name=..., mime_type=..., byte_size=..., content_hash=...)` | Returns an upload link (PUT with `X-Upload-Token`) or, when the host provides an approved artifact resolver, registers the host's bytes; no bytes are sent by this client |
+| `get_standards` | `get_standards()` | Read your standards, with `version`, `restorable_versions` and `suggested_criterion` |
+| `define_standard` | `define_standard(text=..., strength=...)` | Add a standard |
+| `edit_standard` | `edit_standard(standard_id, expected_version=..., ...)` | Field edits, or `restore_version`, or `use_suggested_criterion=True` (exactly one) |
 | `list_runs` | `list_runs(status=..., limit=5, cursor=...)` | List Runs, one bounded page |
 | `get_run` | `get_run(run_id, view="summary" or "full", replay_cursor=...)` | Read a Run, optionally with one replay page |
 | `wait_run` | `wait_run(run_id, timeout, stop_on=())` (async peer: `await`) | Observe one Run with summary reads until a terminal state or `stop_on`, within a finite caller budget; never starts or cancels a Run |

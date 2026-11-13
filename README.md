@@ -43,7 +43,7 @@ with `retry_after_seconds`.
 ## Installation
 
 ```bash
-python -m pip install --upgrade zenture==1.2.0
+python -m pip install --upgrade zenture==1.2.1
 ```
 
 Supported Python: CPython 3.11, 3.12, 3.13, and 3.14; there is no upper version cap.
@@ -186,6 +186,27 @@ with McpClient.connect() as client:
 
 `ready` is scoped to the evaluated requirements and evidence, not a universal
 correctness guarantee. Details: [Run guide](./docs/run-guide.md#interpret-the-returned-run).
+
+### Standards: rules every Run checks
+
+Read, add and change your own standards with the same calls over REST and MCP. Details and
+error codes are in the [Run guide](./docs/run-guide.md#standards-rules-every-run-checks).
+
+```python
+standards = client.get_standards()
+created = client.define_standard(
+    text="Cite a source for every figure", strength="must", idempotency_key="standard_cite_1"
+)
+client.edit_standard(
+    created.standard_id,
+    expected_version=created.version,
+    use_suggested_criterion=True,
+    idempotency_key="standard_cite_2",
+)
+```
+
+A terminal Run reports which standards it was checked against in `standards_checked` and, when your
+Essenz shaped it, `learning_applied`, `essence_version` and `essence`.
 
 ### Core Run operations
 

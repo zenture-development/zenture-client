@@ -6,26 +6,30 @@ The project follows semantic versioning once public releases begin. Prerelease
 versions may change while the Public API contract is still in release-candidate
 state.
 
-## Unreleased
+## 1.2.1 (2026-11-13)
 
-- `get_standards()`, `define_standard()` and `edit_standard()` on `ZentureClient`, `AsyncZentureClient`,
-  `McpClient` and `AsyncMcpClient` read, add and change your own standards (`GET`/`POST /v1/standards`,
-  `PATCH /v1/standards/{standard_id}` over an API token, the tools of the same names over OAuth) into the
-  same closed `AgentStandards` / `AgentStandard` models. The owner is the account of the token or session;
-  the only owner argument is the kind `"user"` (default) or `"org"`, and an organisation standard needs an
-  organisation context and the organisation owner's rights. REST writes take a saved `idempotency_key`; the
+Additive release: learning and standards. Nothing from 1.2.0 changed; see
+[docs/migration.md](docs/migration.md#upgrading-to-121).
+
+- Run results: `PublicRunResponse` exposes the optional `learning_applied`, `essence_version` and `essence`
+  (your Essenz as context, on a `revise` decision), `standards_checked` (closed models `StandardsChecked` and
+  `StandardCheckResult`: which of your standards a terminal Run was checked against and with what result, ids
+  and codes only, never their texts) and a finding exposes `essence_focus`. Runs without these fields parse as
+  before. The client has no call that reads the Essenz.
+- Standards: `get_standards()`, `define_standard()` and `edit_standard()` on `ZentureClient`,
+  `AsyncZentureClient`, `McpClient` and `AsyncMcpClient` list, add and change your own standards
+  (`GET`/`POST /v1/standards`, `PATCH /v1/standards/{standard_id}` over an API token, the tools of the same
+  names over OAuth) into the closed `AgentStandards` / `AgentStandard` models, with REST and MCP parity. Every
+  standard carries `version`, `restorable_versions` (ascending, at most 20, never the current one) and
+  `suggested_criterion` (or `None`). `edit_standard(..., expected_version=...)` takes field edits, or
+  `restore_version`, or `use_suggested_criterion=True` (exactly one). The owner is the account of the token or
+  session; the only owner argument is the kind `"user"` (default) or `"org"`, and an organisation standard needs
+  an organisation context and the organisation owner's rights. REST writes take a saved `idempotency_key`; the
   MCP tools derive theirs. Closed error codes (`standard_version_conflict`, `standard_not_found`,
   `standard_forbidden`, `standard_duplicate`, `standard_invalid`, `standard_limit`, `standard_not_checkable`,
-  `standards_unavailable`) arrive as `ZentureAPIError.error_code`. The OpenAPI mirror
-  follows the Gateway.
-- `PublicRunResponse` exposes the optional `standards_checked` (closed models `StandardsChecked` and `StandardCheckResult`): which of your standards a terminal Run was checked against and with what result, ids and codes only, never their texts. Runs without standards parse as before. The OpenAPI mirror is resynced from the Gateway artefact (production server only).
-- `PublicRunResponse` exposes the optional `learning_applied`, `essence_version` and `essence`; a finding exposes
-  `essence_focus`. Runs without these fields parse as before. The client has no call that reads the Essenz.
-- Standards are lean: every `AgentStandard` carries `restorable_versions` and `suggested_criterion`;
-  `edit_standard(..., expected_version=...)` takes field edits, or `restore_version`, or
-  `use_suggested_criterion=True` (exactly one). Not part of the client: `get_learnings`, `get_standard_versions`
-  and `accept_standard_preview` (REST and MCP), the `Learnings`, `Essence`, `StandardVersions` and preview models.
-- The committed OpenAPI mirror is resynced with the Gateway artefact (the learning Run fields and earlier bound changes).
+  `standards_unavailable`) arrive as `ZentureAPIError.error_code`.
+- There are no calls for learnings, standard versions or accepting a suggestion (REST and MCP).
+- The OpenAPI mirror is resynced with the Gateway artefact.
 
 ## 1.2.0 (2026-11-08)
 

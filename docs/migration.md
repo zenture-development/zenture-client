@@ -21,15 +21,16 @@ on a POSIX shell:
 ```bash
 python3 -m venv .venv-zenture
 .venv-zenture/bin/python -m pip uninstall -y zenture-sdk
-.venv-zenture/bin/python -m pip install --upgrade zenture==1.2.0
+.venv-zenture/bin/python -m pip install --upgrade zenture==1.2.1
 ```
 
 For an existing virtual environment containing `zenture-sdk`, skip creation
 and substitute its Python executable in both commands. On Windows, the
 executable inside the environment is `Scripts/python.exe` instead of
 `bin/python`. The `--upgrade` flag also updates an existing canonical
-`zenture` installation, including 1.1.0, to 1.2.0. If you come from a canonical
-1.x release, read [Upgrading to 1.2.0](#upgrading-to-120) first.
+`zenture` installation, including 1.1.0 or 1.2.0, to 1.2.1. If you come from a canonical
+1.1.x release, read [Upgrading to 1.2.0](#upgrading-to-120) first; 1.2.1 adds standards and
+learning fields and breaks nothing ([Upgrading to 1.2.1](#upgrading-to-121)).
 
 Update your application imports and class references together:
 
@@ -44,6 +45,18 @@ remains noninteractive; MCP login does not read that token. MCP uses separate
 account OAuth credentials and explicit login; ordinary client calls never
 start login. See [authentication](./authentication.md) and
 [hosted MCP clients](./mcp-client.md) for those public interfaces.
+
+## Upgrading to 1.2.1
+
+Release 1.2.1 is additive. No method, model or call of 1.2.0 changed.
+
+- `PublicRunResponse` gains the optional `learning_applied`, `essence_version`, `essence` and
+  `standards_checked`; a finding gains `essence_focus`. Runs without them parse as before.
+- `get_standards()`, `define_standard()` and `edit_standard()` are new on `ZentureClient`,
+  `AsyncZentureClient`, `McpClient` and `AsyncMcpClient`. `edit_standard(..., expected_version=...)`
+  takes field edits, or `restore_version`, or `use_suggested_criterion=True`. Each standard carries
+  `version`, `restorable_versions` and `suggested_criterion`.
+- There is no call for the Essenz, for standard versions or for accepting a suggestion.
 
 ## Upgrading to 1.2.0
 
