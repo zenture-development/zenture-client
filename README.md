@@ -43,7 +43,7 @@ with `retry_after_seconds`.
 ## Installation
 
 ```bash
-python -m pip install --upgrade zenture==1.2.0
+python -m pip install --upgrade zenture==1.2.1
 ```
 
 Supported Python: CPython 3.11, 3.12, 3.13, and 3.14; there is no upper version cap.
@@ -187,11 +187,34 @@ with McpClient.connect() as client:
 `ready` is scoped to the evaluated requirements and evidence, not a universal
 correctness guarantee. Details: [Run guide](./docs/run-guide.md#interpret-the-returned-run).
 
+### Standards: rules every Run checks
+
+Read, add and change your own standards with the same methods and models over REST and MCP. The
+example uses the REST client (`ZentureClient`); over MCP (`McpClient`) drop `idempotency_key`, the
+server derives it. Details and error codes are in the
+[Run guide](./docs/run-guide.md#standards-rules-every-run-checks).
+
+```python
+standards = client.get_standards()
+created = client.define_standard(
+    text="Cite a source for every figure", strength="must", idempotency_key="standard_cite_1"
+)
+client.edit_standard(
+    created.standard_id,
+    expected_version=created.version,
+    use_suggested_criterion=True,
+    idempotency_key="standard_cite_2",
+)
+```
+
+A terminal Run reports which standards it was checked against in `standards_checked` and, when your
+Essenz shaped it, `learning_applied`, `essence_version` and `essence`.
+
 ### Core Run operations
 
 | Operation | REST (`client.runs`) | MCP (`McpClient` / `AsyncMcpClient`) |
 |---|---|---|
-| Preview without starting | `prepare(...)` | included in `run(...)` |
+| Prepare without starting | `prepare(...)` | included in `run(...)` |
 | Start | `run(...)`, or `create(...)` from a prepared proposal | `run(...)` |
 | Follow-up to an earlier Run | `predecessor_run_id=` on `run`/`create` | raw tool only; the Python wrapper has no such parameter yet |
 | Wait (finite) | `wait(run_id, timeout=...)` | `wait_run(run_id, timeout)` |

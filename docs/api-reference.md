@@ -34,6 +34,8 @@ when to use the evaluation-specific API below.
 - `run(...)` prepares and starts; it does not poll to completion. `prepare(...)`, `run(...)`
   and the MCP `run` take an optional `reference_file` (an `art_...` reference) for a source
   check of an inline text answer against an uploaded file.
+- `get_standards()`, `define_standard(...)` and `edit_standard(...)` (on the client, not under `runs`) read, add and
+  change your own standards; see the [Run guide](run-guide.md#standards-rules-every-run-checks).
 - `get(...)`, `list(...)`, `wait(...)` read status and available results.
 - `list_events(...)` replays one page; `iter_events(...)` streams events.
 - `attach_artifact(...)` uploads a file in two steps (issue an upload link, then a
