@@ -189,8 +189,10 @@ correctness guarantee. Details: [Run guide](./docs/run-guide.md#interpret-the-re
 
 ### Standards: rules every Run checks
 
-Read, add and change your own standards with the same calls over REST and MCP. Details and
-error codes are in the [Run guide](./docs/run-guide.md#standards-rules-every-run-checks).
+Read, add and change your own standards with the same methods and models over REST and MCP. The
+example uses the REST client (`ZentureClient`); over MCP (`McpClient`) drop `idempotency_key`, the
+server derives it. Details and error codes are in the
+[Run guide](./docs/run-guide.md#standards-rules-every-run-checks).
 
 ```python
 standards = client.get_standards()
@@ -212,7 +214,7 @@ Essenz shaped it, `learning_applied`, `essence_version` and `essence`.
 
 | Operation | REST (`client.runs`) | MCP (`McpClient` / `AsyncMcpClient`) |
 |---|---|---|
-| Preview without starting | `prepare(...)` | included in `run(...)` |
+| Prepare without starting | `prepare(...)` | included in `run(...)` |
 | Start | `run(...)`, or `create(...)` from a prepared proposal | `run(...)` |
 | Follow-up to an earlier Run | `predecessor_run_id=` on `run`/`create` | raw tool only; the Python wrapper has no such parameter yet |
 | Wait (finite) | `wait(run_id, timeout=...)` | `wait_run(run_id, timeout)` |

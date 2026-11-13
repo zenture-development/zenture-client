@@ -98,7 +98,8 @@ The five core tools are `run`, `list_runs`, `get_run`, `cancel_run` and
 `record_run_outcome`. The host may also advertise `attach_artifact` when it has
 an approved resolver for the artifact bytes. `require_product_tools()` checks
 only the five core tools, so a host without that resolver is still ready for
-Runs. Artifact bytes come from the host-selected resolver and are not carried
+Runs. The standards tools (`get_standards`, `define_standard`, `edit_standard`)
+are not part of that readiness check either. Artifact bytes come from the host-selected resolver and are not carried
 in MCP JSON; the server answers `artifact_unavailable` when that source is not
 available. `replay_events(...)` is bounded and never pages automatically.
 
