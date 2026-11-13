@@ -27,7 +27,7 @@ Run in `.run`, while REST `runs.get()` returns it directly.
 
 | Method | Endpoint | Success | Client surface | Client model |
 | --- | --- | --- | --- | --- |
-| `POST` | `/v1/run-artifacts/signed-upload` | `200` | `client.runs.signed_upload(...)` | `PublicSignedUploadResponse` |
+| `POST` | `/v1/run-artifacts/signed-upload` | `200` | `client.runs.attach_artifact(...)` | `PublicSignedUploadResponse` |
 | `PUT` | `/v1/run-artifacts/uploads/{upload_id}` | `202` | `client.runs.attach_artifact(...)` | `PublicUploadAcceptedResponse` |
 | `GET` | `/v1/run-artifacts/{artifact_id}` | `200` | `httpx` direct call | `PublicArtifactStatusResponse` |
 | `GET` | `/v1/runs` | `200` | `client.runs.list(...)` | `PublicRunCollectionResponse` |
@@ -176,7 +176,7 @@ Terminal failure example:
 
 ### `POST /v1/run-artifacts/signed-upload`
 
-Client surface: `client.runs.signed_upload(...)`
+Client surface: `client.runs.attach_artifact(...)`
 
 Client model: `PublicSignedUploadResponse`
 
@@ -1234,7 +1234,7 @@ Base URL: `https://api.zenture.app/v1`
 
 Developer docs: `https://www.zenture.app/en/developers`
 
-Python client (`python -m pip install --upgrade zenture==1.0.3`): [zenture-development/zenture-client](https://github.com/zenture-development/zenture-client)
+Python client (`python -m pip install --upgrade zenture==1.2.1`): [zenture-development/zenture-client](https://github.com/zenture-development/zenture-client)
 ```
 
 ### `POST /v1/input-wizard`
