@@ -62,9 +62,7 @@ def _proposal() -> dict[str, object]:
     }
 
 
-def _run(
-    *, status: str = "queued", run_id: str = RUN_ID, deadline_at: str | None = None
-) -> dict[str, object]:
+def _run(*, status: str = "queued", run_id: str = RUN_ID) -> dict[str, object]:
     response: dict[str, object] = {
         "run_id": run_id,
         "generation": 1,
@@ -78,8 +76,6 @@ def _run(
         "queue": {"queue_reason": "queue:admitted", "jobs_ahead": 0},
         "cancellation_requested": False,
     }
-    if deadline_at is not None:
-        response["deadline_at"] = deadline_at
     return response
 
 
@@ -980,17 +976,14 @@ def test_sync_wait_returns_when_queued_run_reaches_completed() -> None:
     client.close()
 
 
-def test_sync_wait_uses_first_server_deadline_once_and_reports_context_on_timeout(
+def test_sync_wait_polls_on_backoff_and_reports_context_on_timeout(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import zenture._resources.runs as runs_module
 
     now = 1_000.0
     sleeps: list[float] = []
-    responses = [
-        _run(deadline_at="1970-01-01T00:16:06Z"),
-        _run(deadline_at="1970-01-01T00:16:06Z"),
-    ]
+    responses = [_run(), _run()]
     calls = 0
 
     def monotonic() -> float:
@@ -1018,22 +1011,20 @@ def test_sync_wait_uses_first_server_deadline_once_and_reports_context_on_timeou
         http_client=httpx.Client(transport=httpx.MockTransport(handler)),
     )
     with pytest.raises(ZenturePollingTimeoutError) as exc_info:
-        client.runs.wait(RUN_ID, initial_interval=2.0, max_interval=2.0)
+        client.runs.wait(RUN_ID, timeout=3.0, initial_interval=2.0, max_interval=2.0)
 
     assert calls == 2
     assert sleeps == [2.0, 1.0]
     error = exc_info.value
     assert error.last_status == "queued"
-    assert error.observed_deadline == "1970-01-01T00:16:06+00:00"
+    assert error.observed_deadline is None
     assert "answer" not in str(error)
     client.close()
 
 
-def test_sync_wait_explicit_timeout_wins_over_server_deadline() -> None:
-    responses = [_run(deadline_at="2099-01-01T00:00:00Z")]
-
+def test_sync_wait_explicit_timeout_ends_a_never_terminal_run() -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json=responses[0])
+        return httpx.Response(200, json=_run())
 
     client = ZentureClient(
         api_key=API_KEY,
@@ -1042,17 +1033,17 @@ def test_sync_wait_explicit_timeout_wins_over_server_deadline() -> None:
     with pytest.raises(ZenturePollingTimeoutError) as exc_info:
         client.runs.wait(RUN_ID, timeout=0.001, initial_interval=0.01, max_interval=0.01)
 
-    assert exc_info.value.observed_deadline == "2099-01-01T00:00:00+00:00"
+    assert exc_info.value.last_status == "queued"
+    assert exc_info.value.observed_deadline is None
     client.close()
 
 
-def test_sync_wait_reports_deadline_when_terminal_response_crosses_explicit_timeout(
+def test_sync_wait_times_out_when_terminal_response_crosses_explicit_timeout(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import zenture._resources.runs as runs_module
 
     now = 1_000.0
-    deadline_at = "1970-01-01T00:33:20Z"
 
     def sleep(_seconds: float) -> None:
         pass
@@ -1066,7 +1057,7 @@ def test_sync_wait_reports_deadline_when_terminal_response_crosses_explicit_time
     def handler(_request: httpx.Request) -> httpx.Response:
         nonlocal now
         now += 0.6
-        return httpx.Response(200, json=_run(status="completed", deadline_at=deadline_at))
+        return httpx.Response(200, json=_run(status="completed"))
 
     client = ZentureClient(
         api_key=API_KEY,
@@ -1076,7 +1067,7 @@ def test_sync_wait_reports_deadline_when_terminal_response_crosses_explicit_time
         client.runs.wait(RUN_ID, timeout=0.5)
 
     assert exc_info.value.last_status == "completed"
-    assert exc_info.value.observed_deadline == "1970-01-01T00:33:20+00:00"
+    assert exc_info.value.observed_deadline is None
     client.close()
 
 
@@ -1097,45 +1088,6 @@ def test_sync_wait_passes_remaining_budget_to_each_run_request() -> None:
     assert len(read_timeouts) == 1
     # Deadline subtraction may exceed the budget by one clock ULP (see the ULP test).
     assert 0 < read_timeouts[0] <= 1.0 + math.ulp(time.monotonic() + 1.0)
-    client.close()
-
-
-def test_sync_wait_does_not_extend_for_a_deadline_already_past(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    import zenture._resources.runs as runs_module
-
-    now = 1_000.0
-    calls = 0
-
-    def monotonic() -> float:
-        return now
-
-    def wall_time() -> float:
-        return now
-
-    def sleep(_seconds: float) -> None:
-        return None
-
-    monkeypatch.setattr(
-        runs_module,
-        "time",
-        SimpleNamespace(monotonic=monotonic, time=wall_time, sleep=sleep),
-    )
-
-    def handler(_request: httpx.Request) -> httpx.Response:
-        nonlocal calls
-        calls += 1
-        return httpx.Response(200, json=_run(deadline_at="1970-01-01T00:15:00Z"))
-
-    client = ZentureClient(
-        api_key=API_KEY,
-        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
-    )
-    with pytest.raises(ZenturePollingTimeoutError):
-        client.runs.wait(RUN_ID, initial_interval=1.0, max_interval=1.0)
-
-    assert calls == 1
     client.close()
 
 
@@ -1196,30 +1148,6 @@ def test_sync_wait_null_deadline_keeps_the_existing_finite_default(
     assert sleeps == [60.0, 60.0]
     assert exc_info.value.last_status == "queued"
     assert exc_info.value.observed_deadline is None
-    client.close()
-
-
-def test_sync_wait_rejects_a_changed_server_deadline() -> None:
-    responses = [
-        _run(deadline_at="2099-01-01T00:00:00Z"),
-        _run(deadline_at="2099-01-01T00:01:00Z"),
-    ]
-    calls = 0
-
-    def handler(_request: httpx.Request) -> httpx.Response:
-        nonlocal calls
-        response = responses[calls]
-        calls += 1
-        return httpx.Response(200, json=response)
-
-    client = ZentureClient(
-        api_key=API_KEY,
-        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
-    )
-    with pytest.raises(ZentureResponseError, match="deadline_at"):
-        client.runs.wait(RUN_ID, timeout=1.0, initial_interval=0.0, max_interval=0.0)
-
-    assert calls == 2
     client.close()
 
 
@@ -1284,7 +1212,7 @@ async def test_async_wait_honors_stop_after_an_inflight_response() -> None:
 
 
 @pytest.mark.asyncio
-async def test_async_wait_explicit_timeout_wins_over_a_server_deadline(
+async def test_async_wait_explicit_timeout_bounds_the_poll_backoff(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import zenture._resources.async_runs as async_runs_module
@@ -1310,7 +1238,7 @@ async def test_async_wait_explicit_timeout_wins_over_a_server_deadline(
             return httpx.Response(404, json={})  # stream unavailable: poll
         nonlocal calls
         calls += 1
-        return httpx.Response(200, json=_run(deadline_at="1970-01-01T00:33:20Z"))
+        return httpx.Response(200, json=_run())
 
     client = AsyncZentureClient(
         api_key=API_KEY,
@@ -1321,18 +1249,17 @@ async def test_async_wait_explicit_timeout_wins_over_a_server_deadline(
 
     assert calls == 2
     assert sleeps == [2.0, 1.0]
-    assert exc_info.value.observed_deadline == "1970-01-01T00:33:20+00:00"
+    assert exc_info.value.observed_deadline is None
     await client.aclose()
 
 
 @pytest.mark.asyncio
-async def test_async_wait_reports_deadline_when_terminal_response_crosses_explicit_timeout(
+async def test_async_wait_times_out_when_terminal_response_crosses_explicit_timeout(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import zenture._resources.async_runs as async_runs_module
 
     now = 1_000.0
-    deadline_at = "1970-01-01T00:33:20Z"
     monkeypatch.setattr(
         async_runs_module,
         "time",
@@ -1342,7 +1269,7 @@ async def test_async_wait_reports_deadline_when_terminal_response_crosses_explic
     async def handler(_request: httpx.Request) -> httpx.Response:
         nonlocal now
         now += 0.6
-        return httpx.Response(200, json=_run(status="completed", deadline_at=deadline_at))
+        return httpx.Response(200, json=_run(status="completed"))
 
     client = AsyncZentureClient(
         api_key=API_KEY,
@@ -1352,110 +1279,7 @@ async def test_async_wait_reports_deadline_when_terminal_response_crosses_explic
         await client.runs.wait(RUN_ID, timeout=0.5)
 
     assert exc_info.value.last_status == "completed"
-    assert exc_info.value.observed_deadline == "1970-01-01T00:33:20+00:00"
-    await client.aclose()
-
-
-@pytest.mark.asyncio
-async def test_async_wait_uses_the_first_non_null_deadline_once(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    import zenture._resources.async_runs as async_runs_module
-
-    now = 1_000.0
-    sleeps: list[float] = []
-    calls = 0
-
-    async def sleep(seconds: float) -> None:
-        nonlocal now
-        sleeps.append(seconds)
-        now += seconds
-
-    monkeypatch.setattr(
-        async_runs_module,
-        "time",
-        SimpleNamespace(monotonic=lambda: now, time=lambda: 1_000.0),
-    )
-    monkeypatch.setattr(asyncio, "sleep", sleep)
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path.endswith("/events/stream"):
-            return httpx.Response(404, json={})  # stream unavailable: poll
-        nonlocal calls
-        calls += 1
-        return httpx.Response(200, json=_run(deadline_at="1970-01-01T00:16:21Z"))
-
-    client = AsyncZentureClient(
-        api_key=API_KEY,
-        http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
-    )
-    with pytest.raises(ZenturePollingTimeoutError) as exc_info:
-        await client.runs.wait(RUN_ID, initial_interval=20.0, max_interval=20.0)
-
-    assert calls == 2
-    assert sleeps == [20.0, 16.0]
-    assert exc_info.value.last_status == "queued"
-    assert exc_info.value.observed_deadline == "1970-01-01T00:16:21+00:00"
-    await client.aclose()
-
-
-@pytest.mark.asyncio
-async def test_async_wait_past_deadline_cannot_extend_polling(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    import zenture._resources.async_runs as async_runs_module
-
-    now = 1_000.0
-    calls = 0
-
-    async def sleep(_seconds: float) -> None:
-        return None
-
-    monkeypatch.setattr(
-        async_runs_module,
-        "time",
-        SimpleNamespace(monotonic=lambda: now, time=lambda: 1_000.0),
-    )
-    monkeypatch.setattr(asyncio, "sleep", sleep)
-
-    async def handler(_request: httpx.Request) -> httpx.Response:
-        nonlocal calls
-        calls += 1
-        return httpx.Response(200, json=_run(deadline_at="1970-01-01T00:15:00Z"))
-
-    client = AsyncZentureClient(
-        api_key=API_KEY,
-        http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
-    )
-    with pytest.raises(ZenturePollingTimeoutError):
-        await client.runs.wait(RUN_ID, initial_interval=1.0, max_interval=1.0)
-
-    assert calls == 1
-    await client.aclose()
-
-
-@pytest.mark.asyncio
-async def test_async_wait_rejects_a_changed_server_deadline() -> None:
-    responses = [
-        _run(deadline_at="2099-01-01T00:00:00Z"),
-        _run(deadline_at="2099-01-01T00:01:00Z"),
-    ]
-    calls = 0
-
-    async def handler(_request: httpx.Request) -> httpx.Response:
-        nonlocal calls
-        response = responses[calls]
-        calls += 1
-        return httpx.Response(200, json=response)
-
-    client = AsyncZentureClient(
-        api_key=API_KEY,
-        http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
-    )
-    with pytest.raises(ZentureResponseError, match="deadline_at"):
-        await client.runs.wait(RUN_ID, timeout=1.0, initial_interval=0.0, max_interval=0.0)
-
-    assert calls == 2
+    assert exc_info.value.observed_deadline is None
     await client.aclose()
 
 
@@ -2378,36 +2202,26 @@ async def test_async_iter_events_stops_when_the_wait_consumes_the_budget_on_a_co
     await client.aclose()
 
 
-def test_safe_result_decision_decodes_null_outcome_of_a_technically_failed_evaluation() -> None:
-    from zenture._contract.models import SafeResultDecision
-
-    failed = SafeResultDecision.model_validate(
+def test_public_run_response_decodes_null_decision_of_a_technically_failed_evaluation() -> None:
+    failed = PublicRunResponse.model_validate(
         {
-            "outcome": None,
-            "technical_status": "failed",
-            "reason_code": "execution_failed",
+            **_run(status="failed"),
+            "reason": "execution_failed",
             "next_action": "Retry the evaluation.",
         }
     )
-    assert failed.outcome is None
-    assert failed.technical_status == "failed"
-    ready = SafeResultDecision.model_validate(
-        {"outcome": "ready", "reason_code": "ok", "next_action": "Use the answer."}
+    assert failed.acceptance_decision is None
+    assert failed.reason == "execution_failed"
+    assert failed.next_action == "Retry the evaluation."
+    ready = PublicRunResponse.model_validate(
+        {**_run(status="completed"), "acceptance_decision": "ready", "reason": "ok"}
     )
-    assert ready.outcome == "ready"
-    assert ready.technical_status is None
+    assert ready.acceptance_decision is not None
+    assert ready.acceptance_decision.value == "ready"
 
 
-def test_public_run_input_kind_is_text_or_file_and_tolerates_a_server_that_does_not_send_it() -> (
-    None
-):
-    """The Run payload says whether the Run checks a text or an uploaded file; an older server may omit it."""
-    for kind in ("text", "file"):
-        assert PublicRunResponse.model_validate({**_run(), "input_kind": kind}).input_kind == kind
-    with pytest.raises(ValidationError):
-        PublicRunResponse.model_validate({**_run(), "input_kind": "image"})
-    without = {key: value for key, value in _run().items() if key != "input_kind"}
-    assert PublicRunResponse.model_validate(without).input_kind is None
+def test_public_run_list_item_input_kind_is_text_or_file_and_optional() -> None:
+    """The list item says whether the Run checks a text or an uploaded file; it may be omitted."""
     item = {
         "run_id": RUN_ID,
         "status": "queued",

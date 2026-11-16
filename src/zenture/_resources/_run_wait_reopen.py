@@ -1,4 +1,4 @@
-"""runs.wait() pacing: server poll hint and bounded re-opening of a broken Run event stream."""
+"""runs.wait() pacing: bounded re-opening of a broken Run event stream."""
 
 from __future__ import annotations
 
@@ -10,8 +10,6 @@ from zenture._resources._run_wait import listen_for_terminal, listen_for_termina
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
-_MIN_POLL_HINT = 1.0
-_MAX_POLL_HINT = 10.0
 _STREAM_RECONNECT_JITTER_RATIO = 0.25
 _MIN_STREAM_RECONNECT_INTERVAL = 1.0
 
@@ -31,14 +29,6 @@ def bounded_stream_retry_delay(
     if remaining is not None:
         delay = min(delay, max(0.0, remaining))
     return delay
-
-
-def poll_window(interval: float, retry_after_seconds: int | None) -> float:
-    """Return the next poll delay: the server hint bounded to 1..10 s, else the backoff interval."""
-
-    if retry_after_seconds is None:
-        return interval
-    return min(max(float(retry_after_seconds), _MIN_POLL_HINT), _MAX_POLL_HINT)
 
 
 def listen_reopening(

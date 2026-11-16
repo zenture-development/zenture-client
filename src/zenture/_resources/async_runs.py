@@ -28,7 +28,6 @@ from zenture._resources._run_wait import is_terminal_stream_message, parse_sse_e
 from zenture._resources._run_wait_reopen import (
     StreamWindow,
     bounded_stream_retry_delay,
-    poll_window,
 )
 from zenture._resources._utils import (
     idempotency_headers,
@@ -41,7 +40,6 @@ from zenture._resources.runs import (
     RunEventStreamState,
     add_wait_header,
     async_stream_timeout,
-    deadline_bound,
     is_retryable_stream_error,
     is_terminal_status,
     parse_run_response,
@@ -56,7 +54,6 @@ from zenture.errors import (
     ZentureAPIError,
     ZenturePollingStoppedError,
     ZenturePollingTimeoutError,
-    ZentureResponseError,
     ZentureTransportError,
 )
 from zenture.polling import validate_wait_parameters
@@ -383,9 +380,8 @@ class AsyncRunsResource:
         """Read one owned Run and return PublicRunResponse directly.
 
         run_id is the identifier from run/create/list. view="summary" is the default
-        for progress; view="full" requests available evaluation content. Read
-        safe_result_content.status before using its content; unavailable is not an
-        empty successful result. Invalid ID/view raises ValueError; malformed or
+        for progress; view="full" adds criteria and per-statement assessments.
+        Terminal Runs carry acceptance_decision, reason, next_action, hint and findings. Invalid ID/view raises ValueError; malformed or
         foreign-ID responses raise ZentureResponseError; API errors are typed.
         _timeout is reserved for the client polling budget; ordinary callers omit it.
         This read never starts, retries or cancels a Run.
@@ -539,14 +535,14 @@ class AsyncRunsResource:
         """Poll an existing Run until terminal; return its summary PublicRunResponse.
 
         run_id comes from run/create/list. timeout is an optional positive seconds
-        budget. None starts with 120 seconds and uses the first observed server
-        Run deadline plus recovery allowance when supplied; waiting remains finite.
+        budget. None uses 120 seconds; waiting is always finite.
         initial_interval/max_interval set exponential polling delay (defaults 1/8
         seconds). stop is a synchronous predicate to stop waiting without cancellation.
 
         Returns terminal states including failed/cancelled/expired/budget_exhausted,
-        not just completed. billing_summary may be pending: re-read with get() for
-        final Credits; get(view="full") has content, check acceptance_decision. Timeout/stop raise
+        not just completed. billing.status may be pending: re-read with get() for
+        the final amount; get(view="full") adds criteria and statements; check
+        acceptance_decision, reason and findings. Timeout/stop raise
         ZenturePollingTimeoutError/ZenturePollingStoppedError with the Run ID in
         operation_id; retain it and read the same Run later. Never start a replacement.
 
@@ -559,7 +555,6 @@ class AsyncRunsResource:
         )
         deadline = time.monotonic() + (timeout if timeout is not None else 120.0)
         interval = initial_interval
-        observed_deadline: datetime | None = None
         last_status = None
         stream = StreamWindow(
             self._transport,
@@ -573,42 +568,16 @@ class AsyncRunsResource:
             if callable(stop) and stop():
                 raise ZenturePollingStoppedError(operation_id=run_id)
             if time.monotonic() >= deadline:
-                raise polling_timeout(
-                    run_id=run_id,
-                    last_status=last_status,
-                    observed_deadline=observed_deadline,
-                )
+                raise polling_timeout(run_id=run_id, last_status=last_status)
             result = await self.get(run_id, _timeout=max(0.0, deadline - time.monotonic()))
             if time.monotonic() >= deadline:
-                raise polling_timeout(
-                    run_id=run_id,
-                    last_status=result.status,
-                    observed_deadline=observed_deadline or result.deadline_at,
-                )
+                raise polling_timeout(run_id=run_id, last_status=result.status)
             if callable(stop) and stop():
                 raise ZenturePollingStoppedError(operation_id=run_id)
             last_status = result.status
-            if (
-                observed_deadline is not None
-                and result.deadline_at is not None
-                and result.deadline_at != observed_deadline
-            ):
-                raise ZentureResponseError(
-                    "Public API response deadline_at changed during Run polling."
-                )
-            if observed_deadline is None and result.deadline_at is not None:
-                observed_deadline = result.deadline_at
-                if timeout is None:
-                    deadline = deadline_bound(
-                        observed_deadline,
-                        now_monotonic=time.monotonic(),
-                        now_wall=time.time(),
-                        max_interval=max_interval,
-                    )
             if is_terminal_status(result.status):
                 return result
-            window = poll_window(interval, result.retry_after_seconds)
-            end = time.monotonic() + min(window, max(0.0, deadline - time.monotonic()))
+            end = time.monotonic() + min(interval, max(0.0, deadline - time.monotonic()))
             # The terminal event is the wake; the window bounds the next safety read.
             await stream.wait_async(end)
             interval = min(interval * 2, max_interval)

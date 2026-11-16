@@ -12,8 +12,7 @@ import pytest
 from pydantic import ValidationError
 
 from zenture import AsyncZentureClient, ZentureClient
-from zenture._contract import PublicRunListItem, PublicRunResponse
-from zenture._contract.safe_result_findings import SafeResultLocation
+from zenture._contract import PublicRunListItem
 from zenture._mcp import McpClient
 
 # Deterministic synthetic fixture for MockTransport-only tests; no real credentials/network.
@@ -146,14 +145,7 @@ def test_async_prepare_and_run_send_the_reference_file() -> None:
     assert prepared[0]["reference_file"] == {"type": "zenture_ref", "value": REFERENCE}
 
 
-def test_runs_and_list_items_carry_reference_file_attached_defaulting_to_false() -> None:
-    assert PublicRunResponse.model_validate(_run()).reference_file_attached is False
-    assert (
-        PublicRunResponse.model_validate(
-            {**_run(), "reference_file_attached": True}
-        ).reference_file_attached
-        is True
-    )
+def test_list_items_carry_reference_file_attached_defaulting_to_false() -> None:
     item = {
         "run_id": _run()["run_id"],
         "status": "queued",
@@ -168,28 +160,6 @@ def test_runs_and_list_items_carry_reference_file_attached_defaulting_to_false()
         ).reference_file_attached
         is True
     )
-
-
-def test_a_reference_file_location_parses_with_its_file_facts() -> None:
-    location = SafeResultLocation.model_validate(
-        {
-            "source": "reference_file",
-            "start": 4,
-            "end": 9,
-            "status": "shown",
-            "excerpt": "Total",
-            "page": 2,
-            "sheet": "Sheet1",
-            "cell": "B7",
-            "from_image": False,
-        }
-    )
-    assert location.source == "reference_file"
-    assert location.cell == "B7"
-    with pytest.raises(ValidationError):
-        SafeResultLocation.model_validate(
-            {"source": "elsewhere", "start": 0, "end": 1, "status": "withheld"}
-        )
 
 
 class _Transport:
