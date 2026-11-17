@@ -120,7 +120,7 @@ async def test_real_mcp_and_api_clients_complete_both_cross_channel_journeys() -
             assert final_read_via_mcp.run.run_id == read_via_api.run_id
             assert final_read_via_mcp.run.status == read_via_api.status
             assert final_read_via_mcp.run.acceptance_decision == read_via_api.acceptance_decision
-            assert final_read_via_mcp.run.artifact_refs == read_via_api.artifact_refs
+            assert final_read_via_mcp.run.findings == read_via_api.findings
             assert outcome_via_api.run_id == created_via_mcp.run_id
             assert replayed_events.events
             assert any(isinstance(message, PublicRunEvent) for message in streamed_events)
@@ -148,7 +148,7 @@ async def test_real_mcp_and_api_clients_complete_both_cross_channel_journeys() -
             final_read_via_mcp = await mcp.get_run(created_via_api.run_id, view="summary")
 
             assert cancellation.run_id == created_via_api.run_id
-            assert cancellation.cancellation_requested or cancellation.status in {
+            assert cancellation.status in {
                 RunStatus.CANCEL_REQUESTED,
                 RunStatus.CANCELLED,
             }

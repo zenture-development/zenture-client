@@ -62,7 +62,7 @@ def _schema_enums(node: Any) -> set[Any]:
         for value in mapping.values():
             found |= _schema_enums(value)
     elif isinstance(node, list):
-        for item in cast("list[Any]", node):
+        for item in cast("Any", node):
             found |= _schema_enums(item)
     return found
 
@@ -99,7 +99,7 @@ def test_run_read_model_enums_equal_the_openapi_schema(name: str) -> None:
     schemas = _schemas()
     schema = schemas[name]
     for field, info in RUN_READ_MODELS[name].model_fields.items():
-        property_schema = schema["properties"][field]
+        property_schema: Any = schema["properties"][field]
         ref = property_schema.get("$ref") or next(
             (o["$ref"] for o in property_schema.get("anyOf", []) if "$ref" in o), None
         )
