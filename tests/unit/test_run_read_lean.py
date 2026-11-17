@@ -25,7 +25,7 @@ def _terminal() -> dict[str, object]:
             {
                 "ref": "finding:f1",
                 "proven": True,
-                "category": "invented_figure",
+                "category": "unsupported",
                 "location": "paragraph 2",
                 "problem": "The figure 4.2 million has no source.",
                 "evidence": {"url": "https://example.org/report", "excerpt": "revenue was 3.1 million"},
@@ -56,7 +56,7 @@ def test_a_terminal_run_exposes_the_lean_verdict_fields() -> None:
     )
     assert run.findings is not None
     web, file = run.findings
-    assert (web.category, web.proven, web.fix) == ("invented_figure", True, "State 3.1 million or cite a source.")
+    assert (web.category, web.proven, web.fix) == ("unsupported", True, "State 3.1 million or cite a source.")
     assert web.evidence is not None
     assert web.evidence.url == "https://example.org/report"
     assert file.evidence is not None
@@ -99,10 +99,30 @@ def test_the_full_view_adds_criteria_and_statements() -> None:
     assert (run.statements[0].start, run.statements[0].end) == (0, 9)
 
 
+def test_a_revision_run_exposes_what_changed_about_its_predecessor_findings() -> None:
+    run = PublicRunResponse.model_validate(
+        {
+            **_terminal(),
+            "changes": {
+                "resolved": [{"category": "calculation", "location": "table 1"}],
+                "open": ["finding:f1"],
+                "new": [],
+            },
+        }
+    )
+
+    assert run.changes is not None
+    assert [(r.category, r.location) for r in run.changes.resolved] == [("calculation", "table 1")]
+    assert (run.changes.open, run.changes.new) == (("finding:f1",), ())
+    assert PublicRunResponse.model_validate(_terminal()).changes is None
+
+
 @pytest.mark.parametrize(
     "patch",
     [
         {"acceptance_decision": "approved"},
+        {"changes": {"resolved": [], "open": ["not-a-finding-ref" * 20], "new": []}},
+        {"changes": {"resolved": [{"category": "task_requirement"}], "open": [], "new": []}},
         {"findings": [{"ref": "finding:f1", "proven": True, "problem": "x", "category": "other"}]},
         {"findings": [{"ref": "finding:f1", "proven": True, "problem": "x", "evidence": {"untrusted_file_text": False}}]},
         {"billing": {"status": "settled", "amount": "1,5"}},

@@ -16,6 +16,10 @@ The Run read is lean. This is a breaking change for readers of the retired field
   `result`), `learning` (`PublicRunLearning.essence`), `eta_seconds` and, with `view="full"`, `criteria` and
   `statements`. New public models: `PublicRunBilling`, `PublicRunCriterion`, `PublicRunEvidence`,
   `PublicRunFinding`, `PublicRunLearning`, `PublicRunStandard`, `PublicRunStatement`.
+- `PublicRunFinding.category` is one of eight values: `contradicted`, `unsupported`, `unverifiable`, `calculation`,
+  `requirement`, `constraint`, `standard`, `source_inconsistent`. A revision Run also carries `changes`
+  (`PublicRunChanges`: `resolved` as `PublicRunResolvedFinding` with `category` and `location`, `open` and `new` as
+  finding refs); it is `None` on every other Run.
 - Removed with no replacement: `safe_result_content` and its models, `standards_checked` (`StandardsChecked`,
   `StandardCheckResult`), `learning_applied`, `essence_version`, `essence`, `billing_summary` and
   `TerminalBillingSummaryV1` (use `billing`), and the timing, queue and coverage fields (`deadline_at`,

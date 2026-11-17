@@ -3,28 +3,23 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, field_validator
 
 from zenture._contract.response_base import RunResponseModel, coerce_tuple
 
+FindingRef = Annotated[str, Field(max_length=256, pattern=r"^finding:[A-Za-z0-9_./:-]{1,247}$")]
+
 FindingCategory = Literal[
-    "task_requirement",
-    "task_constraint",
-    "task_consistency",
-    "arithmetic",
-    "source_missing",
-    "source_unavailable",
-    "source_support_missing",
-    "source_contradiction",
-    "partial_verification",
-    "prohibition_violated",
-    "commitment_unsupported",
-    "forecast_as_certain",
-    "invented_figure",
-    "internal_contradiction",
-    "requirement_omitted",
+    "contradicted",
+    "unsupported",
+    "unverifiable",
+    "calculation",
+    "requirement",
+    "constraint",
+    "standard",
+    "source_inconsistent",
 ]
 
 
@@ -106,6 +101,26 @@ class PublicRunStatement(RunResponseModel):
     end: int = Field(ge=1)
 
 
+class PublicRunResolvedFinding(RunResponseModel):
+    """A finding of the revised Run that no longer stands: its category and the quoted place it sat at."""
+
+    category: FindingCategory | None = None
+    location: str | None = Field(default=None, min_length=1, max_length=256)
+
+
+class PublicRunChanges(RunResponseModel):
+    """What a revision Run changed about the findings of the Run it revises; all three lists are always stated."""
+
+    resolved: tuple[PublicRunResolvedFinding, ...] = Field(max_length=128)
+    open: tuple[FindingRef, ...] = Field(max_length=128)
+    new: tuple[FindingRef, ...] = Field(max_length=128)
+
+    @field_validator("resolved", "open", "new", mode="before")
+    @classmethod
+    def _lists(cls, value: object) -> object:
+        return coerce_tuple(value)
+
+
 class PublicRunResponse(RunResponseModel):
     """Summary of a Run: terminal runs carry the verdict, non-terminal ones `next_action` and a hint."""
 
@@ -122,6 +137,7 @@ class PublicRunResponse(RunResponseModel):
     eta_seconds: int | None = Field(default=None, ge=0, le=86_400)
     criteria: tuple[PublicRunCriterion, ...] | None = Field(default=None, max_length=32)
     statements: tuple[PublicRunStatement, ...] | None = Field(default=None, max_length=61)
+    changes: PublicRunChanges | None = None
 
     @field_validator("status", mode="before")
     @classmethod

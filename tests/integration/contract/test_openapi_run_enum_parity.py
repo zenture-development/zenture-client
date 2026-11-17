@@ -12,10 +12,12 @@ from zenture._contract.models import PublicRunEvent
 from zenture._contract.run_read import (
     PublicDecision,
     PublicRunBilling,
+    PublicRunChanges,
     PublicRunCriterion,
     PublicRunEvidence,
     PublicRunFinding,
     PublicRunLearning,
+    PublicRunResolvedFinding,
     PublicRunResponse,
     PublicRunStandard,
     PublicRunStatement,
@@ -40,6 +42,8 @@ RUN_READ_MODELS: dict[str, Any] = {
     "PublicRunLearning": PublicRunLearning,
     "PublicRunCriterion": PublicRunCriterion,
     "PublicRunStatement": PublicRunStatement,
+    "PublicRunChanges": PublicRunChanges,
+    "PublicRunResolvedFinding": PublicRunResolvedFinding,
 }
 
 

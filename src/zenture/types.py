@@ -37,10 +37,12 @@ from zenture._contract.models import (
 )
 from zenture._contract.run_read import (
     PublicRunBilling,
+    PublicRunChanges,
     PublicRunCriterion,
     PublicRunEvidence,
     PublicRunFinding,
     PublicRunLearning,
+    PublicRunResolvedFinding,
     PublicRunResponse,
     PublicRunStandard,
     PublicRunStatement,
@@ -77,6 +79,7 @@ __all__ = (
     "PublicOperationResponse",
     "PublicOperationResult",
     "PublicRunBilling",
+    "PublicRunChanges",
     "PublicRunCriterion",
     "PublicRunEvent",
     "PublicRunEvidence",
@@ -84,6 +87,7 @@ __all__ = (
     "PublicRunHeartbeat",
     "PublicRunLearning",
     "PublicRunListItem",
+    "PublicRunResolvedFinding",
     "PublicRunResponse",
     "PublicRunStandard",
     "PublicRunStatement",

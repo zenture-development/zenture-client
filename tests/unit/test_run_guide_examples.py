@@ -53,7 +53,7 @@ def run_payload(
                 "ref": "finding:one",
                 "proven": True,
                 "problem": "The answer names one colour instead of two.",
-                "category": "requirement_omitted",
+                "category": "requirement",
             }
         ],
         "billing": {"status": "pending"},

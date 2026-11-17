@@ -1603,6 +1603,47 @@
         "title": "PublicRunBilling",
         "type": "object"
       },
+      "PublicRunChanges": {
+        "additionalProperties": false,
+        "description": "What a revision Run changed about the findings of the Run it revises: `resolved` (no longer found, described), `open` (refs of this Run's findings that already stood before) and `new` (refs of findings that did not). All three are always stated.",
+        "properties": {
+          "new": {
+            "items": {
+              "maxLength": 256,
+              "pattern": "^finding:[A-Za-z0-9_./:-]{1,247}$",
+              "type": "string"
+            },
+            "maxItems": 128,
+            "title": "New",
+            "type": "array"
+          },
+          "open": {
+            "items": {
+              "maxLength": 256,
+              "pattern": "^finding:[A-Za-z0-9_./:-]{1,247}$",
+              "type": "string"
+            },
+            "maxItems": 128,
+            "title": "Open",
+            "type": "array"
+          },
+          "resolved": {
+            "items": {
+              "$ref": "#/components/schemas/PublicRunResolvedFinding"
+            },
+            "maxItems": 128,
+            "title": "Resolved",
+            "type": "array"
+          }
+        },
+        "required": [
+          "resolved",
+          "open",
+          "new"
+        ],
+        "title": "PublicRunChanges",
+        "type": "object"
+      },
       "PublicRunCollectionResponse": {
         "additionalProperties": true,
         "properties": {
@@ -1991,21 +2032,14 @@
             "anyOf": [
               {
                 "enum": [
-                  "task_requirement",
-                  "task_constraint",
-                  "task_consistency",
-                  "arithmetic",
-                  "source_missing",
-                  "source_unavailable",
-                  "source_support_missing",
-                  "source_contradiction",
-                  "partial_verification",
-                  "prohibition_violated",
-                  "commitment_unsupported",
-                  "forecast_as_certain",
-                  "invented_figure",
-                  "internal_contradiction",
-                  "requirement_omitted"
+                  "contradicted",
+                  "unsupported",
+                  "unverifiable",
+                  "calculation",
+                  "requirement",
+                  "constraint",
+                  "standard",
+                  "source_inconsistent"
                 ],
                 "type": "string"
               },
@@ -2216,6 +2250,18 @@
             ],
             "default": null
           },
+          "changes": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicRunChanges"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "A revision Run only: what changed about the findings of the Run it revises."
+          },
           "criteria": {
             "anyOf": [
               {
@@ -2360,6 +2406,50 @@
         "title": "PublicRunResponse",
         "type": "object"
       },
+      "PublicRunResolvedFinding": {
+        "additionalProperties": false,
+        "description": "A finding of the Run this one revises that no longer stands: its category and the quoted place it sat at.",
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "enum": [
+                  "contradicted",
+                  "unsupported",
+                  "unverifiable",
+                  "calculation",
+                  "requirement",
+                  "constraint",
+                  "standard",
+                  "source_inconsistent"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Category"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Location"
+          }
+        },
+        "title": "PublicRunResolvedFinding",
+        "type": "object"
+      },
       "PublicRunResponse": {
         "additionalProperties": false,
         "properties": {
@@ -2384,6 +2474,18 @@
               }
             ],
             "default": null
+          },
+          "changes": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicRunChanges"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "A revision Run only: what changed about the findings of the Run it revises."
           },
           "criteria": {
             "anyOf": [

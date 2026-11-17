@@ -360,6 +360,17 @@ Schema: `PublicRunResponse`
     "status": "pending",
     "unit": "credits"
   },
+  "changes": {
+    "new": [
+      "example"
+    ],
+    "open": [
+      "example"
+    ],
+    "resolved": [
+      "example"
+    ]
+  },
   "criteria": [
     {
       "explanation": "example",
@@ -419,6 +430,17 @@ Schema: `PublicRunResponse`
     "amount": "123.45",
     "status": "pending",
     "unit": "credits"
+  },
+  "changes": {
+    "new": [
+      "example"
+    ],
+    "open": [
+      "example"
+    ],
+    "resolved": [
+      "example"
+    ]
   },
   "criteria": [
     {
@@ -562,6 +584,17 @@ Schema: `PublicRunResponse`
     "status": "pending",
     "unit": "credits"
   },
+  "changes": {
+    "new": [
+      "example"
+    ],
+    "open": [
+      "example"
+    ],
+    "resolved": [
+      "example"
+    ]
+  },
   "criteria": [
     {
       "explanation": "example",
@@ -643,6 +676,17 @@ Schema: `PublicRunResponse`
     "amount": "123.45",
     "status": "pending",
     "unit": "credits"
+  },
+  "changes": {
+    "new": [
+      "example"
+    ],
+    "open": [
+      "example"
+    ],
+    "resolved": [
+      "example"
+    ]
   },
   "criteria": [
     {
@@ -803,6 +847,17 @@ Schema: `PublicRunOutcomeResponse`
     "amount": "123.45",
     "status": "pending",
     "unit": "credits"
+  },
+  "changes": {
+    "new": [
+      "example"
+    ],
+    "open": [
+      "example"
+    ],
+    "resolved": [
+      "example"
+    ]
   },
   "criteria": [
     {
