@@ -61,6 +61,7 @@ async def test_product_run_sdk_acceptance(profile: RunProfile) -> None:
     assert report.full.status in _TERMINAL_STATUSES
     assert report.full.acceptance_decision is not None
     assert report.full.findings is not None
+    assert report.full.next_action
     assert report.full.billing is not None
     assert report.full.billing.status in {"settled", "released"}
     assert report.full.billing.amount is not None
