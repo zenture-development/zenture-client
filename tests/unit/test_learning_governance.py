@@ -112,31 +112,12 @@ def test_async_run_sends_the_same_fields() -> None:
     )
 
 
-def test_the_run_read_names_context_scope_and_note_and_a_null_scope_stays_null() -> None:
+def test_the_run_read_carries_the_learning_essence_only_when_it_shaped_the_verdict() -> None:
     run = PublicRunResponse.model_validate(
-        {
-            **_run(),
-            "learning_context": "private",
-            "essence_scope": None,
-            "note": "learning_context_unavailable",
-        }
+        {**_run(), "learning": {"essence": "Name your sources."}}
     )
-    assert (run.learning_context, run.essence_scope, run.note) == (
-        "private",
-        None,
-        "learning_context_unavailable",
-    )
-    org = PublicRunResponse.model_validate(
-        {**_run(), "learning_context": "organization", "essence_scope": "organization"}
-    )
-    assert (org.learning_context, org.essence_scope, org.note) == (
-        "organization",
-        "organization",
-        None,
-    )
-    plain = PublicRunResponse.model_validate(_run())
-    assert (plain.learning_context, plain.essence_scope, plain.note) == (None, None, None)
+    assert run.learning is not None
+    assert run.learning.essence == "Name your sources."
+    assert PublicRunResponse.model_validate(_run()).learning is None
     with pytest.raises(ValidationError):
-        PublicRunResponse.model_validate({**_run(), "note": "free text"})
-    with pytest.raises(ValidationError):
-        PublicRunResponse.model_validate({**_run(), "learning_context": "everyone"})
+        PublicRunResponse.model_validate({**_run(), "learning": {"essence": "x" * 601}})

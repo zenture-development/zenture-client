@@ -302,69 +302,38 @@ def test_sync_mcp_peer_maps_all_product_tools_to_canonical_models() -> None:
     }
 
 
-def test_mcp_run_peer_preserves_deadline_and_ignores_additive_response_fields() -> None:
+def test_mcp_run_peer_ignores_additive_response_fields() -> None:
     responses = _responses()
-    responses["get_run"] = {
-        **_run(),
-        "deadline_at": "2026-09-01T12:05:00Z",
-        "future_run_field": {"opaque": True},
-    }
+    responses["get_run"] = {**_run(), "future_run_field": {"opaque": True}}
     client = McpClient(RecordingTransport(responses))
 
     read = client.get_run(RUN_ID)
 
-    assert read.run.deadline_at is not None
-    assert read.run.deadline_at.isoformat() == "2026-09-01T12:05:00+00:00"
+    assert read.run.run_id == RUN_ID
     assert not hasattr(read.run, "future_run_field")
 
 
-@pytest.mark.parametrize("final_credits", [None, "omitted"])
-def test_mcp_start_accepts_pending_billing_with_absent_or_null_amount(
-    final_credits: object,
-) -> None:
-    projection: dict[str, object] = {
-        "schema_version": "run.terminal_billing_summary.v1",
-        "status": "pending",
-    }
-    if final_credits != "omitted":
-        projection["final_credits"] = final_credits
-    payload = {**_run(status="queued"), "billing_summary": projection}
+@pytest.mark.parametrize("amount", [None, "omitted"])
+def test_mcp_start_accepts_pending_billing_with_absent_or_null_amount(amount: object) -> None:
+    billing: dict[str, object] = {"status": "pending"}
+    if amount != "omitted":
+        billing["amount"] = amount
+    payload = {**_run(status="queued"), "billing": billing}
 
     run = McpClient(RecordingTransport({"run": payload})).run(
         task="Review this answer", artifact={"type": "text", "value": "text"}
     )
 
-    assert run.billing_summary is not None
-    assert run.billing_summary.final_credits is None
+    assert run.billing is not None
+    assert run.billing.status == "pending"
+    assert run.billing.amount is None
 
 
-@pytest.mark.parametrize("status", ["settled", "released", "unavailable"])
-@pytest.mark.parametrize("final_credits", [None, "omitted"])
-def test_mcp_start_rejects_terminal_billing_without_typed_amount(
-    status: str, final_credits: object
-) -> None:
-    projection: dict[str, object] = {
-        "schema_version": "run.terminal_billing_summary.v1",
-        "status": status,
-    }
-    if final_credits != "omitted":
-        projection["final_credits"] = final_credits
-    payload = {**_run(status="queued"), "billing_summary": projection}
-
-    with pytest.raises(ZentureMCPProtocolError, match="invalid_result_contract"):
-        McpClient(RecordingTransport({"run": payload})).run(
-            task="Review this answer", artifact={"type": "text", "value": "text"}
-        )
-
-
-def test_mcp_start_rejects_pending_billing_with_final_amount() -> None:
+@pytest.mark.parametrize("amount", ["1", "1.0", "-1.00", "one"])
+def test_mcp_start_rejects_a_malformed_billing_amount(amount: str) -> None:
     payload = {
         **_run(status="queued"),
-        "billing_summary": {
-            "schema_version": "run.terminal_billing_summary.v1",
-            "status": "pending",
-            "final_credits": {"status": "available", "amount": "1.00", "unit": "credits"},
-        },
+        "billing": {"status": "settled", "amount": amount, "unit": "credits"},
     }
 
     with pytest.raises(ZentureMCPProtocolError, match="invalid_result_contract"):
@@ -373,25 +342,20 @@ def test_mcp_start_rejects_pending_billing_with_final_amount() -> None:
         )
 
 
-def test_mcp_start_preserves_terminal_billing_amount_validation() -> None:
+def test_mcp_start_preserves_terminal_billing_amount() -> None:
     payload = {
         **_run(status="queued"),
-        "billing_summary": {
-            "schema_version": "run.terminal_billing_summary.v1",
-            "status": "settled",
-            "final_credits": {"status": "available", "amount": "1.00", "unit": "credits"},
-        },
+        "billing": {"status": "settled", "amount": "1.00", "unit": "credits"},
     }
 
     run = McpClient(RecordingTransport({"run": payload})).run(
         task="Review this answer", artifact={"type": "text", "value": "text"}
     )
 
-    assert run.billing_summary is not None
-    assert run.billing_summary.status == "settled"
-    assert run.billing_summary.final_credits is not None
-    assert run.billing_summary.final_credits.status == "available"
-    assert run.billing_summary.final_credits.amount == "1.00"
+    assert run.billing is not None
+    assert run.billing.status == "settled"
+    assert run.billing.amount == "1.00"
+    assert run.billing.unit == "credits"
 
 
 @pytest.mark.asyncio

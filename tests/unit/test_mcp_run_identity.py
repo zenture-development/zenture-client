@@ -26,15 +26,8 @@ KEY = "Review_A-123"
 def receipt(key: object) -> dict[str, object]:
     return {
         "run_id": "run_abc123",
-        "generation": 1,
-        "family": "knowledge",
-        "work_type": "answer",
-        "input_kind": "text",
-        "profile": "standard",
         "status": "queued",
-        "created_at": "2026-09-01T12:00:00Z",
-        "updated_at": "2026-09-01T12:00:00Z",
-        "artifact_refs": [],
+        "eta_seconds": 30,
         "idempotency_key": key,
     }
 
@@ -64,7 +57,7 @@ class PeerTransport:
         elif self.mode == "missing":
             payload.pop("idempotency_key")
         elif self.mode == "decode":
-            payload["generation"] = "malformed"
+            payload["status"] = "malformed"
         elif self.mode.startswith("tool"):
             payload = {
                 "idempotency_key": key,
@@ -128,7 +121,7 @@ async def test_run_explicit_identity_receipt_preserves_rest_shape(
     assert isinstance(result, PublicRunResponse)
     assert getattr(result, "idempotency_key", None) == key
     assert result.run_id == "run_abc123"
-    assert result.profile.value == "standard"
+    assert result.status.value == "queued"
     assert "idempotency_key" not in result.model_dump()
     assert "idempotency_key" not in result.model_dump(mode="json")
     wire = dict(transport.calls[0])

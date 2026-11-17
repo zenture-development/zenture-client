@@ -26,9 +26,8 @@ and reports:
 - a technical `status` (for example `queued`, `running`, `completed`);
 - an `acceptance_decision`: `ready`, `revise`, `human_review` or
   `insufficient_evidence`;
-- findings, evidence summaries, limitations and what was actually checked
-  (coverage), in `safe_result_content`;
-- a `billing_summary` with the final Credits once settled (a terminal Run can show
+- a `reason`, a `next_action` and the `findings` behind the decision;
+- a `billing` summary with the final Credits once settled (a terminal Run can show
   `pending` for a few seconds; re-read it, see the [run guide](./docs/run-guide.md)).
 
 A `completed` Run is only technically finished; it can still say `revise`.
@@ -69,10 +68,9 @@ with ZentureClient.from_env() as client:
     client.runs.wait(run.run_id, timeout=120.0)  # finite polling, returns a summary
     result = client.runs.get(run.run_id, view="full")
 
-    print(result.status, result.acceptance_decision)
-    content = result.safe_result_content
-    if content is not None and content.status == "available":
-        print(content.content.summary)
+    print(result.status, result.acceptance_decision, result.reason)
+    for finding in result.findings or ():
+        print(finding.problem, finding.fix)
 ```
 
 The same Run through MCP uses your zenture account instead of an API token.
@@ -178,11 +176,11 @@ with McpClient.connect() as client:
 | `run_id`, `profile`, `generation` | Identity and the requested profile (`standard` by default; `fast` or `detailed` only with explicit intent) |
 | `status` | Nonterminal: `created`, `queued`, `running`, `waiting_for_dependency`, `partially_complete`, `cancel_requested`. Terminal: `completed`, `failed`, `cancelled`, `expired`, `budget_exhausted` |
 | `acceptance_decision` | `ready`, `revise`, `human_review`, `insufficient_evidence`; absent is not `ready` |
-| `safe_result_content` | `status="available"` carries `content`: `summary`, `findings`, `evidence_summaries`, `limitations`, `decision` (with `reason_code`, `next_action`) and `coverage`. `status="unavailable"` carries a `reason_code` instead. The client exposes the composed verdict (`case_header`, `decisive_reason`, `confirmed`, `codes`, `next_steps`, `further_findings_count`, `verdict_source` `next_action_text` and the finding fields `subject_kind`, `category`, `reason_code`, `defect_type`, `profile`, `what`, `location`, `locations`, `actual`, `expected`, `why`, `fix_instruction`); it does not expose the composed keys `next_action_finding_refs` and `summary_subject_refs`, which are ignored when the response is parsed. |
-| `capability_coverage`, `limitations` | What could and could not be checked; do not assume all requested checks ran |
-| `billing_summary` | `pending`, `settled`, `released` or `unavailable`; final Credits when known. Unavailable is not zero; a terminal Run with `pending` is final, its Credits follow on a re-read |
-| `deadline_at`, `queue`, `next_action`, `reason_code` | Timing and service guidance; a resultless `failed`, `expired`, `cancelled` or `budget_exhausted` Run carries `next_action` `retry_with_new_idempotency_key`, `check_request` or `shorten_input_or_use_larger_profile` |
-| `cancellation_requested` | A cancel was requested; the actual `status` remains authoritative |
+| `reason`, `next_action`, `hint` | Why the verdict came out as it did, what to do next, and (non-terminal Runs) a hint; `eta_seconds` is an optional estimate |
+| `findings` | Terminal Runs: per finding `ref`, `proven`, `problem`, and optionally `category`, `location`, `evidence` (`url` and `excerpt`, or an `excerpt` of untrusted file text) and `fix` |
+| `billing` | `status` is `pending`, `settled`, `released` or `unavailable`; the final Credits `amount` (decimal string, `unit="credits"`) when settled. Unavailable is not zero; a terminal Run with `pending` is final, its Credits follow on a re-read |
+| `standards`, `learning` | Optional: the standards that shaped the verdict, and your Essenz as `learning.essence` |
+| `criteria`, `statements` | Only with `view="full"`: per-criterion results and per-statement assessments (offsets, never the text) |
 
 `ready` is scoped to the evaluated requirements and evidence, not a universal
 correctness guarantee. Details: [Run guide](./docs/run-guide.md#interpret-the-returned-run).
@@ -207,8 +205,9 @@ client.edit_standard(
 )
 ```
 
-A terminal Run reports which standards it was checked against in `standards_checked` and, when your
-Essenz shaped it, `learning_applied`, `essence_version` and `essence`.
+A terminal Run reports which standards shaped the verdict in `standards` (`standard_id` and `result`
+`met`, `violated` or `unverifiable`, never the standards' texts) and, when your Essenz shaped it, its
+`learning.essence`.
 
 ### Core Run operations
 
@@ -712,11 +711,11 @@ For a successful settled Product Run, the canonical status is `completed`.
 `succeeded` remains a deprecated list-filter input and a historical Run response
 value. Async Operations still use `succeeded` for terminal success.
 
-For public Runs, `client.runs.wait(run_id)` is always finite. When the first
-response includes `deadline_at`, an omitted timeout ends at that deadline plus
-the fixed 35-second recovery allowance and one polling interval. A caller
+For public Runs, `client.runs.wait(run_id)` is always finite. It polls on an
+exponential backoff and an omitted timeout ends after 120 seconds; a caller
 supplied finite timeout remains authoritative. The timeout exception includes
-the last status and observed deadline as safe metadata. Run event streaming
+the last status as safe metadata (`observed_deadline` is kept for compatibility
+and is always `None`). Run event streaming
 remains an optional lower-latency path; `runs.wait(...)` is the bounded polling
 fallback when a stream is unavailable.
 

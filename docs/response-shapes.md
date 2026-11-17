@@ -355,76 +355,67 @@ Schema: `PublicRunResponse`
 ```json
 {
   "acceptance_decision": "ready",
-  "artifact_refs": [
-    "example"
-  ],
-  "billing_summary": {
-    "final_credits": "example",
-    "schema_version": "run.terminal_billing_summary.v1",
-    "status": "pending"
+  "billing": {
+    "amount": "123.45",
+    "status": "pending",
+    "unit": "credits"
   },
-  "cancellation_requested": true,
-  "capability_coverage": {
-    "available_refs": [
+  "changes": {
+    "new": [
       "example"
     ],
-    "limitation_refs": [
+    "open": [
       "example"
     ],
-    "unavailable_refs": [
+    "resolved": [
       "example"
     ]
   },
-  "completed_at": "2026-06-15T10:00:30Z",
-  "created_at": "2026-06-15T10:00:00Z",
-  "deadline_at": "example",
-  "essence": "example",
-  "essence_scope": "personal",
-  "essence_version": "example",
-  "event_cursor": "example",
-  "family": "knowledge",
-  "generation": 1,
-  "input_kind": "text",
-  "learning_applied": "example",
-  "learning_context": "private",
-  "limitations": [
-    "example"
+  "criteria": [
+    {
+      "explanation": "example",
+      "hard_gate": "example",
+      "reason": "example",
+      "ref": "example",
+      "status": "active"
+    }
   ],
+  "eta_seconds": 1,
+  "findings": [
+    {
+      "category": "example",
+      "evidence": "example",
+      "fix": "example",
+      "location": "example",
+      "problem": "example",
+      "proven": "example",
+      "ref": "example"
+    }
+  ],
+  "hint": "example",
+  "learning": {
+    "essence": "example"
+  },
   "next_action": "example",
-  "note": "learning_context_unavailable",
-  "phase": "preparing",
-  "profile": "fast",
-  "queue": {
-    "estimate_as_of": "example",
-    "estimated_completion_seconds": "example",
-    "estimated_start_seconds": "example",
-    "jobs_ahead": 1,
-    "queue_reason": "example"
-  },
-  "queue_expires_at": "example",
-  "reason_code": "example",
-  "reference_file_attached": true,
-  "result": "pending",
-  "retry_after_seconds": "example",
+  "reason": "example",
   "run_id": "example",
-  "run_insight_ref": "example",
-  "safe_result_content": "example",
-  "standards_checked": {
-    "results": [
-      "example"
-    ],
-    "set_hash": "example"
-  },
-  "started_at": "example",
-  "status": "created",
-  "task_contract_summary": {
-    "requirement_count": 1,
-    "summary_ref": "example",
-    "work_type": "example"
-  },
-  "technical_status": "complete",
-  "updated_at": "2026-06-15T10:00:30Z",
-  "work_type": "example"
+  "standards": [
+    {
+      "result": "example",
+      "standard_id": "example"
+    }
+  ],
+  "statements": [
+    {
+      "assessment": "example",
+      "cited": "example",
+      "end": "example",
+      "reason": "example",
+      "ref": "example",
+      "start": "example"
+    }
+  ],
+  "status": "created"
 }
 ```
 
@@ -435,76 +426,67 @@ Schema: `PublicRunResponse`
 ```json
 {
   "acceptance_decision": "ready",
-  "artifact_refs": [
-    "example"
-  ],
-  "billing_summary": {
-    "final_credits": "example",
-    "schema_version": "run.terminal_billing_summary.v1",
-    "status": "pending"
+  "billing": {
+    "amount": "123.45",
+    "status": "pending",
+    "unit": "credits"
   },
-  "cancellation_requested": true,
-  "capability_coverage": {
-    "available_refs": [
+  "changes": {
+    "new": [
       "example"
     ],
-    "limitation_refs": [
+    "open": [
       "example"
     ],
-    "unavailable_refs": [
+    "resolved": [
       "example"
     ]
   },
-  "completed_at": "2026-06-15T10:00:30Z",
-  "created_at": "2026-06-15T10:00:00Z",
-  "deadline_at": "example",
-  "essence": "example",
-  "essence_scope": "personal",
-  "essence_version": "example",
-  "event_cursor": "example",
-  "family": "knowledge",
-  "generation": 1,
-  "input_kind": "text",
-  "learning_applied": "example",
-  "learning_context": "private",
-  "limitations": [
-    "example"
+  "criteria": [
+    {
+      "explanation": "example",
+      "hard_gate": "example",
+      "reason": "example",
+      "ref": "example",
+      "status": "active"
+    }
   ],
+  "eta_seconds": 1,
+  "findings": [
+    {
+      "category": "example",
+      "evidence": "example",
+      "fix": "example",
+      "location": "example",
+      "problem": "example",
+      "proven": "example",
+      "ref": "example"
+    }
+  ],
+  "hint": "example",
+  "learning": {
+    "essence": "example"
+  },
   "next_action": "example",
-  "note": "learning_context_unavailable",
-  "phase": "preparing",
-  "profile": "fast",
-  "queue": {
-    "estimate_as_of": "example",
-    "estimated_completion_seconds": "example",
-    "estimated_start_seconds": "example",
-    "jobs_ahead": 1,
-    "queue_reason": "example"
-  },
-  "queue_expires_at": "example",
-  "reason_code": "example",
-  "reference_file_attached": true,
-  "result": "pending",
-  "retry_after_seconds": "example",
+  "reason": "example",
   "run_id": "example",
-  "run_insight_ref": "example",
-  "safe_result_content": "example",
-  "standards_checked": {
-    "results": [
-      "example"
-    ],
-    "set_hash": "example"
-  },
-  "started_at": "example",
-  "status": "created",
-  "task_contract_summary": {
-    "requirement_count": 1,
-    "summary_ref": "example",
-    "work_type": "example"
-  },
-  "technical_status": "complete",
-  "updated_at": "2026-06-15T10:00:30Z",
-  "work_type": "example"
+  "standards": [
+    {
+      "result": "example",
+      "standard_id": "example"
+    }
+  ],
+  "statements": [
+    {
+      "assessment": "example",
+      "cited": "example",
+      "end": "example",
+      "reason": "example",
+      "ref": "example",
+      "start": "example"
+    }
+  ],
+  "status": "created"
 }
 ```
 
@@ -597,76 +579,67 @@ Schema: `PublicRunResponse`
 ```json
 {
   "acceptance_decision": "ready",
-  "artifact_refs": [
-    "example"
-  ],
-  "billing_summary": {
-    "final_credits": "example",
-    "schema_version": "run.terminal_billing_summary.v1",
-    "status": "pending"
+  "billing": {
+    "amount": "123.45",
+    "status": "pending",
+    "unit": "credits"
   },
-  "cancellation_requested": true,
-  "capability_coverage": {
-    "available_refs": [
+  "changes": {
+    "new": [
       "example"
     ],
-    "limitation_refs": [
+    "open": [
       "example"
     ],
-    "unavailable_refs": [
+    "resolved": [
       "example"
     ]
   },
-  "completed_at": "2026-06-15T10:00:30Z",
-  "created_at": "2026-06-15T10:00:00Z",
-  "deadline_at": "example",
-  "essence": "example",
-  "essence_scope": "personal",
-  "essence_version": "example",
-  "event_cursor": "example",
-  "family": "knowledge",
-  "generation": 1,
-  "input_kind": "text",
-  "learning_applied": "example",
-  "learning_context": "private",
-  "limitations": [
-    "example"
+  "criteria": [
+    {
+      "explanation": "example",
+      "hard_gate": "example",
+      "reason": "example",
+      "ref": "example",
+      "status": "active"
+    }
   ],
+  "eta_seconds": 1,
+  "findings": [
+    {
+      "category": "example",
+      "evidence": "example",
+      "fix": "example",
+      "location": "example",
+      "problem": "example",
+      "proven": "example",
+      "ref": "example"
+    }
+  ],
+  "hint": "example",
+  "learning": {
+    "essence": "example"
+  },
   "next_action": "example",
-  "note": "learning_context_unavailable",
-  "phase": "preparing",
-  "profile": "fast",
-  "queue": {
-    "estimate_as_of": "example",
-    "estimated_completion_seconds": "example",
-    "estimated_start_seconds": "example",
-    "jobs_ahead": 1,
-    "queue_reason": "example"
-  },
-  "queue_expires_at": "example",
-  "reason_code": "example",
-  "reference_file_attached": true,
-  "result": "pending",
-  "retry_after_seconds": "example",
+  "reason": "example",
   "run_id": "example",
-  "run_insight_ref": "example",
-  "safe_result_content": "example",
-  "standards_checked": {
-    "results": [
-      "example"
-    ],
-    "set_hash": "example"
-  },
-  "started_at": "example",
-  "status": "created",
-  "task_contract_summary": {
-    "requirement_count": 1,
-    "summary_ref": "example",
-    "work_type": "example"
-  },
-  "technical_status": "complete",
-  "updated_at": "2026-06-15T10:00:30Z",
-  "work_type": "example"
+  "standards": [
+    {
+      "result": "example",
+      "standard_id": "example"
+    }
+  ],
+  "statements": [
+    {
+      "assessment": "example",
+      "cited": "example",
+      "end": "example",
+      "reason": "example",
+      "ref": "example",
+      "start": "example"
+    }
+  ],
+  "status": "created"
 }
 ```
 
@@ -699,76 +672,67 @@ Schema: `PublicRunResponse`
 ```json
 {
   "acceptance_decision": "ready",
-  "artifact_refs": [
-    "example"
-  ],
-  "billing_summary": {
-    "final_credits": "example",
-    "schema_version": "run.terminal_billing_summary.v1",
-    "status": "pending"
+  "billing": {
+    "amount": "123.45",
+    "status": "pending",
+    "unit": "credits"
   },
-  "cancellation_requested": true,
-  "capability_coverage": {
-    "available_refs": [
+  "changes": {
+    "new": [
       "example"
     ],
-    "limitation_refs": [
+    "open": [
       "example"
     ],
-    "unavailable_refs": [
+    "resolved": [
       "example"
     ]
   },
-  "completed_at": "2026-06-15T10:00:30Z",
-  "created_at": "2026-06-15T10:00:00Z",
-  "deadline_at": "example",
-  "essence": "example",
-  "essence_scope": "personal",
-  "essence_version": "example",
-  "event_cursor": "example",
-  "family": "knowledge",
-  "generation": 1,
-  "input_kind": "text",
-  "learning_applied": "example",
-  "learning_context": "private",
-  "limitations": [
-    "example"
+  "criteria": [
+    {
+      "explanation": "example",
+      "hard_gate": "example",
+      "reason": "example",
+      "ref": "example",
+      "status": "active"
+    }
   ],
+  "eta_seconds": 1,
+  "findings": [
+    {
+      "category": "example",
+      "evidence": "example",
+      "fix": "example",
+      "location": "example",
+      "problem": "example",
+      "proven": "example",
+      "ref": "example"
+    }
+  ],
+  "hint": "example",
+  "learning": {
+    "essence": "example"
+  },
   "next_action": "example",
-  "note": "learning_context_unavailable",
-  "phase": "preparing",
-  "profile": "fast",
-  "queue": {
-    "estimate_as_of": "example",
-    "estimated_completion_seconds": "example",
-    "estimated_start_seconds": "example",
-    "jobs_ahead": 1,
-    "queue_reason": "example"
-  },
-  "queue_expires_at": "example",
-  "reason_code": "example",
-  "reference_file_attached": true,
-  "result": "pending",
-  "retry_after_seconds": "example",
+  "reason": "example",
   "run_id": "example",
-  "run_insight_ref": "example",
-  "safe_result_content": "example",
-  "standards_checked": {
-    "results": [
-      "example"
-    ],
-    "set_hash": "example"
-  },
-  "started_at": "example",
-  "status": "created",
-  "task_contract_summary": {
-    "requirement_count": 1,
-    "summary_ref": "example",
-    "work_type": "example"
-  },
-  "technical_status": "complete",
-  "updated_at": "2026-06-15T10:00:30Z",
-  "work_type": "example"
+  "standards": [
+    {
+      "result": "example",
+      "standard_id": "example"
+    }
+  ],
+  "statements": [
+    {
+      "assessment": "example",
+      "cited": "example",
+      "end": "example",
+      "reason": "example",
+      "ref": "example",
+      "start": "example"
+    }
+  ],
+  "status": "created"
 }
 ```
 
@@ -879,76 +843,67 @@ Schema: `PublicRunOutcomeResponse`
 ```json
 {
   "acceptance_decision": "ready",
-  "artifact_refs": [
-    "example"
-  ],
-  "billing_summary": {
-    "final_credits": "example",
-    "schema_version": "run.terminal_billing_summary.v1",
-    "status": "pending"
+  "billing": {
+    "amount": "123.45",
+    "status": "pending",
+    "unit": "credits"
   },
-  "cancellation_requested": true,
-  "capability_coverage": {
-    "available_refs": [
+  "changes": {
+    "new": [
       "example"
     ],
-    "limitation_refs": [
+    "open": [
       "example"
     ],
-    "unavailable_refs": [
+    "resolved": [
       "example"
     ]
   },
-  "completed_at": "2026-06-15T10:00:30Z",
-  "created_at": "2026-06-15T10:00:00Z",
-  "deadline_at": "example",
-  "essence": "example",
-  "essence_scope": "personal",
-  "essence_version": "example",
-  "event_cursor": "example",
-  "family": "knowledge",
-  "generation": 1,
-  "input_kind": "text",
-  "learning_applied": "example",
-  "learning_context": "private",
-  "limitations": [
-    "example"
+  "criteria": [
+    {
+      "explanation": "example",
+      "hard_gate": "example",
+      "reason": "example",
+      "ref": "example",
+      "status": "active"
+    }
   ],
+  "eta_seconds": 1,
+  "findings": [
+    {
+      "category": "example",
+      "evidence": "example",
+      "fix": "example",
+      "location": "example",
+      "problem": "example",
+      "proven": "example",
+      "ref": "example"
+    }
+  ],
+  "hint": "example",
+  "learning": {
+    "essence": "example"
+  },
   "next_action": "example",
-  "note": "learning_context_unavailable",
-  "phase": "preparing",
-  "profile": "fast",
-  "queue": {
-    "estimate_as_of": "example",
-    "estimated_completion_seconds": "example",
-    "estimated_start_seconds": "example",
-    "jobs_ahead": 1,
-    "queue_reason": "example"
-  },
-  "queue_expires_at": "example",
-  "reason_code": "example",
-  "reference_file_attached": true,
-  "result": "pending",
-  "retry_after_seconds": "example",
+  "reason": "example",
   "run_id": "example",
-  "run_insight_ref": "example",
-  "safe_result_content": "example",
-  "standards_checked": {
-    "results": [
-      "example"
-    ],
-    "set_hash": "example"
-  },
-  "started_at": "example",
-  "status": "created",
-  "task_contract_summary": {
-    "requirement_count": 1,
-    "summary_ref": "example",
-    "work_type": "example"
-  },
-  "technical_status": "complete",
-  "updated_at": "2026-06-15T10:00:30Z",
-  "work_type": "example"
+  "standards": [
+    {
+      "result": "example",
+      "standard_id": "example"
+    }
+  ],
+  "statements": [
+    {
+      "assessment": "example",
+      "cited": "example",
+      "end": "example",
+      "reason": "example",
+      "ref": "example",
+      "start": "example"
+    }
+  ],
+  "status": "created"
 }
 ```
 

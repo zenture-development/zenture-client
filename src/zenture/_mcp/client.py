@@ -656,8 +656,8 @@ class McpClient(StandardsMcpMixin):
                 a cursor alone does not enable it.
 
         Returns a wrapper: .run is PublicRunResponse, .event_replay is the optional
-        ListRunEventsResponse. Read .run.safe_result_content availability before
-        using findings. Technical completion differs from acceptance_decision.
+        ListRunEventsResponse. Read .run.acceptance_decision, reason and findings
+        for the verdict.
         ValidationError rejects bad inputs; ZentureMCPError reports tool failures;
         ZentureMCPProtocolError rejects a foreign run_id or malformed response.
         """
@@ -1070,8 +1070,8 @@ class AsyncMcpClient(AsyncStandardsMcpMixin):
                 a cursor alone does not enable it.
 
         Returns a wrapper: .run is PublicRunResponse, .event_replay is the optional
-        ListRunEventsResponse. Read .run.safe_result_content availability before
-        using findings. Technical completion differs from acceptance_decision.
+        ListRunEventsResponse. Read .run.acceptance_decision, reason and findings
+        for the verdict.
         ValidationError rejects bad inputs; ZentureMCPError reports tool failures;
         ZentureMCPProtocolError rejects a foreign run_id or malformed response.
 

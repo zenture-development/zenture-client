@@ -6,6 +6,29 @@ The project follows semantic versioning once public releases begin. Prerelease
 versions may change while the Public API contract is still in release-candidate
 state.
 
+## Unreleased
+
+The Run read is lean. This is a breaking change for readers of the retired fields.
+
+- `PublicRunResponse` now carries `run_id`, `status`, `acceptance_decision`, `reason`, `next_action`, `hint`,
+  `findings` (`PublicRunFinding`: `ref`, `proven`, `problem`, `category`, `location`, `evidence`, `fix`),
+  `billing` (`PublicRunBilling`: `status`, `amount`, `unit`), `standards` (`PublicRunStandard`: `standard_id`,
+  `result`), `learning` (`PublicRunLearning.essence`), `eta_seconds` and, with `view="full"`, `criteria` and
+  `statements`. New public models: `PublicRunBilling`, `PublicRunCriterion`, `PublicRunEvidence`,
+  `PublicRunFinding`, `PublicRunLearning`, `PublicRunStandard`, `PublicRunStatement`.
+- `PublicRunFinding.category` is one of eight values: `contradicted`, `unsupported`, `unverifiable`, `calculation`,
+  `requirement`, `constraint`, `standard`, `source_inconsistent`. A revision Run also carries `changes`
+  (`PublicRunChanges`: `resolved` as `PublicRunResolvedFinding` with `category` and `location`, `open` and `new` as
+  finding refs); it is `None` on every other Run.
+- Removed with no replacement: `safe_result_content` and its models, `standards_checked` (`StandardsChecked`,
+  `StandardCheckResult`), `learning_applied`, `essence_version`, `essence`, `billing_summary` and
+  `TerminalBillingSummaryV1` (use `billing`), and the timing, queue and coverage fields (`deadline_at`,
+  `retry_after_seconds`, `queue`, `capability_coverage`, ...).
+- `runs.wait(...)` polls on the 1, 2, 4, 8 s backoff; an omitted timeout is 120 seconds and waiting is always
+  finite. `ZenturePollingTimeoutError.observed_deadline` is kept as a public name and is always `None`.
+- A parity test checks that the Run status and decision enums of the models equal the bundled OpenAPI mirror,
+  which is resynced.
+
 ## 1.2.1 (2026-11-13)
 
 Additive release: learning and standards. Nothing from 1.2.0 changed; see

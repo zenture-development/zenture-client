@@ -266,11 +266,12 @@ def test_mutation_request_models_required_fields_match_openapi() -> None:
     )
 
 
-def test_sdk_tolerates_omitted_pending_amount_without_changing_openapi_contract() -> None:
-    from zenture._contract import TerminalBillingSummaryV1
+def test_sdk_tolerates_omitted_pending_amount_as_the_openapi_contract_does() -> None:
+    from zenture._contract import PublicRunBilling
 
-    assert "final_credits" not in TerminalBillingSummaryV1.model_json_schema()["required"]
-    assert "final_credits" in _schemas()["TerminalBillingSummaryV1"]["required"]
+    assert PublicRunBilling.model_json_schema()["required"] == ["status"]
+    assert _schemas()["PublicRunBilling"]["required"] == ["status"]
+    assert PublicRunBilling.model_validate({"status": "pending"}).amount is None
 
 
 def test_phase_four_response_models_match_required_fields() -> None:
@@ -524,7 +525,6 @@ def test_run_success_models_enforce_gateway_upload_and_cursor_constraints() -> N
         ListRunEventsResponse,
         ListRunsResponse,
         PublicRunEvent,
-        PublicRunResponse,
         SignedUploadResponse,
     )
 
@@ -567,21 +567,6 @@ def test_run_success_models_enforce_gateway_upload_and_cursor_constraints() -> N
                     }
                 )
 
-    run = {
-        "run_id": "run_1234567890abcdef",
-        "generation": 1,
-        "family": "knowledge",
-        "work_type": "answer",
-        "input_kind": "text",
-        "profile": "standard",
-        "status": "completed",
-        "created_at": "2026-01-01T00:00:00Z",
-        "updated_at": "2026-01-01T00:00:00Z",
-    }
-    for invalid in ("cursor with spaces", "cursor+plus", "cursor\nheader"):
-        with pytest.raises(ValidationError):
-            PublicRunResponse.model_validate({**run, "event_cursor": invalid})
-
     event = {
         "type": "run.event",
         "event_id": "event_1",
@@ -604,40 +589,30 @@ def test_run_responses_accept_additive_fields_but_keep_known_fields_strict() -> 
 
     run = {
         "run_id": "run_1234567890abcdef",
-        "generation": 1,
-        "family": "knowledge",
-        "work_type": "answer",
-        "input_kind": "text",
-        "profile": "standard",
         "status": "queued",
-        "created_at": "2026-01-01T00:00:00Z",
-        "updated_at": "2026-01-01T00:00:00Z",
-        "deadline_at": "2026-01-01T00:01:00Z",
-        "queue": {
-            "queue_reason": "queue:admitted",
-            "jobs_ahead": 0,
-            "future_queue_hint": "ignored",
-        },
+        "eta_seconds": 30,
+        "billing": {"status": "pending", "future_billing_field": 1},
         "future_run_field": {"opaque": True},
     }
     response = PublicRunResponse.model_validate(run)
 
-    assert response.deadline_at is not None
-    assert response.deadline_at.isoformat() == "2026-01-01T00:01:00+00:00"
+    assert response.eta_seconds == 30
+    assert response.billing is not None
+    assert response.billing.status == "pending"
     assert not hasattr(response, "future_run_field")
     list_item = PublicRunListItem.model_validate(
         {
             "run_id": run["run_id"],
             "status": run["status"],
             "input_kind": "file",
-            "profile": run["profile"],
-            "created_at": run["created_at"],
-            "updated_at": run["updated_at"],
-            "deadline_at": run["deadline_at"],
+            "profile": "standard",
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z",
+            "deadline_at": "2026-01-01T00:01:00Z",
             "future_list_field": True,
         }
     )
-    assert list_item.deadline_at == response.deadline_at
+    assert list_item.deadline_at is not None
     assert list_item.input_kind == "file"
 
     with pytest.raises(ValidationError):
@@ -652,38 +627,24 @@ def test_run_responses_accept_additive_fields_but_keep_known_fields_strict() -> 
         )
 
 
-def test_run_deadline_requires_an_aware_timestamp() -> None:
+def test_run_list_item_deadline_requires_an_aware_timestamp() -> None:
     from pydantic import ValidationError
 
-    from zenture._contract import PublicRunResponse
+    from zenture._contract import PublicRunListItem
 
-    run = {
+    item = {
         "run_id": "run_1234567890abcdef",
-        "generation": 1,
-        "family": "knowledge",
-        "work_type": "answer",
-        "input_kind": "text",
-        "profile": "standard",
         "status": "queued",
+        "profile": "standard",
         "created_at": "2026-01-01T00:00:00Z",
         "updated_at": "2026-01-01T00:00:00Z",
     }
 
     with pytest.raises(ValidationError):
-        PublicRunResponse.model_validate({**run, "deadline_at": "2026-01-01T00:01:00"})
+        PublicRunListItem.model_validate({**item, "deadline_at": "2026-01-01T00:01:00"})
 
 
-_RUN_BASE = {
-    "run_id": "run_1234567890abcdef",
-    "generation": 1,
-    "family": "knowledge",
-    "work_type": "answer",
-    "input_kind": "text",
-    "profile": "standard",
-    "status": "queued",
-    "created_at": "2026-01-01T00:00:00Z",
-    "updated_at": "2026-01-01T00:00:00Z",
-}
+_RUN_BASE = {"run_id": "run_1234567890abcdef", "status": "queued"}
 
 
 def test_accept_run_request_carries_the_one_call_prepare_fields() -> None:
@@ -747,28 +708,21 @@ def test_run_response_reads_accepted_request_and_technical_status() -> None:
     from zenture._contract import PublicRunResponse
 
     properties = _schemas()["PublicRunResponse"]["properties"]
-    assert set(PublicRunResponse.model_fields) >= set(properties) - {"decision"}
+    assert set(PublicRunResponse.model_fields) == set(properties)
 
     accepted = PublicRunResponse.model_validate(
-        {
-            **_RUN_BASE,
-            "phase": "preparing",
-            "queue_expires_at": "2026-01-01T00:10:00Z",
-            "retry_after_seconds": 5,
-        }
+        {**_RUN_BASE, "eta_seconds": 20, "hint": "Queued; reading the answer next."}
     )
-    assert accepted.phase == "preparing"
-    assert accepted.queue_expires_at is not None
-    assert accepted.retry_after_seconds == 5
+    assert accepted.eta_seconds == 20
+    assert accepted.hint == "Queued; reading the answer next."
 
     failed = PublicRunResponse.model_validate(
-        {**_RUN_BASE, "status": "failed", "technical_status": "failed", "result": "pending"}
+        {**_RUN_BASE, "status": "failed", "reason": "execution_failed"}
     )
-    assert failed.technical_status == "failed"
-    assert failed.result == "pending"
+    assert failed.reason == "execution_failed"
     assert failed.acceptance_decision is None
 
-    for bad in ({"phase": "later"}, {"retry_after_seconds": 61}, {"result": "ready"}):
+    for bad in ({"eta_seconds": -1}, {"acceptance_decision": "maybe"}, {"status": "later"}):
         with pytest.raises(ValidationError):
             PublicRunResponse.model_validate({**_RUN_BASE, **bad})
 
