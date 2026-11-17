@@ -48,7 +48,9 @@ class PublicDecision(StrEnum):
 class PublicRunEvidence(RunResponseModel):
     """A web source (url and excerpt) or untrusted file text (excerpt only, flagged)."""
 
-    url: str | None = Field(default=None, max_length=512, pattern=r"^https?://[^\s<>\"']+$")
+    url: str | None = Field(
+        default=None, max_length=512, pattern="^https?://[^\\x00-\\x20\\x7f<>\"']+$"
+    )
     excerpt: str | None = Field(default=None, min_length=1, max_length=200)
     untrusted_file_text: Literal[True] | None = None
 
