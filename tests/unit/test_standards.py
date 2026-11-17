@@ -146,7 +146,7 @@ def test_rest_and_mcp_define_send_the_same_body_and_return_the_same_model() -> N
     assert request.headers["Idempotency-Key"] == KEY
     body = json.loads(request.content)
     assert body == {**DEFINE, "owner": "user"}
-    assert transport.calls == [("define_standard", body)]
+    assert transport.calls == [("create_standard", body)]
 
 
 def test_rest_and_mcp_edit_send_the_same_change_and_return_the_same_model() -> None:

@@ -1546,7 +1546,7 @@ Failed HTTP responses use a public error envelope:
 
 Run and artifact operations accept `X-Zenture-Error-Details: issues` to request safe validation details. Missing or unknown header values preserve the coarse envelope. The header changes only error representation; successful responses, authorization, admission, idempotency and retry behavior are unchanged.
 
-When available, `error.issues` contains 1–20 deduplicated entries. Each has a JSON Pointer `path` to a public argument and a closed `category`; optional `constraints` describe public bounds or allowed values. Input values, unknown key names and validator context are excluded. Details are omitted when unavailable, never null or an empty array.
+When available, `error.issues` contains 1–20 deduplicated entries. Each has a JSON Pointer `path` to a public argument and a closed `category`; optional `constraints` describe public bounds or allowed values; over MCP an issue may also carry a one-sentence correction `hint` (static text, at most 200 characters). Input values, unknown key names and validator context are excluded. Details are omitted when unavailable, never null or an empty array.
 
 Example of a Run prepare error when details are requested:
 

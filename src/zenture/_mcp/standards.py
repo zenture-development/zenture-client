@@ -68,7 +68,7 @@ def edit_arguments(
 
 
 class StandardsMcpMixin:
-    """`get_standards`, `define_standard` and `edit_standard`; the account is the OAuth session's."""
+    """`get_standards`, `create_standard` (as `define_standard`) and `edit_standard`; the account is the OAuth session's."""
 
     if TYPE_CHECKING:
 
@@ -94,7 +94,7 @@ class StandardsMcpMixin:
             text=text, strength=strength, criterion=criterion, task_types=task_types, owner=owner
         )
         return cast(
-            "AgentStandard", _parse(AgentStandard, self._call("define_standard", arguments))
+            "AgentStandard", _parse(AgentStandard, self._call("create_standard", arguments))
         )
 
     def edit_standard(
@@ -153,7 +153,7 @@ class AsyncStandardsMcpMixin:
             text=text, strength=strength, criterion=criterion, task_types=task_types, owner=owner
         )
         return cast(
-            "AgentStandard", _parse(AgentStandard, await self._call("define_standard", arguments))
+            "AgentStandard", _parse(AgentStandard, await self._call("create_standard", arguments))
         )
 
     async def edit_standard(
