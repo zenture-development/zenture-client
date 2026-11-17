@@ -2011,7 +2011,7 @@
             "anyOf": [
               {
                 "maxLength": 512,
-                "pattern": "^https?://[^\\s<>\\\"']+$",
+                "pattern": "^https?://[^\\s<>\"']+$",
                 "type": "string"
               },
               {
