@@ -216,3 +216,24 @@ def test_declared_byte_size_issue_survives_rest_parsing() -> None:
     assert len(error.issues) == 1
     assert error.issues[0].constraints is not None
     assert error.issues[0].constraints.unit == "bytes"
+
+
+def test_mcp_issue_hint_survives_decode_and_absent_hint_is_none() -> None:
+    def decode(issue: dict[str, Any]) -> Any:
+        return _error_from_payload(
+            {
+                "error": {
+                    "code": "validation_failed",
+                    "http_status": 422,
+                    "retryable": False,
+                    "next_action": "check_request",
+                    "issues": [issue],
+                }
+            }
+        ).issues[0]
+
+    with_hint = decode(
+        {"path": "/task", "category": "required", "hint": "Send the task text."}
+    )
+    assert with_hint.hint == "Send the task text."
+    assert decode({"path": "/task", "category": "required"}).hint is None

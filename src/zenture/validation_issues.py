@@ -99,11 +99,18 @@ class ValidationIssue(BaseModel):
         None,
         description="Optional static public schema facts; no submitted values or validator context.",
     )
+    hint: str | None = Field(
+        None,
+        max_length=200,
+        description="One sentence naming the violated rule and how to correct it; static text.",
+    )
 
     @model_validator(mode="after")
     def _omitted_constraints(self) -> Self:
         if "constraints" in self.model_fields_set and self.constraints is None:
             raise ValueError("optional constraints must be omitted")
+        if "hint" in self.model_fields_set and self.hint is None:
+            raise ValueError("optional hint must be omitted")
         return self
 
 
