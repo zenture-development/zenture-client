@@ -33,8 +33,8 @@ def review_selected_text(
     final full read. A Run that completes but whose full read finishes after the
     budget raises ZenturePollingTimeoutError with the Run ID; it is not returned
     late. No failure triggers a replacement start, cancellation or login.
-    Inspect acceptance_decision and safe_result_content availability rather than
-    assuming completion is ready.
+    Inspect acceptance_decision, reason and findings rather than assuming
+    completion is ready.
     """
     if not math.isfinite(timeout) or timeout <= 0:
         raise ValueError("timeout must be positive and finite")

@@ -34,7 +34,7 @@ def example(name: str) -> Any:
 
 
 def run_payload(
-    status: str = "completed", *, unavailable_reason: str = "projection_incomplete"
+    status: str = "completed", *, reason: str = "requirement_omitted"
 ) -> dict[str, object]:
     return {
         "run_id": RUN_ID,
@@ -46,7 +46,17 @@ def run_payload(
         "created_at": "2026-10-07T09:00:00Z",
         "updated_at": "2026-10-07T09:00:00Z",
         "acceptance_decision": "revise" if status == "completed" else None,
-        "safe_result_content": {"status": "unavailable", "reason_code": unavailable_reason},
+        "reason": reason,
+        "next_action": "Revise the answer and review it again.",
+        "findings": [
+            {
+                "ref": "finding:one",
+                "proven": True,
+                "problem": "The answer names one colour instead of two.",
+                "category": "requirement_omitted",
+            }
+        ],
+        "billing": {"status": "pending"},
     }
 
 
@@ -85,7 +95,10 @@ def test_rest_example_starts_once_waits_and_reads_full_result() -> None:
             client, task="Name two colours.", text="Blue.", saved_key="review_123"
         )
     assert result.acceptance_decision == "revise"
-    assert result.safe_result_content.status == "unavailable"
+    assert result.findings is not None
+    assert result.findings[0].proven is True
+    assert result.billing is not None
+    assert result.billing.status == "pending"
     assert [r.url.path for r in requests if r.method == "POST"] == ["/v1/runs/prepare", "/v1/runs"]
     assert requests[0].headers["Idempotency-Key"] == "review_123:prepare"
     assert requests[1].headers["Idempotency-Key"] == "review_123:create"
@@ -98,12 +111,12 @@ class McpPort:
         *,
         ongoing: bool = False,
         fail_start: bool = False,
-        unavailable_reason: str = "projection_incomplete",
+        reason: str = "requirement_omitted",
     ) -> None:
         self.calls: list[tuple[str, dict[str, object]]] = []
         self.ongoing = ongoing
         self.fail_start = fail_start
-        self.unavailable_reason = unavailable_reason
+        self.reason = reason
 
     def list_tools(self) -> object:
         return {
@@ -119,23 +132,24 @@ class McpPort:
             raise TimeoutError("synthetic transport timeout")
         payload = run_payload(
             "queued" if name == "run" or self.ongoing else "completed",
-            unavailable_reason=self.unavailable_reason,
+            reason=self.reason,
         )
         if name == "run":
             payload["idempotency_key"] = arguments["idempotency_key"]
         return {"structuredContent": payload}
 
 
-@pytest.mark.parametrize("reason", ["projection_incomplete", "result_content_expired"])
+@pytest.mark.parametrize("reason", ["requirement_omitted", "source_contradiction"])
 def test_mcp_example_unwraps_result_and_preserves_non_ready_decision(reason: str) -> None:
-    port = McpPort(unavailable_reason=reason)
+    port = McpPort(reason=reason)
     result = example("mcp_run_review").review_selected_text(
         McpClient(port), task="Name two colours.", text="Blue.", saved_key="review_123"
     )
     assert result.run_id == RUN_ID
     assert result.acceptance_decision == "revise"
-    assert result.safe_result_content.status == "unavailable"
-    assert result.safe_result_content.reason_code == reason
+    assert result.reason == reason
+    assert result.findings is not None
+    assert result.findings[0].problem.startswith("The answer names one colour")
     assert [name for name, _ in port.calls] == ["run", "get_run", "get_run"]
     assert port.calls[0][1]["idempotency_key"] == "review_123"
     assert port.calls[-1][1]["view"] == "full"

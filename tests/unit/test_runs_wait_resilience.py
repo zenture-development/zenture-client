@@ -1,4 +1,4 @@
-"""runs.wait() honours the server poll hint and re-opens a broken stream from its cursor."""
+"""runs.wait() polls on exponential backoff and re-opens a broken stream from its cursor."""
 
 from __future__ import annotations
 
@@ -31,11 +31,11 @@ def clock(monkeypatch: pytest.MonkeyPatch) -> _Clock:
 
 
 class _Server:
-    """Serves Run reads from `reads` (status, retry_after) and stream opens from `streams`."""
+    """Serves Run reads from `reads` (statuses) and stream opens from `streams`."""
 
     def __init__(
         self,
-        reads: list[tuple[str, int | None]],
+        reads: list[str],
         streams: list[Callable[[], httpx.Response]] | None = None,
     ) -> None:
         self.reads, self.streams = reads, streams or []
@@ -50,11 +50,9 @@ class _Server:
                 return httpx.Response(404, json={"error": {"code": "not_found"}})
             return self.streams[index]()
         assert request.url.path == RUN_PATH
-        status, retry_after = self.reads[min(self.get_count, len(self.reads) - 1)]
+        status = self.reads[min(self.get_count, len(self.reads) - 1)]
         self.get_count += 1
         body: dict[str, Any] = _run(status)
-        if retry_after is not None:
-            body.update(retry_after_seconds=retry_after, result="pending")
         return httpx.Response(200, json=body)
 
 
@@ -71,11 +69,10 @@ def _clients(server: _Server) -> tuple[ZentureClient, AsyncZentureClient]:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("asynchronous", [False, True])
-@pytest.mark.parametrize(("hint", "expected"), [(5, 5.0), (60, 10.0), (1, 1.0)])
-async def test_poll_hint_sets_the_next_poll_delay_within_one_to_ten_seconds(
-    clock: _Clock, asynchronous: bool, hint: int, expected: float
+async def test_poll_delay_doubles_from_the_initial_interval_up_to_the_maximum(
+    clock: _Clock, asynchronous: bool
 ) -> None:
-    server = _Server([("running", hint), ("completed", None)])
+    server = _Server(["running"] * 5 + ["completed"])
     sync_client, async_client = _clients(server)
 
     result = await _call(
@@ -87,7 +84,7 @@ async def test_poll_hint_sets_the_next_poll_delay_within_one_to_ten_seconds(
     )
 
     assert result.status.value == "completed"
-    assert clock.sleeps == pytest.approx([expected])
+    assert clock.sleeps == pytest.approx([1.0, 2.0, 4.0, 8.0, 8.0])
     sync_client.close()
     await async_client.aclose()
 
@@ -98,7 +95,7 @@ async def test_broken_stream_is_reopened_from_the_last_cursor_until_the_terminal
     clock: _Clock, asynchronous: bool
 ) -> None:
     server = _Server(
-        [("running", None), ("completed", None)],
+        ["running", "completed"],
         [
             lambda: _sse(_event(1, "running")),
             lambda: _sse(_event(2, "running")),
@@ -138,7 +135,7 @@ async def test_stream_that_worked_is_tried_again_in_the_next_window(
         return httpx.Response(500, json={"error": {"code": "dependency_unavailable"}})
 
     server = _Server(
-        [("running", None), ("running", None), ("completed", None)],
+        ["running", "running", "completed"],
         [lambda: _sse(_event(1, "running")), unavailable, lambda: _sse(_event(2, "completed"))],
     )
     sync_client, async_client = _clients(server)

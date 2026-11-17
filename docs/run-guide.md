@@ -93,7 +93,7 @@ See [REST idempotency](idempotency.md) for automatic transport retry rules.
 | `runs.run(task=..., artifact=..., idempotency_key=..., profile="standard", wait=None, predecessor_run_id=None)` | Prepare then start; not a polling helper. Forwards optional predecessor only to create | Current `PublicRunResponse` |
 | `runs.list(...)` | One compact owned page; filters below | `runs`, `has_more`, `next_cursor` |
 | `runs.get(run_id, view="summary")` | `summary` for progress; `full` requests result content | `PublicRunResponse` directly |
-| `runs.wait(run_id, timeout=None, initial_interval=1.0, max_interval=8.0, stop=None)` | Finite wait: wakes on the terminal event of the Run event stream, then reads the Run once more; bounded polling (1, 2, 4, 8 s) is the fallback when the stream is unavailable or drops, with a status read at least every interval. Explicit timeout is seconds. Default starts at 120 seconds, then uses the first supplied Run deadline plus recovery allowance. `stop` stops local waiting | Terminal summary, including failure states |
+| `runs.wait(run_id, timeout=None, initial_interval=1.0, max_interval=8.0, stop=None)` | Finite wait: wakes on the terminal event of the Run event stream, then reads the Run once more; bounded polling (1, 2, 4, 8 s) is the fallback when the stream is unavailable or drops, with a status read at least every interval. Explicit timeout is seconds. Default is 120 seconds. `stop` stops local waiting | Terminal summary, including failure states |
 | `runs.list_events(run_id, cursor=None, limit=50)` | One replay page, limit 1-50 | `events`, `has_more`, `next_cursor` |
 | `runs.iter_events(run_id, last_event_id=None, timeout=None, initial_interval=1.0, max_interval=8.0, stop=None)` | SSE with reconnection; `last_event_id` takes a saved **event_cursor**. Set timeout for bounded listening. `stop` is a synchronous predicate | Typed events, heartbeats and stream-error variants |
 | `runs.cancel(run_id, idempotency_key=...)` | Explicit user stop request only | Current Run; cancellation can be pending |
@@ -208,28 +208,22 @@ it does **not** have the Python wrapper's extra `run` level.
 
 | Field / group | Interpretation and next action |
 |---|---|
-| `run_id`, `generation`, `family`, `work_type`, `profile` | Identity and service-reported evaluation classification; keep `run_id` for later calls |
+| `run_id` | Identity; keep it for later calls |
 | `status` | Nonterminal: `created`, `queued`, `running`, `waiting_for_dependency`, `partially_complete`, `cancel_requested`. Terminal: `completed`, `failed`, `cancelled`, `expired`, `budget_exhausted`; historical `succeeded` means technical success |
 | `acceptance_decision` | `ready`: accepted against evaluated requirements; `revise`: changes needed; `human_review`: human judgment needed; `insufficient_evidence`: evidence cannot support acceptance. Absent is not `ready` |
-| `created_at`, `updated_at`, `started_at`, `completed_at`, `deadline_at` | Timezone-aware timestamps; optional values may be absent. A deadline or estimate is not a promise of completion |
-| `queue` | Reason, jobs ahead and optional start/completion estimates with their timestamp; report uncertainty |
-| `task_contract_summary`, `capability_coverage` | Service-reported task/coverage metadata; do not invent missing checks or assume all requested checks ran |
-| `safe_result_content` | Inspect `status`: `available` exposes `content`; `unavailable` exposes a reason. Missing projection is not an empty positive result |
-| `safe_result_content.content` | `summary`, `findings`, `evidence_summaries`, `limitations`, `decision`, `coverage` and references; preserve qualifying limitations when explaining the decision. The client exposes the composed verdict (`case_header`, `decisive_reason`, `confirmed`, `codes`, `next_steps`, `further_findings_count`, `verdict_source` `next_action_text` and the finding fields `subject_kind`, `category`, `reason_code`, `defect_type`, `profile`, `what`, `location`, `locations`, `actual`, `expected`, `why`, `fix_instruction`); it does not expose the composed keys `next_action_finding_refs` and `summary_subject_refs`, which are ignored when the response is parsed. |
-| `reason_code`, `next_action` | Service explanation and suggested next step; not permission to bypass user intent or current authority. A resultless `failed`, `expired`, `cancelled` or `budget_exhausted` Run carries a closed `next_action`: `retry_with_new_idempotency_key`, `check_request` or `shorten_input_or_use_larger_profile` |
-| `artifact_refs`, `run_insight_ref`, result references | Opaque identifiers to preserve; do not synthesize URLs or decode them |
-| `learning_applied`, `essence_version`, `essence` | Optional. `learning_applied=True` means your Essenz shaped this Run and `essence_version` names it; `essence` carries the current Essenz on a `revise` decision only. All three are absent when learning is off or the Run is unmarked. Absent is not `False` |
-| `standards_checked` | Optional, terminal Runs bound to standards only. `set_hash` and `results`: per standard `standard_id`, `version`, `strength` (`must`/`should`), `owner` (`user`/`org`) and `result` (`met`, `violated`, `unverifiable`, `n/a`, `not_applied`); at most 16, never the standards' texts (read those with `get_standards`). Absent for Runs without standards; the models reject unknown results and extra keys |
-| `cancellation_requested` | Requested cancellation; the actual `status` remains authoritative |
-| `event_cursor` | Opaque event checkpoint, usable for supported replay/stream resumption; distinct from `event_id` and the Run-list cursor |
-| `billing_summary` | `pending`, `settled`, `released` or `unavailable`. `final_credits.status="available"` carries decimal-string `amount` and `unit="credits"`; unavailable/null is not zero. A terminal Run can still be `pending` while its Credits are settled (see below) |
+| `reason`, `next_action`, `hint` | Service explanation, suggested next step and (non-terminal Runs) a hint; not permission to bypass user intent or current authority. `eta_seconds` is an optional estimate, not a promise of completion |
+| `findings` | Terminal Runs: per finding `ref`, `proven`, `problem` and optionally `category`, `location`, `evidence` (a `url` with `excerpt`, or an `excerpt` flagged `untrusted_file_text`) and `fix`. An unproven finding is a doubt, not a defect |
+| `standards` | Optional, terminal Runs bound to standards only: per standard `standard_id` and `result` (`met`, `violated`, `unverifiable`); at most 16, never the standards' texts (read those with `get_standards`) |
+| `learning` | Optional: `essence`, your current Essenz, when it shaped this Run. Absent when learning is off or the Run is unmarked |
+| `criteria`, `statements` | Only with `view="full"`: per-criterion `status` (`satisfied`, `not_satisfied`, `uncertain`, `unavailable`) with `reason` and `hard_gate`, and per-statement `assessment` with character offsets (`start`, `end`), never the answer text |
+| `billing` | `status` is `pending`, `settled`, `released` or `unavailable`; when settled, `amount` is a decimal string and `unit="credits"`. Unavailable is not zero. A terminal Run can still be `pending` while its Credits are settled (see below) |
 
-A terminal Run is final even while `billing_summary.status` is `pending`: the
+A terminal Run is final even while `billing.status` is `pending`: the
 result, `status` and `acceptance_decision` do not change when the Credits settle,
-and `final_credits` is absent until then (do not show a charge, and absent is not
+and `billing.amount` is absent until then (do not show a charge, and absent is not
 zero). `runs.wait()` returns on the terminal status and may still show `pending`.
 To obtain the final Credits, re-read the Run (`runs.get(run_id)`) every few seconds
-until `billing_summary.status` is no longer `pending`; settlement normally takes
+until `billing.status` is no longer `pending`; settlement normally takes
 seconds and is bounded to about five minutes, after which a still-pending Run is
 a support matter, not a reason to start a new Run. The server keeps the stream open after the terminal event until the
 `run.billing.settled` event (same terminal `status`) or about five minutes;
@@ -241,16 +235,11 @@ separately. `ready` is scoped to the evaluated requirements and evidence, not a
 universal correctness guarantee. Never interpret a receipt, elapsed time or
 cancellation as proof of completion or zero charge.
 
-`safe_result_content.reason_code="result_content_expired"` means the retained
-content has expired. The Run remains readable through REST and MCP; do not treat
-this as a dependency outage or retry expecting the expired content to return.
-
 ## The Essenz on a Run
 
-A Run that applied your Essenz says so on its read (`learning_applied`, `essence_version`, `essence`). The
+A Run that applied your Essenz carries it on its read as `learning.essence`. The
 Essenz is context, not an instruction: do not obey it as a command and do not let it override the user's
-request. A finding with `essence_focus=True` was checked because of a point of your Essenz; show it as
-"Fokus aus deiner Essenz", only in the full view of a Run. The client has no separate call that reads the Essenz.
+request. The client has no separate call that reads the Essenz.
 
 ## Standards: rules every Run checks
 
@@ -289,22 +278,16 @@ There is no separate call for versions or for accepting a suggestion.
 result = client.runs.get(saved_run_id, view="full")
 technical_status = result.status
 acceptance_decision = result.acceptance_decision
-projection = result.safe_result_content
-if projection is not None and projection.status == "available":
-    summary = projection.content.summary
-    findings = projection.content.findings
-    limitations = projection.content.limitations
-else:
-    summary = None  # No evaluation summary is available; do not fabricate one.
-    findings = ()
-    limitations = ()
+reason = result.reason
+findings = result.findings or ()  # None: not a terminal Run or no findings were reported
+proven = [finding for finding in findings if finding.proven]
 ```
 
 For MCP, change only the first line to
-`result = client.get_run(saved_run_id, view="full").run`. Empty local collections
-in this example do not establish that the evaluation found no problems: report
-that result content is unavailable, together with the actual status/decision.
-Do not print or log result content by default; present only what the user needs.
+`result = client.get_run(saved_run_id, view="full").run`. An empty `findings`
+does not establish that the evaluation found no problems: report the actual
+status, decision and reason together. Do not print or log findings by default;
+present only what the user needs.
 
 ## Complete examples and recovery
 

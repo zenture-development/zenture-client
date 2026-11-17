@@ -181,31 +181,12 @@ def test_openapi_signed_upload_response_uses_gateway_upload_id_bounds() -> None:
     assert upload_id["pattern"] == r"^upload_[A-Za-z0-9_-]{8,128}$"
 
 
-def test_openapi_run_responses_expose_nullable_deadline_at() -> None:
-    contract = _load_openapi()
-    schemas = contract["components"]["schemas"]
-
-    for schema_name in ("PublicRunResponse", "PublicRunListItem"):
-        deadline_at = schemas[schema_name]["properties"]["deadline_at"]
-        assert deadline_at["format"] == "date-time"
-        assert deadline_at["type"] == ["string", "null"]
-
-
-def test_openapi_declares_every_member_of_the_full_verdict_golden() -> None:
-    golden = json.loads(
-        (
-            Path(__file__).resolve().parents[2]
-            / "unit"
-            / "fixtures"
-            / "safe-result-content.full-verdict.valid.json"
-        ).read_text(encoding="utf-8")
-    )["content"]
+def test_openapi_run_read_is_the_lean_closed_contract() -> None:
     schemas = _load_openapi()["components"]["schemas"]
-    assert set(golden) <= set(schemas["ComposedSafeResultContentV1"]["properties"])
-    for finding in golden["findings"]:
-        assert set(finding) <= set(schemas["SafeResultFinding"]["properties"])
-    assert set(golden["codes"]) <= set(schemas["SafeResultCodes"]["properties"])
-    assert set(golden["confirmed"][0]) <= set(schemas["SafeResultConfirmed"]["properties"])
-    assert set(golden["findings"][0]["locations"][0]) <= set(
-        schemas["SafeResultLocation"]["properties"]
-    )
+
+    run = schemas["PublicRunResponse"]
+    assert run["additionalProperties"] is False
+    assert run["required"] == ["run_id", "status"]
+    assert "deadline_at" not in run["properties"]
+    assert "safe_result_content" not in run["properties"]
+    assert schemas["PublicRunListItem"]["properties"]["deadline_at"]["format"] == "date-time"
