@@ -232,8 +232,6 @@ def test_mcp_issue_hint_survives_decode_and_absent_hint_is_none() -> None:
             }
         ).issues[0]
 
-    with_hint = decode(
-        {"path": "/task", "category": "required", "hint": "Send the task text."}
-    )
+    with_hint = decode({"path": "/task", "category": "required", "hint": "Send the task text."})
     assert with_hint.hint == "Send the task text."
     assert decode({"path": "/task", "category": "required"}).hint is None

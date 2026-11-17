@@ -28,7 +28,10 @@ def _terminal() -> dict[str, object]:
                 "category": "unsupported",
                 "location": "paragraph 2",
                 "problem": "The figure 4.2 million has no source.",
-                "evidence": {"url": "https://example.org/report", "excerpt": "revenue was 3.1 million"},
+                "evidence": {
+                    "url": "https://example.org/report",
+                    "excerpt": "revenue was 3.1 million",
+                },
                 "fix": "State 3.1 million or cite a source.",
             },
             {
@@ -56,7 +59,11 @@ def test_a_terminal_run_exposes_the_lean_verdict_fields() -> None:
     )
     assert run.findings is not None
     web, file = run.findings
-    assert (web.category, web.proven, web.fix) == ("unsupported", True, "State 3.1 million or cite a source.")
+    assert (web.category, web.proven, web.fix) == (
+        "unsupported",
+        True,
+        "State 3.1 million or cite a source.",
+    )
     assert web.evidence is not None
     assert web.evidence.url == "https://example.org/report"
     assert file.evidence is not None
@@ -73,7 +80,13 @@ def test_a_terminal_run_exposes_the_lean_verdict_fields() -> None:
 
 def test_a_non_terminal_run_carries_only_status_next_action_hint_and_eta() -> None:
     run = PublicRunResponse.model_validate(
-        {"run_id": RUN_ID, "status": "running", "next_action": "get_run", "hint": "Read again.", "eta_seconds": 40}
+        {
+            "run_id": RUN_ID,
+            "status": "running",
+            "next_action": "get_run",
+            "hint": "Read again.",
+            "eta_seconds": 40,
+        }
     )
 
     assert run.acceptance_decision is None
@@ -86,9 +99,18 @@ def test_the_full_view_adds_criteria_and_statements() -> None:
     run = PublicRunResponse.model_validate(
         {
             **_terminal(),
-            "criteria": [{"ref": "c1", "status": "not_satisfied", "reason": "missing", "hard_gate": True}],
+            "criteria": [
+                {"ref": "c1", "status": "not_satisfied", "reason": "missing", "hard_gate": True}
+            ],
             "statements": [
-                {"ref": "s1", "assessment": "unsupported", "reason": "no_source", "cited": False, "start": 0, "end": 9}
+                {
+                    "ref": "s1",
+                    "assessment": "unsupported",
+                    "reason": "no_source",
+                    "cited": False,
+                    "start": 0,
+                    "end": 9,
+                }
             ],
         }
     )
@@ -124,7 +146,16 @@ def test_a_revision_run_exposes_what_changed_about_its_predecessor_findings() ->
         {"changes": {"resolved": [], "open": ["not-a-finding-ref" * 20], "new": []}},
         {"changes": {"resolved": [{"category": "task_requirement"}], "open": [], "new": []}},
         {"findings": [{"ref": "finding:f1", "proven": True, "problem": "x", "category": "other"}]},
-        {"findings": [{"ref": "finding:f1", "proven": True, "problem": "x", "evidence": {"untrusted_file_text": False}}]},
+        {
+            "findings": [
+                {
+                    "ref": "finding:f1",
+                    "proven": True,
+                    "problem": "x",
+                    "evidence": {"untrusted_file_text": False},
+                }
+            ]
+        },
         {"billing": {"status": "settled", "amount": "1,5"}},
         {"standards": [{"standard_id": STANDARD_ID, "result": "n/a"}]},
         {"status": "unknown"},

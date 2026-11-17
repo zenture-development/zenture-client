@@ -113,7 +113,9 @@ def test_async_run_sends_the_same_fields() -> None:
 
 
 def test_the_run_read_carries_the_learning_essence_only_when_it_shaped_the_verdict() -> None:
-    run = PublicRunResponse.model_validate({**_run(), "learning": {"essence": "Name your sources."}})
+    run = PublicRunResponse.model_validate(
+        {**_run(), "learning": {"essence": "Name your sources."}}
+    )
     assert run.learning is not None
     assert run.learning.essence == "Name your sources."
     assert PublicRunResponse.model_validate(_run()).learning is None
