@@ -2633,13 +2633,14 @@
       },
       "PublicRunStandard": {
         "additionalProperties": false,
-        "description": "A standard that shaped the verdict; ids and results only, never the standard's text.",
+        "description": "A standard pinned to the Run; ids and results only, never the standard's text.",
         "properties": {
           "result": {
             "enum": [
               "met",
               "violated",
-              "unverifiable"
+              "unverifiable",
+              "n/a"
             ],
             "title": "Result",
             "type": "string"

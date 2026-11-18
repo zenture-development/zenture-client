@@ -74,10 +74,10 @@ class PublicRunBilling(RunResponseModel):
 
 
 class PublicRunStandard(RunResponseModel):
-    """A standard that shaped the verdict: id and result, never the standard's text."""
+    """A standard pinned to the Run: id and result, never the standard's text."""
 
     standard_id: str = Field(pattern=r"^[0-9a-fA-F-]{36}$")
-    result: Literal["met", "violated", "unverifiable"]
+    result: Literal["met", "violated", "unverifiable", "n/a"]
 
 
 class PublicRunLearning(RunResponseModel):
