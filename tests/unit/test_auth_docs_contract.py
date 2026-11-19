@@ -169,7 +169,7 @@ def test_documents_and_examples_use_only_public_modules(path: Path) -> None:
                     assert hasattr(imported, name), f"{module}.{name}"
 
 
-def test_mcp_docs_name_the_six_tools_and_both_peers() -> None:
+def test_mcp_docs_name_the_wrapped_tools_and_both_peers() -> None:
     from zenture.mcp import AsyncMcpClient, McpClient
 
     tools = ("run", "attach_artifact", "list_runs", "get_run", "cancel_run", "record_run_outcome")

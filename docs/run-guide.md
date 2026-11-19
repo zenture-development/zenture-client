@@ -182,8 +182,7 @@ chunks (an **async iterable** with the async client). For streams, provide the
 exact `byte_size`; for bytes, it can be inferred. Byte count/hash are checked;
 streams are not automatically replayable, and the upload `PUT` is never retried
 because its token works once. After success, check `artifact_ref` is present.
-MCP callers instead rely on the host's selected-file resolver; reselection cannot add
-a missing host capability.
+MCP callers get a PUT link, a registered or fetched host file, or an upload page from `attach_artifact`.
 
 Only `artifact_not_ready` is retryable (after `retry_after_seconds`); `artifact_too_large`,
 `artifact_type_unsupported` and `artifact_extract_failed` are final for that file.

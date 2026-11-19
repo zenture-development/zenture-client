@@ -158,8 +158,8 @@ combined with a file `artifact`.
 
 Through MCP the same Run takes the reference as `reference_file`. The MCP client sends
 no bytes: upload with the REST client above (or get a reference through `attach_artifact`:
-a PUT link with an `upload` object, a registered or fetched host file, or an upload page for
-the user), then:
+a PUT link with an `upload` object or a registered host file; from a raw call also a fetched
+host file or an upload page for the user), then:
 
 ```python
 with McpClient.connect() as client:
@@ -317,8 +317,8 @@ is excluded from default model serialization. Cancellation requires the key to
 have been saved beforehand; receipts do not prove completion or billing. See
 [Run idempotency](./docs/mcp-client.md#run-idempotency).
 
-The Client supports six known MCP tool methods: `run`, `attach_artifact`,
-`list_runs`, `get_run`, `cancel_run` and `record_run_outcome`. Its readiness
+The Client wraps `run`, `attach_artifact`, `list_runs`, `get_run`, `cancel_run`,
+`record_run_outcome` and the standards tools. Its readiness
 check requires the five core tools. The host always offers `attach_artifact`; it
 answers with a PUT link, a registered or fetched host file, or an upload page for the
 user. The client sends no bytes and MCP JSON never carries them. The host offers ten
