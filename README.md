@@ -42,7 +42,7 @@ with `retry_after_seconds`.
 ## Installation
 
 ```bash
-python -m pip install --upgrade zenture==1.2.2
+python -m pip install --upgrade zenture==1.2.3
 ```
 
 Supported Python: CPython 3.11, 3.12, 3.13, and 3.14; there is no upper version cap.
@@ -151,13 +151,15 @@ with ZentureClient.from_env() as client:
             time.sleep(error.retry_after_seconds or 2)
 ```
 
-A source-check result sets `reference_file_attached` to `True` and its finding locations
-carry `source="reference_file"`; their `excerpt` is untrusted file text. `reference_file`
-cannot be combined with a file `artifact`.
+A source-check result reads like any other Run: a finding's `location` is a plain string, and
+file text appears only as a finding's `evidence.excerpt`, flagged `untrusted_file_text` (never
+instructions). The Run read carries no `reference_file_attached`. `reference_file` cannot be
+combined with a file `artifact`.
 
 Through MCP the same Run takes the reference as `reference_file`. The MCP client sends
-no bytes: upload with the REST client above (or let the host register the file through
-`attach_artifact`), then:
+no bytes: upload with the REST client above (or get a reference through `attach_artifact`:
+a PUT link with an `upload` object, a registered or fetched host file, or an upload page for
+the user), then:
 
 ```python
 with McpClient.connect() as client:
@@ -173,12 +175,13 @@ with McpClient.connect() as client:
 
 | Field | Meaning |
 |---|---|
-| `run_id`, `profile`, `generation` | Identity and the requested profile (`standard` by default; `fast` or `detailed` only with explicit intent) |
+| `run_id` | Identity; keep it for later calls (`profile` is a request field, not part of the Run read) |
 | `status` | Nonterminal: `created`, `queued`, `running`, `waiting_for_dependency`, `partially_complete`, `cancel_requested`. Terminal: `completed`, `failed`, `cancelled`, `expired`, `budget_exhausted` |
 | `acceptance_decision` | `ready`, `revise`, `human_review`, `insufficient_evidence`; absent is not `ready` |
-| `reason`, `next_action`, `hint` | Why the verdict came out as it did, what to do next, and (non-terminal Runs) a hint; `eta_seconds` is an optional estimate |
-| `findings` | Terminal Runs: per finding `ref`, `proven`, `problem`, and optionally `category`, `location`, `evidence` (`url` and `excerpt`, or an `excerpt` of untrusted file text) and `fix` |
-| `billing` | `status` is `pending`, `settled`, `released` or `unavailable`; the final Credits `amount` (decimal string, `unit="credits"`) when settled. Unavailable is not zero; a terminal Run with `pending` is final, its Credits follow on a re-read |
+| `reason`, `next_action`, `hint` | Why the verdict came out as it did, what to do next, and a hint (also on terminal Runs); `eta_seconds` is an optional estimate |
+| `findings` | Terminal Runs: per finding `ref`, `proven`, `problem`, and optionally `category` (eight values: `contradicted`, `unsupported`, `unverifiable`, `calculation`, `requirement`, `constraint`, `standard`, `source_inconsistent`), `location` (a string), `evidence` (`url` and `excerpt`, or an `excerpt` of untrusted file text) and `fix` |
+| `changes` | Revision Runs only: `resolved` (category and location), `open` and `new` (finding refs); `None` on every other Run |
+| `billing` | `status` is `pending`, `settled`, `released` or `unavailable`; the final Credits `amount` (decimal string, `unit="credits"`) when settled. Unavailable is not zero; a terminal Run with `pending` is final, its Credits follow on a re-read. Through MCP the hosted tool returns it only with `view="full"` |
 | `standards`, `learning` | Optional: the standards that shaped the verdict, and your Essenz as `learning.essence` |
 | `criteria`, `statements` | Only with `view="full"`: per-criterion results and per-statement assessments (offsets, never the text) |
 
@@ -206,7 +209,7 @@ client.edit_standard(
 ```
 
 A terminal Run reports which standards shaped the verdict in `standards` (`standard_id` and `result`
-`met`, `violated` or `unverifiable`, never the standards' texts) and, when your Essenz shaped it, its
+`met`, `violated`, `unverifiable` or `n/a`, never the standards' texts) and, when your Essenz shaped it, its
 `learning.essence`.
 
 ### Core Run operations
@@ -316,10 +319,10 @@ have been saved beforehand; receipts do not prove completion or billing. See
 
 The Client supports six known MCP tool methods: `run`, `attach_artifact`,
 `list_runs`, `get_run`, `cancel_run` and `record_run_outcome`. Its readiness
-check requires the five core tools; `attach_artifact` is optional and is
-available only when the host advertises it with an approved artifact resolver.
-Artifact bytes come from that host-selected source and are not carried in MCP
-JSON. See [the MCP Client guide](./docs/mcp-client.md) for details.
+check requires the five core tools. The host always offers `attach_artifact`; it
+answers with a PUT link, a registered or fetched host file, or an upload page for the
+user. The client sends no bytes and MCP JSON never carries them. The host offers ten
+tools in all (the client wraps the standards tools too; `rerun` has no wrapper yet). See [the MCP Client guide](./docs/mcp-client.md) for details.
 
 Synchronous (from ordinary code, not from inside a running event loop):
 

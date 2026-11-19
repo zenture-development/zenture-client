@@ -84,7 +84,7 @@ linked follow-ups from Python, preserving the predecessor on idempotent recovery
 | Tool | Method | Purpose |
 |---|---|---|
 | `run` | `run(task=..., artifact=..., profile="standard", reference_file=None, idempotency_key=...)` | Start a Run; `reference_file` is the optional `art_...` reference of an uploaded source file an inline text answer is checked against (source check) |
-| `attach_artifact` | `attach_artifact(file_name=..., mime_type=..., byte_size=..., content_hash=...)` | Returns an upload link (PUT with `X-Upload-Token`) or, when the host provides an approved artifact resolver, registers the host's bytes; no bytes are sent by this client |
+| `attach_artifact` | `attach_artifact(file_name=..., mime_type=..., byte_size=..., content_hash=...)` | Returns a PUT link (`upload_url`, `upload_token`, `expires_at` and an `upload` object with `method="PUT"`, `url` and `headers` incl. `X-Upload-Token`), a registered host file (`content_hash`, `byte_size`, `content_type`, `status="pending"`), a fetched host file (`status="pending"` only) or, for a raw call with only `file_name`, an upload page (`upload_page_url`, `expires_at`, `hint`); none has `next_steps`. No bytes are sent by this client |
 | `get_standards` | `get_standards()` | Read your standards, with `version`, `restorable_versions` and `suggested_criterion` |
 | `create_standard` | `define_standard(text=..., strength=...)` | Add a standard (the method keeps its name; it calls the hosted `create_standard` tool) |
 | `edit_standard` | `edit_standard(standard_id, expected_version=..., ...)` | Field edits, or `restore_version`, or `use_suggested_criterion=True` (exactly one) |
@@ -95,14 +95,13 @@ linked follow-ups from Python, preserving the predecessor on idempotent recovery
 | `record_run_outcome` | `record_run_outcome(run_id, outcome=...)` | Record what you did with the result |
 
 The five core tools are `run`, `list_runs`, `get_run`, `cancel_run` and
-`record_run_outcome`. The host may also advertise `attach_artifact` when it has
-an approved resolver for the artifact bytes. `require_product_tools()` checks
-only the five core tools, so a host without that resolver is still ready for
-Runs. The standards tools (`get_standards`, `create_standard`, `edit_standard`)
-are not part of that readiness check either. The host advertises ten tools in all; the tenth,
-`rerun` (a re-check of a fixed answer), has no wrapper in this client yet. Artifact bytes come from the host-selected resolver and are not carried
-in MCP JSON; the server answers `artifact_unavailable` when that source is not
-available. `replay_events(...)` is bounded and never pages automatically.
+`record_run_outcome`. The host always offers `attach_artifact` too.
+`require_product_tools()` checks only the five core tools. The standards tools
+(`get_standards`, `create_standard`, `edit_standard`) are not part of that readiness check
+either. The host advertises ten tools in all; the tenth, `rerun` (a re-check of a fixed
+answer), has no wrapper in this client yet. Artifact bytes are never carried in MCP JSON:
+PUT them to the link, or let the user upload through the page.
+`replay_events(...)` is bounded and never pages automatically.
 
 ## Behavior to rely on
 

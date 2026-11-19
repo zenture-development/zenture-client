@@ -1189,7 +1189,7 @@ Base URL: `https://api.zenture.app/v1`
 
 Developer docs: `https://www.zenture.app/en/developers`
 
-Python client (`python -m pip install --upgrade zenture==1.2.2`): [zenture-development/zenture-client](https://github.com/zenture-development/zenture-client)
+Python client (`python -m pip install --upgrade zenture==1.2.3`): [zenture-development/zenture-client](https://github.com/zenture-development/zenture-client)
 ```
 
 ### `POST /v1/input-wizard`

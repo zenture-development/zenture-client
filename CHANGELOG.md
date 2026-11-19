@@ -6,7 +6,23 @@ The project follows semantic versioning once public releases begin. Prerelease
 versions may change while the Public API contract is still in release-candidate
 state.
 
+## 1.2.3 (2026-11-19)
+
+- Fix: `McpClient.attach_artifact` / `AsyncMcpClient.attach_artifact` parse the real server answer.
+  `ArtifactUploadResponse` no longer requires or carries `next_steps` and models the four shapes of the tool:
+  a PUT link with an `upload` object (`ArtifactUploadPut`: `method`, `url`, `headers`; the token stays hidden in
+  repr), a registered host file, a fetched host file (`status` only) and an upload page (`upload_page_url`,
+  `expires_at`, `hint`). Unknown fields are still refused.
+- Docs follow the code: the Run read has no `reference_file_attached`, `profile` or `generation` (`PublicRunListItem`
+  keeps them); a finding's `location` is a plain string and file text appears only in `evidence.excerpt`; the `n/a`
+  standard result, `changes`, the eight finding categories, the hint on terminal Runs, MCP `billing` only with
+  `view="full"`, `attach_artifact` always offered, the ten MCP tools and the MCP `next_action` values are documented.
+
 ## 1.2.2 (2026-11-19)
+
+Also removed from the Run read in 1.2.2 (not listed below at the time): `reference_file_attached`, `profile`,
+`generation`, and the finding location fields `source` and `sheet` (`location` is a plain string); the standard
+result `n/a` was added.
 
 The Run read is lean. This is a breaking change for readers of the retired fields.
 
