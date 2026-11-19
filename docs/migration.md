@@ -21,14 +21,14 @@ on a POSIX shell:
 ```bash
 python3 -m venv .venv-zenture
 .venv-zenture/bin/python -m pip uninstall -y zenture-sdk
-.venv-zenture/bin/python -m pip install --upgrade zenture==1.2.2
+.venv-zenture/bin/python -m pip install --upgrade zenture==1.2.3
 ```
 
 For an existing virtual environment containing `zenture-sdk`, skip creation
 and substitute its Python executable in both commands. On Windows, the
 executable inside the environment is `Scripts/python.exe` instead of
 `bin/python`. The `--upgrade` flag also updates an existing canonical
-`zenture` installation, including 1.1.0, 1.2.0 or 1.2.1, to 1.2.2. If you come from a canonical
+`zenture` installation, including 1.1.0, 1.2.0, 1.2.1 or 1.2.2, to 1.2.3. If you come from a canonical
 1.1.x release, read [Upgrading to 1.2.0](#upgrading-to-120) first; 1.2.1 adds standards and
 learning fields and breaks nothing ([Upgrading to 1.2.1](#upgrading-to-121)).
 
@@ -46,11 +46,24 @@ account OAuth credentials and explicit login; ordinary client calls never
 start login. See [authentication](./authentication.md) and
 [hosted MCP clients](./mcp-client.md) for those public interfaces.
 
+## Upgrading to 1.2.3
+
+- `McpClient.attach_artifact` / `AsyncMcpClient.attach_artifact` parse the real server answer. `ArtifactUploadResponse`
+  no longer has `next_steps` (the server never sent it; 1.2.2 failed on real answers). It models four shapes: a PUT
+  link (`upload_url`, `upload_id`, `upload_token` hidden in repr, `expires_at`, `upload` = `method`, `url`, `headers`
+  with `X-Upload-Token` and `Content-Type`), a registered host file (`content_hash`, `byte_size`, `content_type`,
+  `status`, `retry_after_seconds`), a fetched host file (`status`, `retry_after_seconds`) and an upload page
+  (`upload_page_url`, `expires_at`, `hint`). Code that read `.next_steps` must use the shape's fields or `.hint`.
+- Documentation only: the Run read has no `reference_file_attached`, `profile` or `generation`; a finding's
+  `location` is a string; the `n/a` standard result, `changes` and the eight finding categories are documented.
+
 ## Upgrading to 1.2.2
 
 - `PublicRunResponse` is lean: the retired fields (`safe_result_content`, `standards_checked`, `learning_applied`,
-  `essence_version`, `essence`, `billing_summary`, and the timing, queue and coverage fields) are removed; read
-  `billing` and `standards` instead. Code that reads a retired field breaks.
+  `essence_version`, `essence`, `billing_summary`, `reference_file_attached`, `profile`, `generation`, and the timing,
+  queue and coverage fields) are removed; read `billing` and `standards` instead. A finding's `location` is a plain
+  string (no `source` or `sheet`). Code that reads a retired field breaks. `PublicRunListItem` keeps `input_kind`,
+  `reference_file_attached` and `profile`.
 - `PublicRunFinding` no longer carries `essence_focus` (added in 1.2.1).
 - `runs.wait` waits at most 120 s by default and always finitely; `observed_deadline` stays as a name and is always `None`.
 - A standard row may carry the result `n/a`, next to `met`, `violated` and `unverifiable`.
@@ -79,7 +92,7 @@ removed types needs edits.
 | `client.runs.attach_artifact(upload_id=up.upload_id, file_name=..., mime_type=..., content=..., content_hash=..., idempotency_key=...)` returned `ArtifactUploadResponse` | `client.runs.attach_artifact(file_name=..., mime_type=..., content=..., content_hash=..., idempotency_key=...)` (no `upload_id`) returns `ArtifactUploadAccepted` with `artifact_ref`, `status="pending"`, `retry_after_seconds`, `next_step`. |
 | `SignedUploadResponse` in `zenture.types` | Removed. |
 | bearer `POST /v1/run-artifacts` | Removed. The bytes go with `PUT` to the issued link and the single-use `X-Upload-Token` (no bearer, no redirects, never retried). |
-| `McpClient.attach_artifact(...)` returned the old `ArtifactUploadResponse` | Returns an upload link (`upload_url`, `upload_id`, `upload_token` hidden in repr, `expires_at`) or a registered host file; it sends no bytes. |
+| `McpClient.attach_artifact(...)` returned the old `ArtifactUploadResponse` | Returns one of four shapes (a PUT link with an `upload` object, a registered host file, a fetched host file, an upload page; see [Upgrading to 1.2.3](#upgrading-to-123)); it sends no bytes. |
 
 Before:
 
@@ -119,8 +132,9 @@ same request again. New closed errors you may want to handle:
 
 New in 1.2.0: source checks. `runs.prepare(...)`, `runs.run(...)` and the MCP `run` take an
 optional `reference_file` (an `art_...` reference from an upload). The inline text answer
-is then checked against that file; the result carries `reference_file_attached=True` and
-locations with `source="reference_file"`. See the [Run guide](./run-guide.md).
+is then checked against that file. Since 1.2.2 the Run read carries no `reference_file_attached`;
+file text appears only in a finding's `evidence.excerpt`, flagged `untrusted_file_text`, and `location` is a plain
+string. See the [Run guide](./run-guide.md).
 
 ## Return to the published baseline
 

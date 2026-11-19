@@ -18,7 +18,11 @@ LINK = {
     "upload_token": TOKEN,
     "artifact_ref": ARTIFACT_REF,
     "expires_at": "2026-11-06T10:10:00Z",
-    "next_steps": "PUT the bytes to upload_url with X-Upload-Token, then run with the artifact_ref.",
+    "upload": {
+        "method": "PUT",
+        "url": "https://mcp.example.test/v1/run-artifacts/uploads/upload_abcdefgh",
+        "headers": {"X-Upload-Token": TOKEN, "Content-Type": "text/plain"},
+    },
 }
 HOST = {
     "artifact_ref": ARTIFACT_REF,
@@ -27,7 +31,14 @@ HOST = {
     "content_type": "text/plain",
     "status": "pending",
     "retry_after_seconds": 3,
-    "next_steps": "Start the run with the artifact_ref.",
+}
+# Host file fetched by the Backend: no hash, size or type in the answer.
+FETCHED = {"artifact_ref": ARTIFACT_REF, "status": "pending", "retry_after_seconds": 2}
+PAGE = {
+    "upload_page_url": "https://mcp.example.test/v1/upload-page?t=abc",
+    "expires_at": "2026-11-06T10:10:00Z",
+    "artifact_ref": ARTIFACT_REF,
+    "hint": "Ask the user to open this link and upload the file, then call run.",
 }
 ARGS: dict[str, Any] = {
     "file_name": "answer.txt",
@@ -45,7 +56,10 @@ def test_link_answer_is_parsed_and_hides_the_token() -> None:
     assert result.upload_url == LINK["upload_url"]
     assert result.upload_id == "upload_abcdefgh"
     assert result.upload_token == TOKEN
-    assert result.next_steps == LINK["next_steps"]
+    assert result.upload is not None
+    assert result.upload.method == "PUT"
+    assert result.upload.url == LINK["upload_url"]
+    assert result.upload.headers == {"X-Upload-Token": TOKEN, "Content-Type": "text/plain"}
     assert TOKEN not in repr(result) + str(result)
     assert [name for name, _ in transport.calls] == ["attach_artifact"]
 
@@ -57,6 +71,24 @@ def test_host_bytes_answer_is_parsed() -> None:
     assert result.status == "pending"
     assert result.retry_after_seconds == 3
     assert result.content_hash == "a" * 64
+    assert result.upload_token is None
+
+
+def test_fetched_host_file_answer_is_parsed() -> None:
+    result = McpClient(RecordingTransport({"attach_artifact": FETCHED})).attach_artifact(**ARGS)
+
+    assert result.status == "pending"
+    assert result.retry_after_seconds == 2
+    assert result.content_hash is None
+    assert result.upload_url is None
+
+
+def test_upload_page_answer_is_parsed() -> None:
+    result = McpClient(RecordingTransport({"attach_artifact": PAGE})).attach_artifact(**ARGS)
+
+    assert result.upload_page_url == PAGE["upload_page_url"]
+    assert result.hint == PAGE["hint"]
+    assert result.artifact_ref == ARTIFACT_REF
     assert result.upload_token is None
 
 
@@ -79,7 +111,10 @@ async def test_async_link_and_host_answers_are_parsed() -> None:
     [
         {k: v for k, v in LINK.items() if k != "upload_token"},
         {k: v for k, v in HOST.items() if k != "status"},
-        {"artifact_ref": ARTIFACT_REF, "next_steps": "x"},
+        {"artifact_ref": ARTIFACT_REF},
+        {k: v for k, v in LINK.items() if k != "upload"},
+        {k: v for k, v in PAGE.items() if k != "hint"},
+        {**LINK, "next_steps": "retired field"},
         {**LINK, "upload_token": "short"},
     ],
 )

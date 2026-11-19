@@ -552,12 +552,14 @@ class McpClient(StandardsMcpMixin):
                 uppercase and surrounding whitespace are normalized.
 
         Mirrors the tool; it sends no bytes. Returns ArtifactUploadResponse with the
-        artifact_ref and next_steps, in one of two shapes. Upload link: upload_url,
-        upload_id, upload_token (single use, hidden in repr, header X-Upload-Token only,
-        never in a URL) and expires_at; PUT the bytes there yourself, then run with
-        {"type": "zenture_ref", "value": artifact_ref}. Host bytes (the host resolver
-        supplied them): content_hash, byte_size, content_type, status "pending" and
-        optional retry_after_seconds. While the file is read, run answers
+        artifact_ref, in one of four shapes. Upload link: upload_url, upload_id,
+        upload_token (single use, hidden in repr, header X-Upload-Token only, never in a
+        URL), expires_at and upload (method PUT, url, headers); PUT the bytes there
+        yourself, then run with {"type": "zenture_ref", "value": artifact_ref}. Host bytes
+        registered: content_hash, byte_size, content_type, status "pending" and optional
+        retry_after_seconds. From a raw call (this wrapper always sends all four metadata
+        fields): host file fetched, status "pending" and optional retry_after_seconds; upload
+        page, upload_page_url, expires_at and a hint for the user. While the file is read, run answers
         artifact_not_ready with retry_after_seconds. This method neither reads a Python
         file nor sends bytes in JSON. Invalid metadata raises ValidationError; tool
         failures raise ZentureMCPError.
@@ -961,12 +963,14 @@ class AsyncMcpClient(AsyncStandardsMcpMixin):
                 uppercase and surrounding whitespace are normalized.
 
         Mirrors the tool; it sends no bytes. Returns ArtifactUploadResponse with the
-        artifact_ref and next_steps, in one of two shapes. Upload link: upload_url,
-        upload_id, upload_token (single use, hidden in repr, header X-Upload-Token only,
-        never in a URL) and expires_at; PUT the bytes there yourself, then run with
-        {"type": "zenture_ref", "value": artifact_ref}. Host bytes (the host resolver
-        supplied them): content_hash, byte_size, content_type, status "pending" and
-        optional retry_after_seconds. While the file is read, run answers
+        artifact_ref, in one of four shapes. Upload link: upload_url, upload_id,
+        upload_token (single use, hidden in repr, header X-Upload-Token only, never in a
+        URL), expires_at and upload (method PUT, url, headers); PUT the bytes there
+        yourself, then run with {"type": "zenture_ref", "value": artifact_ref}. Host bytes
+        registered: content_hash, byte_size, content_type, status "pending" and optional
+        retry_after_seconds. From a raw call (this wrapper always sends all four metadata
+        fields): host file fetched, status "pending" and optional retry_after_seconds; upload
+        page, upload_page_url, expires_at and a hint for the user. While the file is read, run answers
         artifact_not_ready with retry_after_seconds. This method neither reads a Python
         file nor sends bytes in JSON. Invalid metadata raises ValidationError; tool
         failures raise ZentureMCPError.

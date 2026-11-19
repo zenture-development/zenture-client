@@ -489,18 +489,30 @@ class ArtifactUploadRequest(_RunRequestModel):
     content_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
 
 
+class ArtifactUploadPut(SDKBaseModel):
+    """The exact HTTP request that delivers the bytes of an upload link."""
+
+    method: Literal["PUT"]
+    url: str = Field(min_length=1, max_length=2048)
+    headers: dict[str, str] = Field(repr=False)
+
+
 class ArtifactUploadResponse(SDKBaseModel):
-    """MCP `attach_artifact` answer: an upload link, or a registered host-bytes file.
+    """MCP `attach_artifact` answer; exactly one of four shapes.
 
     Link: `upload_url`, `upload_id`, `upload_token` (single use, hidden in repr),
-    `expires_at`. Host bytes: `content_hash`, `byte_size`, `content_type`, `status`
-    (`pending`) and optional `retry_after_seconds`. `next_steps` says what to do next.
-    The Python MCP client does not send the bytes; the host or caller does.
+    `expires_at` and `upload` (the PUT to send, headers hidden in repr). Host bytes
+    registered: `content_hash`, `byte_size`, `content_type`, `status` (`pending`) and
+    optional `retry_after_seconds`. Host file fetched: `status` (`pending`) and optional
+    `retry_after_seconds` only. Upload page (name only): `upload_page_url`, `expires_at`
+    and `hint` for the user. The Python MCP client does not send the bytes.
     """
 
     artifact_ref: str = Field(min_length=7, max_length=132, pattern=r"^art_[A-Za-z0-9_-]{3,128}$")
-    next_steps: str = Field(max_length=1024)
     upload_url: str | None = Field(default=None, max_length=2048)
+    upload: ArtifactUploadPut | None = Field(default=None, repr=False)
+    upload_page_url: str | None = Field(default=None, max_length=2048)
+    hint: str | None = Field(default=None, max_length=1024)
     upload_id: str | None = Field(
         default=None, min_length=8, max_length=128, pattern=r"^upload_[A-Za-z0-9_-]{8,128}$"
     )
@@ -519,13 +531,24 @@ class ArtifactUploadResponse(SDKBaseModel):
 
     @model_validator(mode="after")
     def _one_complete_shape(self) -> ArtifactUploadResponse:
-        link = (self.upload_url, self.upload_id, self.upload_token, self.expires_at)
-        host = (self.content_hash, self.byte_size, self.content_type, self.status)
-        if all(v is not None for v in link) and all(v is None for v in host):
+        def present(*values: object) -> bool:
+            return all(v is not None for v in values)
+
+        def absent(*values: object) -> bool:
+            return all(v is None for v in values)
+
+        link = (self.upload_url, self.upload_id, self.upload_token, self.upload)
+        page = (self.upload_page_url, self.hint)
+        meta = (self.content_hash, self.byte_size, self.content_type)
+        file_state = (self.status, self.retry_after_seconds)
+        if present(*link, self.expires_at) and absent(*page, *meta, *file_state):
             return self
-        if all(v is not None for v in host) and all(v is None for v in link):
+        if present(*page, self.expires_at) and absent(*link, *meta, *file_state):
             return self
-        raise ValueError("attach_artifact answer is neither a complete link nor a registered file")
+        registered_or_fetched = absent(*link, *page, self.expires_at) and present(self.status)
+        if registered_or_fetched and (present(*meta) or absent(*meta)):
+            return self
+        raise ValueError("attach_artifact answer matches none of its four shapes")
 
 
 class SignedUploadResponse(SDKBaseModel):

@@ -237,7 +237,6 @@ def _responses() -> dict[str, object]:
             "byte_size": 4,
             "content_type": "text/plain",
             "status": "pending",
-            "next_steps": "Start the run with the artifact_ref.",
         },
         "list_runs": _list_runs(),
         "get_run": {**_run(), "event_replay": _events()},

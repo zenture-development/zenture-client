@@ -104,7 +104,7 @@ def test_user_docs_document_every_exit_code_and_error_with_its_next_action() -> 
 def test_documented_behavior_matches_the_implemented_surface() -> None:
     readme = _read(ROOT / "README.md")
     for claim in (
-        "pip install --upgrade zenture==1.2.2",
+        "pip install --upgrade zenture==1.2.3",
         "Keychain",
         "not yet verified",
         "one stored account",
@@ -169,7 +169,7 @@ def test_documents_and_examples_use_only_public_modules(path: Path) -> None:
                     assert hasattr(imported, name), f"{module}.{name}"
 
 
-def test_mcp_docs_name_the_six_tools_and_both_peers() -> None:
+def test_mcp_docs_name_the_wrapped_tools_and_both_peers() -> None:
     from zenture.mcp import AsyncMcpClient, McpClient
 
     tools = ("run", "attach_artifact", "list_runs", "get_run", "cancel_run", "record_run_outcome")
@@ -183,11 +183,13 @@ def test_mcp_docs_name_the_six_tools_and_both_peers() -> None:
     for claim in (
         "The five core tools are",
         "`attach_artifact`",
-        "approved resolver",
-        "host-selected resolver",
+        "always offers `attach_artifact`",
+        "ten tools",
         "require_product_tools()` checks",
     ):
         assert claim in mcp, claim
+    for stale in ("approved resolver", "host-selected resolver", "next_steps` says"):
+        assert stale not in mcp, stale
 
 
 @pytest.mark.parametrize("path", EXAMPLES, ids=lambda p: p.name)
