@@ -6,7 +6,7 @@ The project follows semantic versioning once public releases begin. Prerelease
 versions may change while the Public API contract is still in release-candidate
 state.
 
-## Unreleased
+## 1.2.2 (2026-11-19)
 
 The Run read is lean. This is a breaking change for readers of the retired fields.
 
@@ -23,7 +23,8 @@ The Run read is lean. This is a breaking change for readers of the retired field
 - Removed with no replacement: `safe_result_content` and its models, `standards_checked` (`StandardsChecked`,
   `StandardCheckResult`), `learning_applied`, `essence_version`, `essence`, `billing_summary` and
   `TerminalBillingSummaryV1` (use `billing`), and the timing, queue and coverage fields (`deadline_at`,
-  `retry_after_seconds`, `queue`, `capability_coverage`, ...).
+  `retry_after_seconds`, `queue`, `capability_coverage`, ...), and the finding field `essence_focus`.
+- URL patterns in the Run contract are unicode- and host-safe.
 - `runs.wait(...)` polls on the 1, 2, 4, 8 s backoff; an omitted timeout is 120 seconds and waiting is always
   finite. `ZenturePollingTimeoutError.observed_deadline` is kept as a public name and is always `None`.
 - A parity test checks that the Run status and decision enums of the models equal the bundled OpenAPI mirror,

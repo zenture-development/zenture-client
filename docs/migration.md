@@ -21,14 +21,14 @@ on a POSIX shell:
 ```bash
 python3 -m venv .venv-zenture
 .venv-zenture/bin/python -m pip uninstall -y zenture-sdk
-.venv-zenture/bin/python -m pip install --upgrade zenture==1.2.1
+.venv-zenture/bin/python -m pip install --upgrade zenture==1.2.2
 ```
 
 For an existing virtual environment containing `zenture-sdk`, skip creation
 and substitute its Python executable in both commands. On Windows, the
 executable inside the environment is `Scripts/python.exe` instead of
 `bin/python`. The `--upgrade` flag also updates an existing canonical
-`zenture` installation, including 1.1.0 or 1.2.0, to 1.2.1. If you come from a canonical
+`zenture` installation, including 1.1.0, 1.2.0 or 1.2.1, to 1.2.2. If you come from a canonical
 1.1.x release, read [Upgrading to 1.2.0](#upgrading-to-120) first; 1.2.1 adds standards and
 learning fields and breaks nothing ([Upgrading to 1.2.1](#upgrading-to-121)).
 
@@ -45,6 +45,15 @@ remains noninteractive; MCP login does not read that token. MCP uses separate
 account OAuth credentials and explicit login; ordinary client calls never
 start login. See [authentication](./authentication.md) and
 [hosted MCP clients](./mcp-client.md) for those public interfaces.
+
+## Upgrading to 1.2.2
+
+- `PublicRunResponse` is lean: the retired fields (`safe_result_content`, `standards_checked`, `learning_applied`,
+  `essence_version`, `essence`, `billing_summary`, and the timing, queue and coverage fields) are removed; read
+  `billing` and `standards` instead. Code that reads a retired field breaks.
+- `PublicRunFinding` no longer carries `essence_focus` (added in 1.2.1).
+- `runs.wait` waits at most 120 s by default and always finitely; `observed_deadline` stays as a name and is always `None`.
+- A standard row may carry the result `n/a`, next to `met`, `violated` and `unverifiable`.
 
 ## Upgrading to 1.2.1
 
