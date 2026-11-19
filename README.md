@@ -42,7 +42,7 @@ with `retry_after_seconds`.
 ## Installation
 
 ```bash
-python -m pip install --upgrade zenture==1.2.1
+python -m pip install --upgrade zenture==1.2.2
 ```
 
 Supported Python: CPython 3.11, 3.12, 3.13, and 3.14; there is no upper version cap.

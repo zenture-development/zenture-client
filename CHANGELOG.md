@@ -6,7 +6,7 @@ The project follows semantic versioning once public releases begin. Prerelease
 versions may change while the Public API contract is still in release-candidate
 state.
 
-## Unreleased
+## 1.2.2 (2026-11-19)
 
 The Run read is lean. This is a breaking change for readers of the retired fields.
 
