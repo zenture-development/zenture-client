@@ -51,6 +51,8 @@ start login. See [authentication](./authentication.md) and
 - `PublicRunResponse` is lean: the retired fields (`safe_result_content`, `standards_checked`, `learning_applied`,
   `essence_version`, `essence`, `billing_summary`, and the timing, queue and coverage fields) are removed; read
   `billing` and `standards` instead. Code that reads a retired field breaks.
+- `PublicRunFinding` no longer carries `essence_focus` (added in 1.2.1).
+- `runs.wait` waits at most 120 s by default and always finitely; `observed_deadline` stays as a name and is always `None`.
 - A standard row may carry the result `n/a`, next to `met`, `violated` and `unverifiable`.
 
 ## Upgrading to 1.2.1
