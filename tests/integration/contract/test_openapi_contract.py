@@ -181,6 +181,25 @@ def test_openapi_signed_upload_response_uses_gateway_upload_id_bounds() -> None:
     assert upload_id["pattern"] == r"^upload_[A-Za-z0-9_-]{8,128}$"
 
 
+def test_run_read_standard_results_match_the_gateway_and_accept_not_applicable() -> None:
+    from zenture._contract import PublicRunResponse
+
+    schema = _load_openapi()["components"]["schemas"]["PublicRunStandard"]
+    served = schema["properties"]["result"]["enum"]
+    assert served == ["met", "violated", "unverifiable", "n/a"]
+    standard_id = "55555555-5555-4555-8555-555555555555"
+    for result in served:
+        run = PublicRunResponse.model_validate(
+            {
+                "run_id": "run_1234567890abcdef",
+                "status": "succeeded",
+                "standards": [{"standard_id": standard_id, "result": result}],
+            }
+        )
+        assert run.standards is not None
+        assert run.standards[0].result == result
+
+
 def test_openapi_run_read_is_the_lean_closed_contract() -> None:
     schemas = _load_openapi()["components"]["schemas"]
 

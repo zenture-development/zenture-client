@@ -157,7 +157,7 @@ def test_a_revision_run_exposes_what_changed_about_its_predecessor_findings() ->
             ]
         },
         {"billing": {"status": "settled", "amount": "1,5"}},
-        {"standards": [{"standard_id": STANDARD_ID, "result": "n/a"}]},
+        {"standards": [{"standard_id": STANDARD_ID, "result": "not_applied"}]},
         {"status": "unknown"},
     ],
 )
