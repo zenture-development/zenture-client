@@ -79,7 +79,14 @@ refresh, store or log it.
 Run execution takes inline text or a `zenture_ref` from an uploaded file
 (`artifact_not_ready` carries `retry_after_seconds`). Raw MCP `run` also supports `predecessor_run_id`; these Python
 MCP wrappers do not expose it yet. Use REST `runs.create()` / `runs.run()` for
-linked follow-ups from Python, preserving the predecessor on idempotent recovery.
+linked follow-ups from Python, preserving the predecessor on idempotent recovery. (The hosted
+server accepts `predecessor_run_id` but no longer advertises it in the tool schema.)
+
+`run` and `get_run` (also each read inside `wait_run`) send `wait_seconds` explicitly instead of
+leaving it to the server default: the read timeout that applies to the call (the connection
+`timeout`, 30 s by default, or the remaining `wait_run` budget) minus a 10 s margin, at most 40 s,
+the hosted maximum. At the default that is 20 s; a call whose read timeout leaves no margin asks
+for 0 and returns at once. No other tool carries it.
 
 | Tool | Method | Purpose |
 |---|---|---|
