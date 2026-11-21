@@ -6,6 +6,18 @@ The project follows semantic versioning once public releases begin. Prerelease
 versions may change while the Public API contract is still in release-candidate
 state.
 
+## 1.2.4 (2026-11-21)
+
+- Fix: `McpClient` / `AsyncMcpClient` send `wait_seconds` explicitly on `run` and `get_run` (also each read inside
+  `wait_run`) instead of leaving it to the server default. The value derives from the read timeout that applies to the
+  call (connection `timeout`, 30 s by default, or the remaining `wait_run` budget) minus a 10 s margin
+  (`WAIT_READ_MARGIN_SECONDS`), never above the hosted maximum of 40 s; at the default that is 20 s. A server whose
+  default wait exceeds the client's read timeout (1.2.3 against a 40 s default) no longer turns into a transport
+  failure. The two peers take the read timeout as an optional `read_timeout` argument (the connection `timeout` is
+  passed on by `connect`).
+- Docs follow the hosted server: a terminal Run carries no `next_action` (only an active Run does), and
+  `predecessor_run_id` is accepted but no longer advertised in the tool schema.
+
 ## 1.2.3 (2026-11-19)
 
 - Fix: `McpClient.attach_artifact` / `AsyncMcpClient.attach_artifact` parse the real server answer.

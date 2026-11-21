@@ -42,7 +42,14 @@ from zenture._mcp.transport import (
     find_auth_failure,
     open_streamable_http_transport,
 )
-from zenture._mcp.wait import supports_timeout, timed_call, wait_async, wait_sync
+from zenture._mcp.wait import (
+    DEFAULT_READ_TIMEOUT_SECONDS,
+    supports_timeout,
+    timed_call,
+    wait_async,
+    wait_sync,
+    with_server_wait,
+)
 from zenture.errors import ZentureMCPError, ZentureMCPProtocolError
 from zenture.validation_issues import safe_issues
 
@@ -265,6 +272,25 @@ def _validate_arguments(arguments: Mapping[str, object]) -> dict[str, object]:
     return result
 
 
+def _stated_arguments(
+    name: str,
+    arguments: Mapping[str, object],
+    read_timeout_seconds: float | None,
+    *,
+    connection_read_timeout: float,
+) -> dict[str, object]:
+    """The validated arguments with the wait derived from the read timeout this call runs under.
+
+    That is the connection's read timeout, or the smaller remaining budget of a bounded wait.
+    """
+    read_timeout = (
+        connection_read_timeout
+        if read_timeout_seconds is None
+        else min(read_timeout_seconds, connection_read_timeout)
+    )
+    return with_server_wait(name, _validate_arguments(arguments), read_timeout)
+
+
 def _run_request(
     *, task: str, artifact: dict[str, Any], profile: str, reference_file: str | None
 ) -> dict[str, object]:
@@ -373,9 +399,13 @@ def _reject_running_event_loop() -> None:
 class McpClient(StandardsMcpMixin):
     """Synchronous MCP peer adapter over one caller-owned transport."""
 
-    def __init__(self, transport: SyncMcpTransport) -> None:
+    def __init__(
+        self, transport: SyncMcpTransport, *, read_timeout: float = DEFAULT_READ_TIMEOUT_SECONDS
+    ) -> None:
+        """``read_timeout`` is the transport's read timeout; the wait asked of the server follows it."""
         self._transport = transport
         self._timed = supports_timeout(transport.call_tool)
+        self._read_timeout = read_timeout
 
     @classmethod
     @contextmanager
@@ -385,7 +415,7 @@ class McpClient(StandardsMcpMixin):
         *,
         session: AuthSession | None = None,
         bearer_token: AsyncBearerTokenProvider | None = None,
-        timeout: float = 30.0,
+        timeout: float = DEFAULT_READ_TIMEOUT_SECONDS,
     ) -> Generator[McpClient, None, None]:
         """Connect like :meth:`AsyncMcpClient.connect` on a dedicated background event loop.
 
@@ -404,7 +434,8 @@ class McpClient(StandardsMcpMixin):
             with portal.wrap_async_context_manager(opened) as peer:
                 try:
                     # Sync and async peers share the internal transport port on the portal thread.
-                    yield cls(_PortalTransport(portal, peer._transport))  # pyright: ignore[reportPrivateUsage]
+                    port = _PortalTransport(portal, peer._transport)  # pyright: ignore[reportPrivateUsage]
+                    yield cls(port, read_timeout=timeout)
                 except BaseException as exc:
                     # Close the loop side cleanly; the caller sees its own exception unwrapped.
                     failure = exc
@@ -463,7 +494,9 @@ class McpClient(StandardsMcpMixin):
         *,
         read_timeout_seconds: float | None = None,
     ) -> dict[str, object]:
-        validated = _validate_arguments(arguments)
+        validated = _stated_arguments(
+            name, arguments, read_timeout_seconds, connection_read_timeout=self._read_timeout
+        )
         try:
             result = timed_call(
                 self._transport.call_tool, name, validated, read_timeout_seconds, self._timed
@@ -766,9 +799,13 @@ class McpClient(StandardsMcpMixin):
 class AsyncMcpClient(AsyncStandardsMcpMixin):
     """Asynchronous MCP peer adapter over one caller-owned transport."""
 
-    def __init__(self, transport: AsyncMcpTransport) -> None:
+    def __init__(
+        self, transport: AsyncMcpTransport, *, read_timeout: float = DEFAULT_READ_TIMEOUT_SECONDS
+    ) -> None:
+        """``read_timeout`` is the transport's read timeout; the wait asked of the server follows it."""
         self._transport = transport
         self._timed = supports_timeout(transport.call_tool)
+        self._read_timeout = read_timeout
 
     @classmethod
     @asynccontextmanager
@@ -778,7 +815,7 @@ class AsyncMcpClient(AsyncStandardsMcpMixin):
         *,
         session: AuthSession | None = None,
         bearer_token: AsyncBearerTokenProvider | None = None,
-        timeout: float = 30.0,
+        timeout: float = DEFAULT_READ_TIMEOUT_SECONDS,
     ) -> AsyncGenerator[AsyncMcpClient, None]:
         """Connect through the official Streamable HTTP transport.
 
@@ -809,7 +846,7 @@ class AsyncMcpClient(AsyncStandardsMcpMixin):
                 session=session,
                 timeout=timeout,
             ) as transport:
-                yield cls(transport)
+                yield cls(transport, read_timeout=timeout)
         finally:
             if owned is not None:
                 owned.close()
@@ -872,7 +909,9 @@ class AsyncMcpClient(AsyncStandardsMcpMixin):
         *,
         read_timeout_seconds: float | None = None,
     ) -> dict[str, object]:
-        validated = _validate_arguments(arguments)
+        validated = _stated_arguments(
+            name, arguments, read_timeout_seconds, connection_read_timeout=self._read_timeout
+        )
         try:
             result = await timed_call(
                 self._transport.call_tool, name, validated, read_timeout_seconds, self._timed

@@ -21,14 +21,14 @@ on a POSIX shell:
 ```bash
 python3 -m venv .venv-zenture
 .venv-zenture/bin/python -m pip uninstall -y zenture-sdk
-.venv-zenture/bin/python -m pip install --upgrade zenture==1.2.3
+.venv-zenture/bin/python -m pip install --upgrade zenture==1.2.4
 ```
 
 For an existing virtual environment containing `zenture-sdk`, skip creation
 and substitute its Python executable in both commands. On Windows, the
 executable inside the environment is `Scripts/python.exe` instead of
 `bin/python`. The `--upgrade` flag also updates an existing canonical
-`zenture` installation, including 1.1.0, 1.2.0, 1.2.1 or 1.2.2, to 1.2.3. If you come from a canonical
+`zenture` installation, including 1.1.0, 1.2.0, 1.2.1, 1.2.2 or 1.2.3, to 1.2.4. If you come from a canonical
 1.1.x release, read [Upgrading to 1.2.0](#upgrading-to-120) first; 1.2.1 adds standards and
 learning fields and breaks nothing ([Upgrading to 1.2.1](#upgrading-to-121)).
 
@@ -45,6 +45,12 @@ remains noninteractive; MCP login does not read that token. MCP uses separate
 account OAuth credentials and explicit login; ordinary client calls never
 start login. See [authentication](./authentication.md) and
 [hosted MCP clients](./mcp-client.md) for those public interfaces.
+
+## Upgrading to 1.2.4
+
+- `McpClient` / `AsyncMcpClient` send `wait_seconds` on `run` and `get_run` themselves, derived from the read timeout
+  of the call (a 10 s margin below it, at most 40 s; 20 s at the default 30 s). Nothing to change in calling code; a
+  larger connection `timeout` lets the hosted server wait longer per call.
 
 ## Upgrading to 1.2.3
 

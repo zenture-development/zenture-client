@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Protocol, TypeAlias
 
 from zenture._auth.errors import AuthError
 from zenture._mcp.contracts import BearerTokenProvider, McpEndpoint
+from zenture._mcp.wait import DEFAULT_READ_TIMEOUT_SECONDS
 from zenture.errors import ZentureMCPDependencyError, ZentureMCPError
 
 if TYPE_CHECKING:
@@ -126,7 +127,7 @@ async def open_streamable_http_transport(
     *,
     bearer_token: AsyncBearerTokenProvider | None = None,
     session: AuthSession | None = None,
-    timeout: float = 30.0,
+    timeout: float = DEFAULT_READ_TIMEOUT_SECONDS,
 ) -> AsyncGenerator[AsyncMcpTransport, None]:
     """Open an initialized official Streamable HTTP MCP client session.
 

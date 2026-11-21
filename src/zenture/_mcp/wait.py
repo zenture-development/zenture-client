@@ -23,6 +23,31 @@ TERMINAL = frozenset(
     {"completed", "succeeded", "failed", "cancelled", "expired", "budget_exhausted"}
 )
 
+# The read timeout of a connection that does not choose one.
+DEFAULT_READ_TIMEOUT_SECONDS = 30.0
+# The hosted server's maximum `wait_seconds`; its tool call deadline adds the start and the final
+# read on top of the wait.
+SERVER_WAIT_MAX_SECONDS = 40
+# What stays between the wait asked of the server and the read timeout (that overhead and the
+# network); the one number the derived wait depends on.
+WAIT_READ_MARGIN_SECONDS = 10.0
+_WAITING_TOOLS = frozenset({"run", "get_run"})
+
+
+def server_wait_seconds(read_timeout: float) -> int:
+    """The `wait_seconds` to ask of the server: capped, a margin below ``read_timeout``."""
+    return max(0, min(SERVER_WAIT_MAX_SECONDS, int(read_timeout - WAIT_READ_MARGIN_SECONDS)))
+
+
+def with_server_wait(
+    name: str, arguments: Mapping[str, object], read_timeout: float
+) -> dict[str, object]:
+    """The call arguments with an explicit wait on the waiting tools, so no server default applies."""
+    stated = dict(arguments)
+    if name in _WAITING_TOOLS:
+        stated.setdefault("wait_seconds", server_wait_seconds(read_timeout))
+    return stated
+
 
 def supports_timeout(call: Callable[..., object]) -> bool:
     """Detect the additive keyword once, without retrying a dispatched call."""

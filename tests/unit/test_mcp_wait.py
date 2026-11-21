@@ -79,7 +79,10 @@ def test_wait_stops_with_same_id_summary_only(status: str, asynchronous: bool) -
     )
     assert read.run.run_id == RUN_ID
     assert read.run.status == status
-    assert port.calls == [("get_run", {"run_id": RUN_ID, "view": "summary", "replay_limit": 50})]
+    # The 5 s budget leaves no margin below it: the server is asked not to wait at all.
+    assert port.calls == [
+        ("get_run", {"run_id": RUN_ID, "view": "summary", "replay_limit": 50, "wait_seconds": 0})
+    ]
 
 
 @pytest.mark.parametrize("timeout", [0, -1, float("inf"), float("nan"), True, None])

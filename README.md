@@ -42,7 +42,7 @@ with `retry_after_seconds`.
 ## Installation
 
 ```bash
-python -m pip install --upgrade zenture==1.2.3
+python -m pip install --upgrade zenture==1.2.4
 ```
 
 Supported Python: CPython 3.11, 3.12, 3.13, and 3.14; there is no upper version cap.
@@ -178,7 +178,7 @@ with McpClient.connect() as client:
 | `run_id` | Identity; keep it for later calls (`profile` is a request field, not part of the Run read) |
 | `status` | Nonterminal: `created`, `queued`, `running`, `waiting_for_dependency`, `partially_complete`, `cancel_requested`. Terminal: `completed`, `failed`, `cancelled`, `expired`, `budget_exhausted` |
 | `acceptance_decision` | `ready`, `revise`, `human_review`, `insufficient_evidence`; absent is not `ready` |
-| `reason`, `next_action`, `hint` | Why the verdict came out as it did, what to do next, and a hint (also on terminal Runs); `eta_seconds` is an optional estimate |
+| `reason`, `next_action`, `hint` | Why the verdict came out as it did, what to do next, and a hint (also on terminal Runs); `eta_seconds` is an optional estimate. The hosted MCP tools give a terminal Run no `next_action` (the decision and the `hint` say what to do); only an active Run carries one (`get_run`) |
 | `findings` | Terminal Runs: per finding `ref`, `proven`, `problem`, and optionally `category` (eight values: `contradicted`, `unsupported`, `unverifiable`, `calculation`, `requirement`, `constraint`, `standard`, `source_inconsistent`), `location` (a string), `evidence` (`url` and `excerpt`, or an `excerpt` of untrusted file text) and `fix` |
 | `changes` | Revision Runs only: `resolved` (category and location), `open` and `new` (finding refs); `None` on every other Run |
 | `billing` | `status` is `pending`, `settled`, `released` or `unavailable`; the final Credits `amount` (decimal string, `unit="credits"`) when settled. Unavailable is not zero; a terminal Run with `pending` is final, its Credits follow on a re-read. Through MCP the hosted tool returns it only with `view="full"` |

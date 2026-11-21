@@ -126,6 +126,7 @@ async def test_run_explicit_identity_receipt_preserves_rest_shape(
     assert "idempotency_key" not in result.model_dump(mode="json")
     wire = dict(transport.calls[0])
     assert wire.pop("idempotency_key") == key
+    assert wire.pop("wait_seconds") == 20  # stated by the peer; not a REST prepare field
     prepared = PrepareKnowledgeRunRequest.model_validate(wire)
     assert "idempotency_key" not in prepared.model_dump()
     public = PublicRunResponse.model_validate(
