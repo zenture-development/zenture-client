@@ -29,9 +29,12 @@ async def connected(
     reads: list[str] = []
 
     @server.tool()
-    async def get_run(run_id: str, view: str, replay_limit: int) -> dict[str, object]:
+    async def get_run(
+        run_id: str, view: str, replay_limit: int, wait_seconds: int
+    ) -> dict[str, object]:
         assert view == "summary"
         assert replay_limit == 50
+        assert wait_seconds == 0  # the 2 s budget leaves no margin for the server to wait
         reads.append(run_id)
         await asyncio.sleep(delay)
         return {

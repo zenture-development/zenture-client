@@ -293,6 +293,7 @@ def test_sync_mcp_peer_maps_all_product_tools_to_canonical_models() -> None:
         "view": "summary",
         "replay_cursor": "cursor_0",
         "replay_limit": 50,
+        "wait_seconds": 20,
     }
     assert transport.calls[-1][1] == {
         "run_id": RUN_ID,
@@ -755,6 +756,7 @@ def test_mcp_client_replay_requests_the_first_page_explicitly() -> None:
         "view": "summary",
         "replay_limit": 50,
         "include_event_replay": True,
+        "wait_seconds": 20,
     }
 
 
